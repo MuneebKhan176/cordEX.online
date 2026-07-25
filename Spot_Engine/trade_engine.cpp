@@ -38,6 +38,22 @@
 //   (see engineClient.js) and pipelines every user's orders and price
 //   ticks over it. Newline-delimited JSON, both directions.
 //
+// ID-FORMAT SCHEMA MIGRATION (2026):
+//   order_id, user_id, and wallet_id all moved from AUTO_INCREMENT
+//   integers to app-generated PREFIX-###-AAA-### strings on the Node/
+//   MySQL side (e.g. "SPO-458-TYB-921", "UID-284-QXM-731",
+//   "SP-901-WAZ-118"). This engine previously parsed those three fields
+//   with tinyjson::getInt() and stored them as `long long` — which
+//   silently failed (std::stod() can't parse a string starting with a
+//   letter), leaving them at their default 0 and tripping the
+//   "Missing or invalid order_id/user_id/wallet_id" validation errors
+//   below. Fixed by making all three std::string end-to-end: inbound
+//   parsing, the SpotOrder/ExecutionMsg structs, the order-book indexes
+//   keyed by db_order_id, and the outbound JSON encoders.
+//   `engine_order_id` is NOT part of this migration — it's generated
+//   internally by this engine (OrderBook::allocateEngineOrderId()) and
+//   was never one of Node's app-generated ids, so it stays `long long`.
+//
 // WIRE PROTOCOL — Node -> Engine ("action" field):
 //   PLACE_ORDER   { request_id, action, order_id, user_id, wallet_id,
 //                    symbol, side, order_type, quantity,
@@ -45,6 +61,9 @@
 //                    stop_price? }     // OCO only: the lower/stop-loss-style leg.
 //   CANCEL_ORDER  { request_id, action, order_id, symbol }
 //   PRICE_UPDATE  { request_id, action, symbol, price }
+//
+//   order_id, user_id, wallet_id are all strings on the wire now (e.g.
+//   "SPO-458-TYB-921"), not numbers.
 //
 // WIRE PROTOCOL — Engine -> Node ("type" field). A single inbound packet
 // can produce SEVERAL outbound lines (an ack, zero or more fills,
@@ -60,6 +79,8 @@
 //                        -- oco_leg is "LIMIT" or "STOP", present only
 //                        -- when is_oco_leg is true, identifying which of
 //                        -- the two OCO legs fired.
+//                        -- order_id/user_id/wallet_id are strings here
+//                        -- too; engine_order_id stays a number.
 //   ORDER_BOOK_UPDATE   { type, symbol, last_price, best_bid, best_bid_qty,
 //                          best_ask, best_ask_qty, timestamp }
 //   ERROR               { type, request_id, message }
@@ -229,10 +250,10 @@ bool isSupportedSymbol(const std::string& s) {
    ORDER MODEL
    ═══════════════════════════════════════════════════════════════════════ */
 struct SpotOrder {
-    long long engine_order_id = 0;   // assigned by this engine, process-lifetime unique
-    long long db_order_id = 0;       // Node's spot_orders.order_id — the real correlation key
-    long long user_id = 0;
-    long long wallet_id = 0;
+    long long engine_order_id = 0;   // assigned by this engine, process-lifetime unique — NOT part of the id migration
+    std::string db_order_id;         // Node's spot_orders.order_id — e.g. "SPO-458-TYB-921" — the real correlation key
+    std::string user_id;             // Node's users.id — e.g. "UID-284-QXM-731"
+    std::string wallet_id;           // Node's spot_wallet.wallet_id — e.g. "SP-901-WAZ-118"
     std::string symbol;
     Side side = Side::BUY;
     OrderType order_type = OrderType::MARKET;
@@ -259,10 +280,10 @@ struct SpotOrder {
    ═══════════════════════════════════════════════════════════════════════ */
 struct ExecutionMsg {
     std::string request_id;
-    long long db_order_id = 0;
-    long long engine_order_id = 0;
-    long long user_id = 0;
-    long long wallet_id = 0;
+    std::string db_order_id;
+    long long engine_order_id = 0;   // internal engine id — NOT part of the id migration
+    std::string user_id;
+    std::string wallet_id;
     std::string symbol;
     std::string side;
     std::string order_type;
@@ -279,10 +300,10 @@ std::string executionToJson(const ExecutionMsg& e) {
     out << "{";
     out << "\"type\":\"EXECUTION\",";
     out << "\"request_id\":\"" << tinyjson::esc(e.request_id) << "\",";
-    out << "\"order_id\":" << e.db_order_id << ",";
+    out << "\"order_id\":\"" << tinyjson::esc(e.db_order_id) << "\",";
     out << "\"engine_order_id\":" << e.engine_order_id << ",";
-    out << "\"user_id\":" << e.user_id << ",";
-    out << "\"wallet_id\":" << e.wallet_id << ",";
+    out << "\"user_id\":\"" << tinyjson::esc(e.user_id) << "\",";
+    out << "\"wallet_id\":\"" << tinyjson::esc(e.wallet_id) << "\",";
     out << "\"symbol\":\"" << tinyjson::esc(e.symbol) << "\",";
     out << "\"side\":\"" << e.side << "\",";
     out << "\"order_type\":\"" << e.order_type << "\",";
@@ -299,14 +320,14 @@ std::string executionToJson(const ExecutionMsg& e) {
     return out.str();
 }
 
-std::string orderAckToJson(const std::string& request_id, long long db_order_id,
+std::string orderAckToJson(const std::string& request_id, const std::string& db_order_id,
                             long long engine_order_id, bool accepted,
                             const std::string& message, const std::vector<std::string>& errors) {
     std::ostringstream out;
     out << "{";
     out << "\"type\":\"ORDER_ACK\",";
     out << "\"request_id\":\"" << tinyjson::esc(request_id) << "\",";
-    out << "\"order_id\":" << db_order_id << ",";
+    out << "\"order_id\":\"" << tinyjson::esc(db_order_id) << "\",";
     out << "\"engine_order_id\":" << engine_order_id << ",";
     out << "\"accepted\":" << (accepted ? "true" : "false") << ",";
     out << "\"message\":\"" << tinyjson::esc(message) << "\",";
@@ -319,13 +340,13 @@ std::string orderAckToJson(const std::string& request_id, long long db_order_id,
     return out.str();
 }
 
-std::string cancelAckToJson(const std::string& request_id, long long db_order_id,
+std::string cancelAckToJson(const std::string& request_id, const std::string& db_order_id,
                              bool cancelled, const std::string& message) {
     std::ostringstream out;
     out << "{";
     out << "\"type\":\"CANCEL_ACK\",";
     out << "\"request_id\":\"" << tinyjson::esc(request_id) << "\",";
-    out << "\"order_id\":" << db_order_id << ",";
+    out << "\"order_id\":\"" << tinyjson::esc(db_order_id) << "\",";
     out << "\"cancelled\":" << (cancelled ? "true" : "false") << ",";
     out << "\"message\":\"" << tinyjson::esc(message) << "\"";
     out << "}";
@@ -388,8 +409,9 @@ public:
         return true;
     }
 
-    void placeOco(long long dbOrderId, long long userId, long long walletId, const std::string& symbol,
-                  double quantity, double limitPrice, double stopPrice, std::vector<ExecutionMsg>& execs) {
+    void placeOco(const std::string& dbOrderId, const std::string& userId, const std::string& walletId,
+                  const std::string& symbol, double quantity, double limitPrice, double stopPrice,
+                  std::vector<ExecutionMsg>& execs) {
         long long upperId = allocateEngineOrderId();
         long long lowerId = allocateEngineOrderId();
 
@@ -413,7 +435,7 @@ public:
         }
     }
 
-    bool cancelOrder(long long dbOrderId, std::string& message) {
+    bool cancelOrder(const std::string& dbOrderId, std::string& message) {
         auto it = entryIndex_.find(dbOrderId);
         if (it != entryIndex_.end()) {
             double price = it->second.price;
@@ -500,13 +522,13 @@ private:
     std::map<double, std::deque<SpotOrder>, std::greater<double>> ocoLowerTriggers_;
 
     struct EntryLoc { double price; bool isBuy; };
-    std::unordered_map<long long, EntryLoc> entryIndex_;
+    std::unordered_map<std::string, EntryLoc> entryIndex_;   // keyed by db_order_id (e.g. "SPO-458-TYB-921")
 
     struct OcoLegLoc { double price; bool isUpper; };
-    std::unordered_map<long long, OcoLegLoc> ocoLegIndex_;
+    std::unordered_map<long long, OcoLegLoc> ocoLegIndex_;   // keyed by engine_order_id — unaffected by id migration
 
     struct OcoOrderLoc { double upperPrice; double lowerPrice; long long upperEngineId; long long lowerEngineId; };
-    std::unordered_map<long long, OcoOrderLoc> ocoOrderIndex_;
+    std::unordered_map<std::string, OcoOrderLoc> ocoOrderIndex_;   // keyed by db_order_id
 
     void fillOrderCompletely(SpotOrder order, double price, std::vector<ExecutionMsg>& execs) {
         order.status = OrderStatus::FILLED;
@@ -603,9 +625,9 @@ private:
         return true;
     }
 
-    SpotOrder makeOcoLeg(long long dbOrderId, long long userId, long long walletId, const std::string& symbol,
-                          double quantity, double legPrice, long long engineOrderId, long long siblingEngineId,
-                          bool isUpper) const {
+    SpotOrder makeOcoLeg(const std::string& dbOrderId, const std::string& userId, const std::string& walletId,
+                          const std::string& symbol, double quantity, double legPrice, long long engineOrderId,
+                          long long siblingEngineId, bool isUpper) const {
         SpotOrder leg;
         leg.engine_order_id = engineOrderId;
         leg.db_order_id = dbOrderId;
@@ -658,9 +680,9 @@ public:
 struct InboundPacket {
     std::string request_id;
     std::string action;
-    long long order_id = 0;
-    long long user_id = 0;
-    long long wallet_id = 0;
+    std::string order_id;    // Node's spot_orders.order_id — e.g. "SPO-458-TYB-921"
+    std::string user_id;     // Node's users.id — e.g. "UID-284-QXM-731"
+    std::string wallet_id;   // Node's spot_wallet.wallet_id — e.g. "SP-901-WAZ-118"
     std::string symbol;
     std::string side;
     std::string order_type;
@@ -674,9 +696,9 @@ InboundPacket parseInbound(const std::string& json) {
     InboundPacket p;
     if (auto v = tinyjson::getString(json, "request_id")) p.request_id = *v;
     if (auto v = tinyjson::getString(json, "action")) p.action = *v;
-    if (auto v = tinyjson::getInt(json, "order_id")) p.order_id = *v;
-    if (auto v = tinyjson::getInt(json, "user_id")) p.user_id = *v;
-    if (auto v = tinyjson::getInt(json, "wallet_id")) p.wallet_id = *v;
+    if (auto v = tinyjson::getString(json, "order_id")) p.order_id = *v;
+    if (auto v = tinyjson::getString(json, "user_id")) p.user_id = *v;
+    if (auto v = tinyjson::getString(json, "wallet_id")) p.wallet_id = *v;
     if (auto v = tinyjson::getString(json, "symbol")) p.symbol = *v;
     if (auto v = tinyjson::getString(json, "side")) p.side = *v;
     if (auto v = tinyjson::getString(json, "order_type")) p.order_type = *v;
@@ -743,9 +765,9 @@ private:
     std::vector<std::string> validatePlaceOrder(const InboundPacket& in) {
         std::vector<std::string> errors;
 
-        if (in.order_id <= 0) errors.push_back("Missing or invalid order_id");
-        if (in.user_id <= 0) errors.push_back("Missing or invalid user_id");
-        if (in.wallet_id <= 0) errors.push_back("Missing or invalid wallet_id");
+        if (in.order_id.empty()) errors.push_back("Missing or invalid order_id");
+        if (in.user_id.empty()) errors.push_back("Missing or invalid user_id");
+        if (in.wallet_id.empty()) errors.push_back("Missing or invalid wallet_id");
         if (in.symbol.empty() || !isSupportedSymbol(in.symbol)) errors.push_back("Symbol is missing or not a known trading pair");
         if (in.side != "BUY" && in.side != "SELL") errors.push_back("side must be BUY or SELL");
         if (in.order_type != "MARKET" && in.order_type != "LIMIT" && in.order_type != "OCO") {
@@ -830,7 +852,7 @@ private:
     }
 
     void handleCancelOrder(const InboundPacket& in, std::vector<std::string>& out) {
-        if (in.order_id <= 0 || in.symbol.empty()) {
+        if (in.order_id.empty() || in.symbol.empty()) {
             out.push_back(cancelAckToJson(in.request_id, in.order_id, false, "order_id and symbol are required"));
             return;
         }

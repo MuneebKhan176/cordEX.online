@@ -14,6 +14,7 @@ const path = require('path');
 // that could produce a corrupted balance under real concurrency.
 const { conn, getConnection } = require('../db_connection');
 const verifyToken = require('../middle/middleware');
+const { generateUniqueWalletId } = require('../Wallets_Config/walletIdGenerator');
 
 // ---------------- HELPERS ----------------
 function sendResponse(res, status, success, message, data = null) {
@@ -113,6 +114,8 @@ router.get('/transfer', verifyToken, (req, res) => {
 
 // ---------------- TRANSFER API ----------------
 // fromAccountId and toAccountId are both accounts.user_id values (the PK).
+// user_id is now a VARCHAR "UID-###-AAA-###" id, not an int, so every
+// comparison against it below uses string equality — never Number(...).
 router.post('/api/transfer', verifyToken, async (req, res) => {
     let { fromAccountId, toAccountId, amount, idempotencyKey } = req.body;
     const userId = req.user.id;
@@ -122,7 +125,10 @@ router.post('/api/transfer', verifyToken, async (req, res) => {
     if (!fromAccountId || !toAccountId || !amount || !idempotencyKey) {
         return sendResponse(res, 400, false, 'Missing fields');
     }
-    if (Number(fromAccountId) === Number(toAccountId)) {
+    // IDs are VARCHAR (UID-###-AAA-###) now — compare as strings.
+    // Number(fromAccountId) === Number(toAccountId) would always be
+    // NaN === NaN → false, silently disabling this check.
+    if (fromAccountId === toAccountId) {
         return sendResponse(res, 400, false, 'Cannot transfer to same account');
     }
     if (amount <= 0) {
@@ -181,8 +187,10 @@ router.post('/api/transfer', verifyToken, async (req, res) => {
             [fromAccountId, toAccountId]
         );
 
-        const fromAcc = accounts.find(a => a.user_id === Number(fromAccountId));
-        const toAcc   = accounts.find(a => a.user_id === Number(toAccountId));
+        // user_id is a VARCHAR id — string equality, not Number(...)
+        // coercion (which would produce NaN and never match).
+        const fromAcc = accounts.find(a => a.user_id === fromAccountId);
+        const toAcc   = accounts.find(a => a.user_id === toAccountId);
 
         if (!fromAcc || !toAcc)          throw new Error('Account not found');
         if (fromAcc.user_id !== userId)  throw new Error('Unauthorized access');
@@ -191,31 +199,39 @@ router.post('/api/transfer', verifyToken, async (req, res) => {
         if (fromAcc.balance < amount)    throw new Error('Insufficient balance');
 
         // ---------------- CREATE PARENT TRANSACTION (PENDING) ----------------
-        const txResult = await query(
+        // ledger_transactions.id is app-generated (TXN-###-AAA-###) now,
+        // not AUTO_INCREMENT — generate it up front on this connection
+        // instead of relying on txResult.insertId.
+        const transactionId = await generateUniqueWalletId(connection, 'ledger_transactions', 'id', 'TXN');
+
+        await query(
             connection,
             `INSERT INTO ledger_transactions
-                (from_account, to_account, amount, type, status, idempotency_key)
-             VALUES (?, ?, ?, 'TRANSFER', 'PENDING', ?)`,
-            [fromAccountId, toAccountId, amount, idempotencyKey]
+                (id, from_account, to_account, amount, type, status, idempotency_key)
+             VALUES (?, ?, ?, ?, 'TRANSFER', 'PENDING', ?)`,
+            [transactionId, fromAccountId, toAccountId, amount, idempotencyKey]
         );
-        const transactionId = txResult.insertId;
 
         // ---------------- DEBIT ENTRY (sender loses money) ----------------
+        // debit_ledger.id is app-generated (DR-###-AAA-###) now.
+        const debitId = await generateUniqueWalletId(connection, 'debit_ledger', 'id', 'DR');
         await query(
             connection,
             `INSERT INTO debit_ledger
-                (transaction_id, account_id, to_account_id, amount, status, idempotency_key)
-             VALUES (?, ?, ?, ?, 'PENDING', ?)`,
-            [transactionId, fromAccountId, toAccountId, amount, `${idempotencyKey}-DEBIT`]
+                (id, transaction_id, account_id, to_account_id, amount, status, idempotency_key)
+             VALUES (?, ?, ?, ?, ?, 'PENDING', ?)`,
+            [debitId, transactionId, fromAccountId, toAccountId, amount, `${idempotencyKey}-DEBIT`]
         );
 
         // ---------------- CREDIT ENTRY (receiver gains money) ----------------
+        // credit_ledger.id is app-generated (CR-###-AAA-###) now.
+        const creditId = await generateUniqueWalletId(connection, 'credit_ledger', 'id', 'CR');
         await query(
             connection,
             `INSERT INTO credit_ledger
-                (transaction_id, account_id, from_account_id, amount, status, idempotency_key)
-             VALUES (?, ?, ?, ?, 'PENDING', ?)`,
-            [transactionId, toAccountId, fromAccountId, amount, `${idempotencyKey}-CREDIT`]
+                (id, transaction_id, account_id, from_account_id, amount, status, idempotency_key)
+             VALUES (?, ?, ?, ?, ?, 'PENDING', ?)`,
+            [creditId, transactionId, toAccountId, fromAccountId, amount, `${idempotencyKey}-CREDIT`]
         );
 
         // ---------------- IMBALANCE CHECK (before touching balances) ----------------

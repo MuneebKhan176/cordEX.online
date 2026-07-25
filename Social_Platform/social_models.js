@@ -64,25 +64,20 @@ const MediaAttachmentSchema = new Schema(
  * ==========================================================================*/
 const SocialProfileSchema = new Schema(
   {
-    userId: { type: Number, required: true, unique: true, index: true }, // FK -> mysql users.id
+    userId: { type: String, required: true, unique: true, index: true }, // FK -> mysql users.id (VARCHAR(20), e.g. "UID-726-WXJ-085")
     username: { type: String, required: true, unique: true, index: true }, // FK -> mysql accounts.username
     email: { type: String, required: true, unique: true, index: true }, // FK -> mysql accounts.email
 
     displayName: { type: String, default: "", trim: true, maxlength: 60 },
     bio: { type: String, default: "", maxlength: 300 },
 
-    // Cloudflare R2 CDN URL of the current avatar (not raw base64 — see
-    // POST /api/profile/avatar). Empty string until the user uploads one.
     avatarUrl: { type: String, default: "" },
-    // Bumped on every avatar upload; used to build the R2 object key so
-    // each new photo gets its own immutable, instantly-cacheable URL.
     avatarVersion: { type: Number, default: 0 },
 
     coverUrl: { type: String, default: "" },
 
     isVerified: { type: Boolean, default: false },
 
-    // Denormalized counters
     followersCount: { type: Number, default: 0 },
     followingCount: { type: Number, default: 0 },
     postsCount: { type: Number, default: 0 },

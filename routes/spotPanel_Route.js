@@ -27,6 +27,11 @@ const { lockForOrder, unlockOnCancel, releaseOnFill } = require("../Wallets_Conf
 // resting LIMIT/OCO leg with no HTTP request in flight to piggyback on.
 const { notifyUserTradeUpdate } = require("../Web_Sockets/marketData_ws");
 
+// ID-format schema migration: order_id, trade_id, and holding_id are all
+// now app-generated PREFIX-###-AAA-### strings (VARCHAR PK, no
+// AUTO_INCREMENT), instead of relying on insertResult.insertId.
+const { generateUniqueWalletId } = require("../Wallets_Config/walletIdGenerator");
+
 function sendResponse(res, statusCode, success, message, data = null) {
     return res.status(statusCode).json({ success, message, data });
 }
@@ -301,30 +306,6 @@ router.get("/api/spot/orders", verifyToken, (req, res) => {
    ───────────────────────────────────────────────────────────────────────
    Returns BOTH filled trades AND orders that were cancelled before ever
    generating a fill, merged into one time-ordered list — newest first.
-
-   Why the UNION: spot_trades only ever gets a row when a slice of an
-   order actually executes. An order cancelled with zero fills (e.g. a
-   LIMIT or OCO order the user cancels while it's still resting) never
-   produces a spot_trades row at all, so a query that only reads
-   spot_trades would silently omit it from history entirely.
-
-     Branch 1 — filled slices: spot_trades joined to spot_orders (for
-       side / order_type / current status), exactly as before.
-     Branch 2 — cancelled-with-no-fill orders: read straight from
-       spot_orders where status = 'CANCELLED' and no spot_trades row
-       exists for that order_id. price is NULL here since nothing ever
-       executed; the frontend renders that as a dash. executed_at falls
-       back to the order's created_at so it still sorts sensibly
-       alongside real fills.
-
-   An order that was PARTIALLY_FILLED and then cancelled already has its
-   own fill row(s) from Branch 1 (now correctly labeled CANCELLED via the
-   live join to spot_orders.status) — Branch 2's NOT EXISTS guard keeps
-   it from being double-counted.
-
-   Both branches are combined and re-sorted by executed_at DESC before
-   the LIMIT is applied, so filled and cancelled orders interleave
-   correctly by recency rather than being grouped separately.
    ═══════════════════════════════════════════════════════════════════════ */
 router.get("/api/spot/trades", verifyToken, (req, res) => {
     const userId = req.user.id;
@@ -377,13 +358,6 @@ router.get("/api/spot/trades", verifyToken, (req, res) => {
 
 /* ═══════════════════════════════════════════════════════════════════════
    ORDER BOOK  (GET /api/spot/orderbook?symbol=BTC)
-   ───────────────────────────────────────────────────────────────────────
-   Includes both LIMIT and OCO order types now. Only limit_price is used
-   in the grouping/aggregation — for an OCO row that's the upper,
-   take-profit-style leg, so it shows up as a resting ask exactly like a
-   plain SELL limit order would. The lower stop leg is intentionally left
-   out of the book (same convention real exchanges use: stop orders are
-   hidden from depth until triggered).
    ═══════════════════════════════════════════════════════════════════════ */
 router.get("/api/spot/orderbook", verifyToken, (req, res) => {
     const symbol = (req.query.symbol || "").toUpperCase();
@@ -418,28 +392,12 @@ router.get("/api/spot/orderbook", verifyToken, (req, res) => {
 /* ═══════════════════════════════════════════════════════════════════════
    PLACE ORDER  (POST /api/spot/order)
    ───────────────────────────────────────────────────────────────────────
-   Flow:
-     1. verifyToken already confirmed the JWT — req.user.id is trusted.
-     2. Fetch a fresh, server-side market price for the requested symbol.
-     3. Run the full validation checklist against that price.
-     4. Check out ONE dedicated connection and start a transaction:
-          a. lockForOrder() — reserves USDT (BUY) or the base asset
-             (SELL / OCO — OCO locks exactly like a plain SELL, since
-             it's placed directly against an asset the user already
-             holds) against spot_holdings, FOR UPDATE.
-          b. INSERT the order as OPEN, persisting locked_price (BUY
-             only — the price the USDT lock was computed against) and,
-             for OCO, stop_price alongside limit_price.
-          c. commit. If the lock fails (insufficient funds) or the insert
-             fails, roll back — nothing is written, nothing reaches the
-             engine.
-     5. Forward the DB-assigned order_id to the engine as `order_id`.
-     6. If the engine rejects the packet, or is unreachable, open a
-        SEPARATE transaction to unlock what was reserved and mark the row
-        CANCELLED. If the engine is unreachable, we genuinely don't know
-        whether it received the order, so the row (and its lock) are left
-        in place; recovery reconciles it on the next connect.
-   Fills are NOT persisted here — see handleExecution().
+   ID-FORMAT SCHEMA CHANGE: spot_orders.order_id is now an app-generated
+   ORD-###-AAA-### string (VARCHAR PK, no AUTO_INCREMENT), so it must be
+   generated with generateUniqueWalletId() BEFORE the INSERT and written
+   explicitly — insertResult.insertId no longer exists for this table.
+   Same connection, same transaction as the lock, so an id-collision retry
+   or a lock failure both roll back cleanly together.
    ═══════════════════════════════════════════════════════════════════════ */
 router.post("/api/spot/order", verifyToken, async (req, res) => {
     const userId = req.user.id;
@@ -510,19 +468,22 @@ router.post("/api/spot/order", verifyToken, async (req, res) => {
             return sendResponse(res, 400, false, lockErr.message);
         }
 
-        const insertResult = await txQuery(
+        // order_id has no AUTO_INCREMENT anymore — generate + collision-
+        // check it on this same transactional connection.
+        orderId = await generateUniqueWalletId(connection, "spot_orders", "order_id", "SPO");
+
+        await txQuery(
             connection,
             `INSERT INTO spot_orders
-                (user_id, wallet_id, symbol, side, order_type, quantity, remaining_quantity,
+                (order_id, user_id, wallet_id, symbol, side, order_type, quantity, remaining_quantity,
                  limit_price, locked_price, stop_price, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN')`,
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN')`,
             [
-                userId, wallet.wallet_id, packet.symbol, packet.side, packet.order_type,
+                orderId, userId, wallet.wallet_id, packet.symbol, packet.side, packet.order_type,
                 packet.quantity, packet.quantity, packet.limit_price, packet.entry_price_reference,
                 packet.stop_price,
             ]
         );
-        orderId = insertResult.insertId;
 
         await commit(connection);
     } catch (dbErr) {
@@ -591,7 +552,9 @@ router.post("/api/spot/order", verifyToken, async (req, res) => {
  * persisted locked_price (BUY only), so no separate ledger of "how much
  * did we lock" needs to be maintained anywhere else. Works unchanged for
  * OCO since it's stored with side='SELL', same lock shape as a plain
- * SELL.
+ * SELL. order_id here is already the ORD-###-AAA-### string — no format
+ * change needed in this function, it just passes it through in the
+ * WHERE clause.
  */
 async function releaseRejectedOrder(orderId, side, symbol, remainingQuantity, lockedPrice, walletId) {
     const lockSymbol = side === "BUY" ? "USDT" : symbol;
@@ -615,13 +578,9 @@ async function releaseRejectedOrder(orderId, side, symbol, remainingQuantity, lo
 /* ═══════════════════════════════════════════════════════════════════════
    CANCEL ORDER  (POST /api/spot/order/:order_id/cancel)
    ───────────────────────────────────────────────────────────────────────
-   Cancels on the engine FIRST, then reflects the outcome in MySQL —
-   unlocking whatever remains reserved (remaining_quantity * locked_price
-   for a BUY, remaining_quantity alone for a SELL/OCO) inside the same
-   transaction that marks the order CANCELLED. Unchanged by the OCO
-   migration: the engine's CANCEL_ORDER handler already looks up both its
-   plain-order index and its OCO index by db_order_id, and cancels
-   whichever leg(s) exist.
+   order_id arrives as a route param and is already the ORD-###-AAA-###
+   string — no parseInt/Number coercion here (there never was any), so
+   this endpoint needed no changes for the id-format migration.
    ═══════════════════════════════════════════════════════════════════════ */
 router.post("/api/spot/order/:order_id/cancel", verifyToken, async (req, res) => {
     const userId = req.user.id;
@@ -681,24 +640,20 @@ router.post("/api/spot/order/:order_id/cancel", verifyToken, async (req, res) =>
 /* ═══════════════════════════════════════════════════════════════════════
    FILL PERSISTENCE  (driven by the engine's EXECUTION push events)
    ───────────────────────────────────────────────────────────────────────
-   Rewritten for the OCO migration: there is no more "entry fill" vs.
-   "exit fill" split, no is_exit_order flag, and no spot_positions table.
-   Every EXECUTION is now just a BUY fill or a SELL fill:
-     - BUY:  release the USDT lock for this slice, debit the actual fill
-       cost, credit the bought asset into holdings.
-     - SELL: covers plain SELL, LIMIT SELL, AND both OCO legs
-       (msg.is_oco_leg is true for those) — release the base-asset lock
-       for this slice, debit it back out (it's being sold, not returned),
-       credit the USDT proceeds. The engine has already cancelled the
-       sibling OCO leg internally by the time this EXECUTION arrives, so
-       there's nothing OCO-specific left to do here; is_oco_leg /
-       oco_leg on the message are available if you want to tag the trade
-       row, but aren't required for correct balance bookkeeping.
-   Runs on ONE dedicated connection wrapped in a transaction. Once the
-   fill is committed, pushes a 'trade_update' event over the WebSocket to
-   that user's browser(s) so the panel refreshes immediately — this is
-   what closes the gap for LIMIT/OCO fills that happen later, off of a
-   price tick that had no HTTP request waiting on it.
+   ID-FORMAT SCHEMA CHANGE: both spot_trades.trade_id AND
+   spot_holdings.holding_id are now app-generated PREFIX-###-AAA-###
+   strings (VARCHAR PK, no AUTO_INCREMENT). Neither was ever selected by
+   this file before (spot_trades used a bare INSERT with no id column,
+   spot_holdings relied on an implicit default on first insert) — both
+   would now throw a "doesn't have a default value" error, since the
+   columns are NOT NULL PKs with no default. Fixed in persistFill() below:
+   trade_id is generated once per fill and used for the single
+   spot_trades INSERT; holding_id is generated before each
+   INSERT ... ON DUPLICATE KEY UPDATE against spot_holdings — the
+   generated id is only actually used on the INSERT branch (first time
+   this wallet/symbol pair is touched); on the UPDATE branch (row already
+   exists) it's simply not selected in the SET clause, so the existing
+   holding_id is left untouched.
    ═══════════════════════════════════════════════════════════════════════ */
 async function handleExecution(msg) {
     let connection;
@@ -767,11 +722,15 @@ async function persistFill(connection, msg, symbol, fillQty, fillPrice) {
 
     await txQuery(connection, "UPDATE spot_orders SET remaining_quantity = ?, status = ? WHERE order_id = ?", [newRemaining, newStatus, msg.order_id]);
 
+    // trade_id: app-generated, no AUTO_INCREMENT — generate + collision-
+    // check on this same transactional connection before the INSERT.
+    const tradeId = await generateUniqueWalletId(connection, "spot_trades", "trade_id", "SPT");
+
     await txQuery(
         connection,
-        `INSERT INTO spot_trades (order_id, user_id, symbol, quantity, price, commission)
-         VALUES (?, ?, ?, ?, ?, 0)`,
-        [msg.order_id, msg.user_id, symbol, fillQty, fillPrice]
+        `INSERT INTO spot_trades (trade_id, order_id, user_id, symbol, quantity, price, commission)
+         VALUES (?, ?, ?, ?, ?, ?, 0)`,
+        [tradeId, msg.order_id, msg.user_id, symbol, fillQty, fillPrice]
     );
 
     if (msg.side === "BUY") {
@@ -793,15 +752,19 @@ async function persistFill(connection, msg, symbol, fillQty, fillPrice) {
         );
 
         const cost = fillQty * fillPrice;
+        // holding_id only gets used if this INSERT actually inserts (first
+        // time this wallet/symbol pair is seen); on the ON DUPLICATE KEY
+        // UPDATE path the row (and its existing holding_id) is untouched.
+        const buyHoldingId = await generateUniqueWalletId(connection, "spot_holdings", "holding_id", "HLD");
         await txQuery(
             connection,
-            `INSERT INTO spot_holdings (wallet_id, symbol, available_quantity, locked_quantity, average_buy_price, total_cost)
-             VALUES (?, ?, ?, 0, ?, ?)
+            `INSERT INTO spot_holdings (holding_id, wallet_id, symbol, available_quantity, locked_quantity, average_buy_price, total_cost)
+             VALUES (?, ?, ?, ?, 0, ?, ?)
              ON DUPLICATE KEY UPDATE
                 total_cost = total_cost + VALUES(total_cost),
                 available_quantity = available_quantity + VALUES(available_quantity),
                 average_buy_price = total_cost / (available_quantity + locked_quantity)`,
-            [msg.wallet_id, symbol, fillQty, fillPrice, cost]
+            [buyHoldingId, msg.wallet_id, symbol, fillQty, fillPrice, cost]
         );
     } else {
         // SELL fill — plain SELL, LIMIT SELL, or an OCO leg. The asset
@@ -818,12 +781,14 @@ async function persistFill(connection, msg, symbol, fillQty, fillPrice) {
              WHERE wallet_id = ? AND symbol = ?`,
             [fillQty, msg.wallet_id, symbol]
         );
+
+        const usdtHoldingId = await generateUniqueWalletId(connection, "spot_holdings", "holding_id", "HLD");
         await txQuery(
             connection,
-            `INSERT INTO spot_holdings (wallet_id, symbol, available_quantity)
-             VALUES (?, 'USDT', ?)
+            `INSERT INTO spot_holdings (holding_id, wallet_id, symbol, available_quantity)
+             VALUES (?, ?, 'USDT', ?)
              ON DUPLICATE KEY UPDATE available_quantity = available_quantity + VALUES(available_quantity)`,
-            [msg.wallet_id, fillQty * fillPrice]
+            [usdtHoldingId, msg.wallet_id, fillQty * fillPrice]
         );
     }
 }
@@ -833,11 +798,9 @@ engineEvents.on("execution", handleExecution);
 /* ═══════════════════════════════════════════════════════════════════════
    ORDER BOOK RECOVERY
    ───────────────────────────────────────────────────────────────────────
-   Unchanged in shape, updated fields: forwards stop_price instead of
-   take_profit_price/stop_loss_price. For a recovered OCO row,
-   remaining_quantity is always the full original quantity (OCO fires
-   atomically — see fillOrderCompletely in the engine), so resubmitting it
-   as-is recreates both legs fresh with new engine_order_ids.
+   order_id here is read straight back off existing spot_orders rows and
+   forwarded to the engine as-is — no id generation happens in this path,
+   so no change needed for the migration.
    ═══════════════════════════════════════════════════════════════════════ */
 async function recoverOpenOrdersToEngine() {
     let rows;
@@ -909,6 +872,12 @@ module.exports = router;
    Requires Web_Sockets/marketData_ws.js to export `notifyUserTradeUpdate`
    (added alongside this file) so fills can push a 'trade_update' event to
    the placing user's browser(s) over the existing market-data WebSocket.
+
+   ID-FORMAT MIGRATION NOTE: spot_orders.order_id, spot_trades.trade_id,
+   and spot_holdings.holding_id are all app-generated PREFIX-###-AAA-###
+   strings now (VARCHAR PK, no AUTO_INCREMENT) — see
+   Wallets_Config/walletIdGenerator.js's ALLOWED_TARGETS whitelist, which
+   already covers all three (ORD / SPT / HLD prefixes).
 
    HISTORY QUERY NOTE: the /api/spot/trades handler now does a UNION ALL
    across spot_trades and spot_orders so cancelled-with-zero-fills orders

@@ -40,7 +40,7 @@
 //    close — `status` already distinguishes OPEN vs CLOSED/LIQUIDATED.
 //
 // ─────────────────────────────────────────────────────────────────────
-// THIS REVISION — initial_margin is now threaded through everywhere
+// PREVIOUS REVISION — initial_margin threaded through everywhere
 // ─────────────────────────────────────────────────────────────────────
 // Root cause of "leverage shows 1x" + "ROI/margin panel frozen":
 //   - Bug 1 (leverage): the C++ engine's ExecutionMsg.leverage field was
@@ -57,9 +57,33 @@
 //     EXECUTION/LIQUIDATION message (mirroring how margin_mode is
 //     already threaded through); every handler below now reads and
 //     persists it on the same code path it already touches `positions`.
+//
+// ─────────────────────────────────────────────────────────────────────
+// THIS REVISION — every id this file inserts is now app-generated
+// ─────────────────────────────────────────────────────────────────────
+// Root cause of "Field 'position_id' doesn't have a default value":
+// positions.position_id (like every other app-facing id in this schema —
+// UID-..., FT-..., FTO-..., etc.) is a VARCHAR primary key with NO
+// AUTO_INCREMENT and NO default; it was only ever "working" if the
+// column still had AUTO_INCREMENT left over from an older int-based
+// schema. handleOpen() below no longer relies on `result.insertId` at
+// all — it generates the id itself via generateUniqueWalletId(), the
+// same helper every other *_id column in this schema already uses
+// (Wallets_Config/walletIdGenerator.js), and inserts it explicitly.
+//
+// The same gap existed one level down: futures_trades.trade_id,
+// liquidations.liquidation_id, and funding_payments.funding_id are all
+// listed in walletIdGenerator.js's ALLOWED_TARGETS (FTT / LIQ / FND
+// prefixes respectively) but nothing here was ever generating or
+// inserting them — those tables would have hit the exact same
+// "no default value" error the moment their own PK columns lost (or
+// never had) AUTO_INCREMENT. All three are now generated and inserted
+// explicitly too, on the same transaction connection so the uniqueness
+// check can't race another connection's uncommitted id.
 // -----------------------------------------------------------------------
 const { conn: pool, getConnection } = require('../db_connection');
 const { engineEvents } = require("./futuresEngineClient");
+const { generateUniqueWalletId } = require("../Wallets_Config/walletIdGenerator");
 
 /* ═══════════════════════════════════════════════════════════════════════
    PROMISE WRAPPERS around the callback-style mysql2 API
@@ -199,14 +223,22 @@ function attachPersistenceHandlers() {
                     );
                 }
 
+                // liquidations.liquidation_id is app-generated (LIQ-###-AAA-###),
+                // same as every other *_id column in this schema — generate it
+                // on this transaction connection so the uniqueness check can't
+                // race another connection's uncommitted id.
+                const liquidationId = await generateUniqueWalletId(
+                    connection, 'liquidations', 'liquidation_id', 'LIQ'
+                );
+
                 await queryAsync(
                     connection,
                     `INSERT INTO liquidations
-                        (position_id, user_id, symbol, position_side, margin_mode,
+                        (liquidation_id, position_id, user_id, symbol, position_side, margin_mode,
                          liquidated_quantity, remaining_quantity, liquidation_price,
                          mark_price, realized_pnl, is_partial)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                    [row.position_id, msg.user_id, msg.symbol, msg.position_side, msg.margin_mode,
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [liquidationId, row.position_id, msg.user_id, msg.symbol, msg.position_side, msg.margin_mode,
                      msg.liquidated_quantity, msg.remaining_quantity, msg.liquidation_price,
                      msg.mark_price, msg.realized_pnl, !!msg.is_partial]
                 );
@@ -241,13 +273,18 @@ function attachPersistenceHandlers() {
                     return;
                 }
 
+                // funding_payments.funding_id is app-generated (FND-###-AAA-###).
+                const fundingId = await generateUniqueWalletId(
+                    connection, 'funding_payments', 'funding_id', 'FND'
+                );
+
                 await queryAsync(
                     connection,
                     `INSERT INTO funding_payments
-                        (position_id, user_id, symbol, position_side, funding_rate,
+                        (funding_id, position_id, user_id, symbol, position_side, funding_rate,
                          mark_price, funding_fee)
-                     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                    [row.position_id, msg.user_id, msg.symbol, msg.position_side,
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [fundingId, row.position_id, msg.user_id, msg.symbol, msg.position_side,
                      msg.funding_rate, msg.mark_price, msg.funding_fee]
                 );
 
@@ -288,21 +325,29 @@ async function getMarginModeForOrder(connection, orderId) {
 // straight from the wire (msg.initial_margin, sent by the engine as of
 // this revision) — falls back to 0 only for an old engine build that
 // doesn't send it yet.
+//
+// position_id is generated here (FTP-###-AAA-###) via
+// generateUniqueWalletId instead of relying on AUTO_INCREMENT — the
+// column is an app-generated VARCHAR PK like every other id in this
+// schema, with no default, so `result.insertId` was never something to
+// depend on in the first place. The generated id is what gets passed
+// down to insertTradeRow() below instead of `result.insertId`.
 async function handleOpen(msg) {
     await withTransaction(async (connection) => {
         const marginMode = msg.margin_mode || await getMarginModeForOrder(connection, msg.order_id);
+        const positionId = await generateUniqueWalletId(connection, 'positions', 'position_id', 'FTP');
 
-        const result = await queryAsync(
+        await queryAsync(
             connection,
             `INSERT INTO positions
-                (user_id, wallet_id, last_order_id, symbol, position_side, margin_mode,
+                (position_id, user_id, wallet_id, last_order_id, symbol, position_side, margin_mode,
                  quantity, entry_price, leverage, initial_margin, take_profit, stop_loss, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN')`,
-            [msg.user_id, msg.wallet_id, msg.order_id || null, msg.symbol, msg.position_side,
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN')`,
+            [positionId, msg.user_id, msg.wallet_id, msg.order_id || null, msg.symbol, msg.position_side,
              marginMode, msg.fill_quantity, msg.fill_price, msg.leverage || 1,
              msg.initial_margin || 0, msg.take_profit ?? null, msg.stop_loss ?? null]
         );
-        await insertTradeRow(connection, result.insertId, msg, 'OPEN');
+        await insertTradeRow(connection, positionId, msg, 'OPEN');
     });
 }
 
@@ -430,6 +475,11 @@ async function handleClose(msg) {
 // (not entry_price/exit_price) and position_side/position_action are
 // both NOT NULL on that table.
 //
+// trade_id is app-generated (FTT-###-AAA-###), same as every other id
+// in this schema — generated here on the same transaction connection
+// used for the rest of the fill so the uniqueness check can't race
+// another connection's uncommitted id.
+//
 // KNOWN SCHEMA GAP: futures_trades.order_id is NOT NULL with an
 // ON DELETE RESTRICT FK to futures_orders(order_id). A TP/SL-triggered
 // close is NOT tied to any Node order row — the C++ engine sends
@@ -457,13 +507,15 @@ async function insertTradeRow(connection, positionId, msg, positionAction) {
         return;
     }
 
+    const tradeId = await generateUniqueWalletId(connection, 'futures_trades', 'trade_id', 'FTT');
+
     await queryAsync(
         connection,
         `INSERT INTO futures_trades
-            (position_id, order_id, user_id, symbol, position_side, position_action,
+            (trade_id, position_id, order_id, user_id, symbol, position_side, position_action,
              quantity, price, realized_pnl, commission)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [positionId, msg.order_id, msg.user_id, msg.symbol, msg.position_side, positionAction,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [tradeId, positionId, msg.order_id, msg.user_id, msg.symbol, msg.position_side, positionAction,
          msg.fill_quantity, msg.fill_price, msg.realized_pnl || 0, msg.commission || 0]
     );
 }

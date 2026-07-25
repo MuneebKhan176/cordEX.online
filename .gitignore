@@ -1,3 +1,5 @@
 node_modules/
 routes/.env
 uploads/posts/
+futures_engine.exe/
+engine.exe/

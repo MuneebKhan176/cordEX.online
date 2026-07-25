@@ -211,11 +211,16 @@ double maintenanceMarginRate(double notional) {
 
 /* ═══════════════════════════════════════════════════════════════════════
    POSITION MODEL
+
+   NOTE: user_id / wallet_id are now std::string (e.g. "UID-726-WXJ-085",
+   "FT-...") — MySQL's ids were switched from AUTO_INCREMENT ints to
+   app-generated prefixed strings, and the engine has to match. Anywhere
+   these were previously `long long`, they're `std::string` now.
    ═══════════════════════════════════════════════════════════════════════ */
 struct Position {
     std::string position_key;   // "<user_id>:<symbol>:<LONG|SHORT>"
-    long long user_id = 0;
-    long long wallet_id = 0;
+    std::string user_id;
+    std::string wallet_id;
     std::string symbol;
     PositionSide side = PositionSide::LONG;
     MarginMode margin_mode = MarginMode::ISOLATED;
@@ -237,8 +242,8 @@ struct Position {
 // Engine-side mirror of a user's futures wallet. RAM-only — see file
 // header on SYNC_WALLET for how Node re-hydrates this after a restart.
 struct WalletMirror {
-    long long user_id = 0;
-    long long wallet_id = 0;
+    std::string user_id;
+    std::string wallet_id;
     double wallet_balance = 0;
     PositionMode position_mode = PositionMode::ONE_WAY;
     bool known = false; // false until seeded by a PLACE_ORDER hint or SYNC_WALLET
@@ -253,12 +258,12 @@ struct MarginSnapshot {
 /* ═══════════════════════════════════════════════════════════════════════
    OUTBOUND MESSAGE BUILDERS
    ═══════════════════════════════════════════════════════════════════════ */
-std::string orderAckToJson(const std::string& request_id, long long db_order_id,
+std::string orderAckToJson(const std::string& request_id, const std::string& db_order_id,
                             long long engine_order_id, bool accepted,
                             const std::string& message, const std::vector<std::string>& errors) {
     std::ostringstream out;
     out << "{\"type\":\"ORDER_ACK\",\"request_id\":\"" << tinyjson::esc(request_id) << "\","
-        << "\"order_id\":" << db_order_id << ",\"engine_order_id\":" << engine_order_id << ","
+        << "\"order_id\":\"" << tinyjson::esc(db_order_id) << "\",\"engine_order_id\":" << engine_order_id << ","
         << "\"accepted\":" << (accepted ? "true" : "false") << ","
         << "\"message\":\"" << tinyjson::esc(message) << "\",\"errors\":[";
     for (size_t i = 0; i < errors.size(); i++) {
@@ -269,11 +274,11 @@ std::string orderAckToJson(const std::string& request_id, long long db_order_id,
     return out.str();
 }
 
-std::string cancelAckToJson(const std::string& request_id, long long db_order_id,
+std::string cancelAckToJson(const std::string& request_id, const std::string& db_order_id,
                              bool cancelled, const std::string& message) {
     std::ostringstream out;
     out << "{\"type\":\"CANCEL_ACK\",\"request_id\":\"" << tinyjson::esc(request_id) << "\","
-        << "\"order_id\":" << db_order_id << ",\"cancelled\":" << (cancelled ? "true" : "false") << ","
+        << "\"order_id\":\"" << tinyjson::esc(db_order_id) << "\",\"cancelled\":" << (cancelled ? "true" : "false") << ","
         << "\"message\":\"" << tinyjson::esc(message) << "\"}";
     return out.str();
 }
@@ -287,10 +292,10 @@ std::string errorToJson(const std::string& request_id, const std::string& messag
 
 struct ExecutionMsg {
     std::string request_id;
-    long long db_order_id = 0;
+    std::string db_order_id;
     long long engine_order_id = 0;
-    long long user_id = 0;
-    long long wallet_id = 0;
+    std::string user_id;
+    std::string wallet_id;
     std::string symbol;
     Side side = Side::BUY;
     OrderType order_type = OrderType::MARKET;
@@ -313,8 +318,8 @@ struct ExecutionMsg {
 std::string executionToJson(const ExecutionMsg& e) {
     std::ostringstream out;
     out << "{\"type\":\"EXECUTION\",\"request_id\":\"" << tinyjson::esc(e.request_id) << "\","
-        << "\"order_id\":" << e.db_order_id << ",\"engine_order_id\":" << e.engine_order_id << ","
-        << "\"user_id\":" << e.user_id << ",\"wallet_id\":" << e.wallet_id << ","
+        << "\"order_id\":\"" << tinyjson::esc(e.db_order_id) << "\",\"engine_order_id\":" << e.engine_order_id << ","
+        << "\"user_id\":\"" << tinyjson::esc(e.user_id) << "\",\"wallet_id\":\"" << tinyjson::esc(e.wallet_id) << "\","
         << "\"symbol\":\"" << tinyjson::esc(e.symbol) << "\","
         << "\"side\":\"" << sideToStr(e.side) << "\","
         << "\"order_type\":\"" << orderTypeToStr(e.order_type) << "\","
@@ -340,7 +345,7 @@ std::string positionUpdateToJson(const std::string& request_id, const Position& 
     std::ostringstream out;
     out << "{\"type\":\"POSITION_UPDATE\",\"request_id\":\"" << tinyjson::esc(request_id) << "\","
         << "\"position_key\":\"" << tinyjson::esc(p.position_key) << "\","
-        << "\"user_id\":" << p.user_id << ",\"wallet_id\":" << p.wallet_id << ","
+        << "\"user_id\":\"" << tinyjson::esc(p.user_id) << "\",\"wallet_id\":\"" << tinyjson::esc(p.wallet_id) << "\","
         << "\"symbol\":\"" << tinyjson::esc(p.symbol) << "\","
         << "\"position_side\":\"" << positionSideToStr(p.side) << "\","
         << "\"margin_mode\":\"" << marginModeToStr(p.margin_mode) << "\","
@@ -362,11 +367,11 @@ std::string positionUpdateToJson(const std::string& request_id, const Position& 
     return out.str();
 }
 
-std::string marginUpdateToJson(const std::string& request_id, long long user_id, long long wallet_id,
+std::string marginUpdateToJson(const std::string& request_id, const std::string& user_id, const std::string& wallet_id,
                                 const MarginSnapshot& m) {
     std::ostringstream out;
     out << "{\"type\":\"MARGIN_UPDATE\",\"request_id\":\"" << tinyjson::esc(request_id) << "\","
-        << "\"user_id\":" << user_id << ",\"wallet_id\":" << wallet_id << ","
+        << "\"user_id\":\"" << tinyjson::esc(user_id) << "\",\"wallet_id\":\"" << tinyjson::esc(wallet_id) << "\","
         << "\"wallet_balance\":" << tinyjson::num(m.wallet_balance, 2) << ","
         << "\"used_margin\":" << tinyjson::num(m.used_margin, 2) << ","
         << "\"available_margin\":" << tinyjson::num(m.available_margin, 2) << ","
@@ -381,7 +386,7 @@ std::string liquidationToJson(const std::string& request_id, const Position& p,
     std::ostringstream out;
     out << "{\"type\":\"LIQUIDATION\",\"request_id\":\"" << tinyjson::esc(request_id) << "\","
         << "\"position_key\":\"" << tinyjson::esc(p.position_key) << "\","
-        << "\"user_id\":" << p.user_id << ",\"wallet_id\":" << p.wallet_id << ","
+        << "\"user_id\":\"" << tinyjson::esc(p.user_id) << "\",\"wallet_id\":\"" << tinyjson::esc(p.wallet_id) << "\","
         << "\"symbol\":\"" << tinyjson::esc(p.symbol) << "\","
         << "\"position_side\":\"" << positionSideToStr(p.side) << "\","
         << "\"margin_mode\":\"" << marginModeToStr(p.margin_mode) << "\","
@@ -406,7 +411,7 @@ std::string fundingAppliedToJson(const std::string& request_id, const Position& 
     std::ostringstream out;
     out << "{\"type\":\"FUNDING_APPLIED\",\"request_id\":\"" << tinyjson::esc(request_id) << "\","
         << "\"position_key\":\"" << tinyjson::esc(p.position_key) << "\","
-        << "\"user_id\":" << p.user_id << ",\"wallet_id\":" << p.wallet_id << ","
+        << "\"user_id\":\"" << tinyjson::esc(p.user_id) << "\",\"wallet_id\":\"" << tinyjson::esc(p.wallet_id) << "\","
         << "\"symbol\":\"" << tinyjson::esc(p.symbol) << "\","
         << "\"position_side\":\"" << positionSideToStr(p.side) << "\","
         << "\"funding_rate\":" << tinyjson::num(funding_rate, 8) << ","
@@ -426,11 +431,11 @@ std::string fundingAppliedToJson(const std::string& request_id, const Position& 
    ═══════════════════════════════════════════════════════════════════════ */
 class AccountManager {
 public:
-    static std::string keyFor(long long user_id, const std::string& symbol, PositionSide side) {
-        return std::to_string(user_id) + ":" + symbol + ":" + positionSideToStr(side);
+    static std::string keyFor(const std::string& user_id, const std::string& symbol, PositionSide side) {
+        return user_id + ":" + symbol + ":" + positionSideToStr(side);
     }
 
-    WalletMirror& getOrCreateWallet(long long user_id, long long wallet_id,
+    WalletMirror& getOrCreateWallet(const std::string& user_id, const std::string& wallet_id,
                                      double wallet_balance_hint, PositionMode mode_hint) {
         auto it = wallets_.find(user_id);
         if (it != wallets_.end()) return it->second;
@@ -443,9 +448,9 @@ public:
         return wallets_.emplace(user_id, w).first->second;
     }
 
-    bool hasWallet(long long user_id) const { return wallets_.find(user_id) != wallets_.end(); }
+    bool hasWallet(const std::string& user_id) const { return wallets_.find(user_id) != wallets_.end(); }
 
-    void syncWallet(long long user_id, long long wallet_id, double wallet_balance, PositionMode mode) {
+    void syncWallet(const std::string& user_id, const std::string& wallet_id, double wallet_balance, PositionMode mode) {
         WalletMirror w;
         w.user_id = user_id;
         w.wallet_id = wallet_id;
@@ -455,7 +460,7 @@ public:
         wallets_[user_id] = w;
     }
 
-    void syncPosition(long long user_id, long long wallet_id, const std::string& symbol,
+    void syncPosition(const std::string& user_id, const std::string& wallet_id, const std::string& symbol,
                        PositionSide side, MarginMode marginMode, double quantity, double entry_price,
                        int leverage, std::optional<double> tp, std::optional<double> sl) {
         Position p;
@@ -482,7 +487,7 @@ public:
         return it == markPrices_.end() ? fallback : it->second;
     }
 
-    Position* findPosition(long long user_id, const std::string& symbol, PositionSide side) {
+    Position* findPosition(const std::string& user_id, const std::string& symbol, PositionSide side) {
         auto it = positions_.find(keyFor(user_id, symbol, side));
         if (it == positions_.end() || it->second.status != PositionStatus::OPEN) return nullptr;
         return &it->second;
@@ -567,7 +572,7 @@ public:
     }
 
     /* ── Margin Engine ─────────────────────────────────────────────── */
-    MarginSnapshot recomputeMargin(long long user_id) {
+    MarginSnapshot recomputeMargin(const std::string& user_id) {
         MarginSnapshot snap;
         auto wIt = wallets_.find(user_id);
         if (wIt == wallets_.end()) return snap;
@@ -615,7 +620,7 @@ public:
         double total_filled = 0;
     };
 
-    FillResult applyFill(long long user_id, long long wallet_id, const std::string& symbol,
+    FillResult applyFill(const std::string& user_id, const std::string& wallet_id, const std::string& symbol,
                           PositionSide targetSide, MarginMode marginMode, int leverage,
                           bool reduceOnly, PositionMode mode, double qty, double price,
                           std::optional<double> take_profit, std::optional<double> stop_loss) {
@@ -659,7 +664,7 @@ public:
         return result;
     }
 
-    void updateTpSl(long long user_id, const std::string& symbol, PositionSide side,
+    void updateTpSl(const std::string& user_id, const std::string& symbol, PositionSide side,
                      std::optional<double> tp, bool clearTp,
                      std::optional<double> sl, bool clearSl) {
         Position* p = findPosition(user_id, symbol, side);
@@ -705,7 +710,7 @@ public:
             }
             if (fired == TriggerType::NONE) continue;
 
-            long long user_id = p.user_id;
+            std::string user_id = p.user_id;
             std::string sym = p.symbol;
             PositionSide side = p.side;
             double qty = p.quantity;
@@ -714,7 +719,7 @@ public:
 
             ExecutionMsg ex;
             ex.request_id = request_id;
-            ex.db_order_id = 0; // not tied to a specific Node order row — TP/SL fires from the position
+            ex.db_order_id = ""; // not tied to a specific Node order row — TP/SL fires from the position
             ex.user_id = user_id;
             ex.wallet_id = leg->position_after.wallet_id;
             ex.symbol = sym;
@@ -778,11 +783,11 @@ public:
     }
 
 private:
-    std::unordered_map<long long, WalletMirror> wallets_;
+    std::unordered_map<std::string, WalletMirror> wallets_;
     std::unordered_map<std::string, Position> positions_; // key = keyFor(...)
     std::unordered_map<std::string, double> markPrices_;
 
-    FillLeg openOrIncrease(long long user_id, long long wallet_id, const std::string& symbol,
+    FillLeg openOrIncrease(const std::string& user_id, const std::string& wallet_id, const std::string& symbol,
                             PositionSide side, MarginMode marginMode, int leverage, double qty,
                             double price, std::optional<double> tp, std::optional<double> sl) {
         std::string key = keyFor(user_id, symbol, side);
@@ -830,7 +835,7 @@ private:
     // Closes up to `qty` of the named slot. Returns nullopt if there is
     // nothing open on that slot (nothing to reduce). Clamps qty to the
     // slot's current size — a reduce-only fill can never exceed it.
-    std::optional<FillLeg> closeAgainst(long long user_id, long long wallet_id, const std::string& symbol,
+    std::optional<FillLeg> closeAgainst(const std::string& user_id, const std::string& wallet_id, const std::string& symbol,
                                          PositionSide side, double qty, double price, TriggerType trigger) {
         std::string key = keyFor(user_id, symbol, side);
         auto it = positions_.find(key);
@@ -964,7 +969,7 @@ private:
         // candidates; a symbol-level mark price tick can only threaten
         // accounts holding that symbol (their other CROSS positions'
         // health hasn't changed on this tick).
-        std::vector<long long> affectedUsers;
+        std::vector<std::string> affectedUsers;
         for (auto& kv : positions_) {
             if (kv.second.symbol == symbol && kv.second.status == PositionStatus::OPEN &&
                 kv.second.margin_mode == MarginMode::CROSS) {
@@ -974,7 +979,7 @@ private:
         std::sort(affectedUsers.begin(), affectedUsers.end());
         affectedUsers.erase(std::unique(affectedUsers.begin(), affectedUsers.end()), affectedUsers.end());
 
-        for (long long user_id : affectedUsers) {
+        for (const std::string& user_id : affectedUsers) {
             for (int guard = 0; guard < 50; guard++) { // bounded loop, never truly infinite
                 double equity = 0, totalMaint = 0;
                 std::vector<std::pair<double, std::string>> crossPositions; // (maintenance, key), largest first
@@ -1019,10 +1024,10 @@ private:
    off to AccountManager instead of emitting a plain asset transfer.
    ═══════════════════════════════════════════════════════════════════════ */
 struct RestingOrder {
-    long long engine_order_id = 0;
-    long long db_order_id = 0;
-    long long user_id = 0;
-    long long wallet_id = 0;
+    long long engine_order_id = 0; // engine-internal counter only, never persisted to MySQL
+    std::string db_order_id;
+    std::string user_id;
+    std::string wallet_id;
     std::string symbol;
     Side side = Side::BUY;
     PositionSide position_side = PositionSide::LONG;
@@ -1071,7 +1076,7 @@ public:
         return true;
     }
 
-    bool cancelOrder(long long dbOrderId, std::string& message) {
+    bool cancelOrder(const std::string& dbOrderId, std::string& message) {
         auto it = entryIndex_.find(dbOrderId);
         if (it == entryIndex_.end()) {
             message = "Order not found on the book (already filled/cancelled, or unknown to this engine)";
@@ -1143,7 +1148,7 @@ private:
     std::map<double, std::deque<RestingOrder>, std::greater<double>> buyLimits_;
     std::map<double, std::deque<RestingOrder>> sellLimits_;
     struct EntryLoc { double price; bool isBuy; };
-    std::unordered_map<long long, EntryLoc> entryIndex_;
+    std::unordered_map<std::string, EntryLoc> entryIndex_;
 
     void matchLimitsAgainstLastPrice(const std::string& request_id, std::vector<std::string>& out) {
         bool progressed = true;
@@ -1231,13 +1236,23 @@ private:
 
 /* ═══════════════════════════════════════════════════════════════════════
    INBOUND PACKET PARSING
+
+   NOTE: order_id / user_id / wallet_id are parsed as strings now
+   (getString), not getInt — MySQL ids are app-generated prefixed
+   strings ("UID-...", "FT-...", "FTO-...", etc.), not AUTO_INCREMENT
+   ints. Previously these were parsed with getInt, which silently
+   returned 0 for any non-numeric id (std::stod threw, was caught, and
+   fell back to nullopt) — that 0 then failed every "<= 0" validation
+   check downstream, which is what produced "SYNC_WALLET requires
+   user_id, wallet_id, and wallet_balance" and "Engine rejected order"
+   even though Node was sending everything correctly.
    ═══════════════════════════════════════════════════════════════════════ */
 struct InboundPacket {
     std::string request_id;
     std::string action;
-    long long order_id = 0;
-    long long user_id = 0;
-    long long wallet_id = 0;
+    std::string order_id;
+    std::string user_id;
+    std::string wallet_id;
     std::string symbol;
     std::string side;
     std::string order_type;
@@ -1262,9 +1277,9 @@ InboundPacket parseInbound(const std::string& json) {
     InboundPacket p;
     if (auto v = tinyjson::getString(json, "request_id")) p.request_id = *v;
     if (auto v = tinyjson::getString(json, "action")) p.action = *v;
-    if (auto v = tinyjson::getInt(json, "order_id")) p.order_id = *v;
-    if (auto v = tinyjson::getInt(json, "user_id")) p.user_id = *v;
-    if (auto v = tinyjson::getInt(json, "wallet_id")) p.wallet_id = *v;
+    if (auto v = tinyjson::getString(json, "order_id")) p.order_id = *v;
+    if (auto v = tinyjson::getString(json, "user_id")) p.user_id = *v;
+    if (auto v = tinyjson::getString(json, "wallet_id")) p.wallet_id = *v;
     if (auto v = tinyjson::getString(json, "symbol")) p.symbol = *v;
     if (auto v = tinyjson::getString(json, "side")) p.side = *v;
     if (auto v = tinyjson::getString(json, "order_type")) p.order_type = *v;
@@ -1334,9 +1349,9 @@ private:
 
     std::vector<std::string> validatePlaceOrder(const InboundPacket& in) {
         std::vector<std::string> errors;
-        if (in.order_id <= 0) errors.push_back("Missing or invalid order_id");
-        if (in.user_id <= 0) errors.push_back("Missing or invalid user_id");
-        if (in.wallet_id <= 0) errors.push_back("Missing or invalid wallet_id");
+        if (in.order_id.empty()) errors.push_back("Missing or invalid order_id");
+        if (in.user_id.empty()) errors.push_back("Missing or invalid user_id");
+        if (in.wallet_id.empty()) errors.push_back("Missing or invalid wallet_id");
         if (in.symbol.empty() || !isSupportedSymbol(in.symbol)) errors.push_back("Symbol is missing or not a known trading pair");
         if (in.side != "BUY" && in.side != "SELL") errors.push_back("side must be BUY or SELL");
         if (in.order_type != "MARKET" && in.order_type != "LIMIT") errors.push_back("order_type must be MARKET or LIMIT");
@@ -1410,7 +1425,7 @@ private:
     }
 
     void handleCancelOrder(const InboundPacket& in, std::vector<std::string>& out) {
-        if (in.order_id <= 0 || in.symbol.empty()) {
+        if (in.order_id.empty() || in.symbol.empty()) {
             out.push_back(cancelAckToJson(in.request_id, in.order_id, false, "order_id and symbol are required"));
             return;
         }
@@ -1446,7 +1461,7 @@ private:
     }
 
     void handleUpdateTpSl(const InboundPacket& in, std::vector<std::string>& out) {
-        if (in.user_id <= 0 || in.symbol.empty() || in.position_side.empty()) {
+        if (in.user_id.empty() || in.symbol.empty() || in.position_side.empty()) {
             out.push_back(errorToJson(in.request_id, "UPDATE_TP_SL requires user_id, symbol, and position_side"));
             return;
         }
@@ -1471,7 +1486,7 @@ private:
     }
 
     void handleSyncWallet(const InboundPacket& in, std::vector<std::string>& out) {
-        if (in.user_id <= 0 || in.wallet_id <= 0 || !in.wallet_balance) {
+        if (in.user_id.empty() || in.wallet_id.empty() || !in.wallet_balance) {
             out.push_back(errorToJson(in.request_id, "SYNC_WALLET requires user_id, wallet_id, and wallet_balance"));
             return;
         }
@@ -1481,7 +1496,7 @@ private:
     }
 
     void handleSyncPosition(const InboundPacket& in, std::vector<std::string>& out) {
-        if (in.user_id <= 0 || in.symbol.empty() || in.position_side.empty() || in.quantity <= 0 || !in.limit_price) {
+        if (in.user_id.empty() || in.symbol.empty() || in.position_side.empty() || in.quantity <= 0 || !in.limit_price) {
             // Reuses `limit_price` on the wire as `entry_price` for this
             // action only — see futuresEngineClient.js's syncPosition().
             out.push_back(errorToJson(in.request_id, "SYNC_POSITION requires user_id, symbol, position_side, quantity, and entry_price"));

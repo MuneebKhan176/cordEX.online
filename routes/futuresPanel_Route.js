@@ -14,6 +14,11 @@ const verifyToken = require("../middle/middleware");
 const { getMergedFuturesWallet } = require("../Futures_Engine/futuresWalletMerge");
 const { sendOrderToEngine, cancelOrderOnEngine } = require("../Futures_Engine/futuresEngineClient");
 
+// futures_orders.order_id is app-generated (ORD-###-AAA-###) now, not
+// AUTO_INCREMENT — needed to generate it before INSERTing below instead
+// of reading back insertResult.insertId.
+const { generateUniqueWalletId } = require("../Wallets_Config/walletIdGenerator");
+
 function sendResponse(res, statusCode, success, message, data = null) {
     return res.status(statusCode).json({ success, message, data });
 }
@@ -93,6 +98,10 @@ router.get("/api/futures/wallet", verifyToken, async (req, res) => {
    the engine and cached in LiveStateStore, not persisted — see that
    file's header). The frontend should read it from the WebSocket
    snapshot/liveTick, not this REST response.
+
+   NOTE: position_id / order_id are VARCHAR ids now (FTP-.../ORD-...),
+   not ints — they're passed straight through below with no parseInt,
+   so no change was needed to this handler's body.
    ═══════════════════════════════════════════════════════════════════════ */
 router.get("/api/futures/positions", verifyToken, (req, res) => {
     const userId = req.user.id;
@@ -284,7 +293,9 @@ router.get("/api/futures/orderbook", verifyToken, (req, res) => {
    on this endpoint even before symbol normalization was fixed. `side`
    is still read from `futures_orders` (futures_trades doesn't carry a
    raw BUY/SELL side, only position_side + position_action), joined on
-   the real `order_id` FK.
+   the real `order_id` FK (now an ORD-###-AAA-### string on both sides —
+   the join condition itself needs no change since it's a plain column
+   equality, not a numeric comparison).
    ═══════════════════════════════════════════════════════════════════════ */
 router.get("/api/futures/trades", verifyToken, (req, res) => {
     const symbol = toFullSymbol(req.query.symbol);
@@ -356,17 +367,23 @@ router.post("/api/futures/order", verifyToken, async (req, res) => {
         const initialStatus = isMarket ? "FILLED" : "OPEN";
         const initialRemaining = isMarket ? 0 : quantity;
 
-        const insertResult = await queryAsync(
+        // futures_orders.order_id is app-generated (ORD-###-AAA-###) now,
+        // not AUTO_INCREMENT — generate it up front instead of reading
+        // back insertResult.insertId. Safe to generate against the pool
+        // (conn) here since this isn't part of a multi-statement
+        // transaction.
+        const orderId = await generateUniqueWalletId(conn, "futures_orders", "order_id", "FTO");
+
+        await queryAsync(
             `INSERT INTO futures_orders
-                (user_id, wallet_id, symbol, side, order_type, position_side, margin_mode,
+                (order_id, user_id, wallet_id, symbol, side, order_type, position_side, margin_mode,
                  leverage, quantity, remaining_quantity, limit_price, reduce_only,
                  take_profit, stop_loss, status, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-            [req.user.id, wallet.walletId, fullSymbol, side, order_type, position_side, margin_mode,
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+            [orderId, req.user.id, wallet.walletId, fullSymbol, side, order_type, position_side, margin_mode,
              leverage, quantity, initialRemaining, limit_price || null, !!reduce_only,
              take_profit || null, stop_loss || null, initialStatus]
         );
-        const orderId = insertResult.insertId;
 
         let ackResult;
         try {
@@ -412,7 +429,9 @@ router.post("/api/futures/order", verifyToken, async (req, res) => {
 
 router.post("/api/futures/order/:order_id/cancel", verifyToken, async (req, res) => {
     try {
-        const orderId = parseInt(req.params.order_id, 10);
+        // order_id is now a VARCHAR id (ORD-###-AAA-###), not an int —
+        // parseInt(...) would truncate it to NaN. Use the string as-is.
+        const orderId = req.params.order_id;
         const rows = await queryAsync(
             `SELECT symbol FROM futures_orders
              WHERE order_id = ? AND user_id = ? AND status IN ('OPEN', 'PARTIALLY_FILLED')`,
@@ -434,7 +453,9 @@ router.post("/api/futures/order/:order_id/cancel", verifyToken, async (req, res)
 
 router.post("/api/futures/position/:position_id/close", verifyToken, async (req, res) => {
     try {
-        const positionId = parseInt(req.params.position_id, 10);
+        // position_id is now a VARCHAR id (FTP-###-AAA-###), not an int —
+        // parseInt(...) would truncate it to NaN. Use the string as-is.
+        const positionId = req.params.position_id;
         const rows = await queryAsync(
             `SELECT * FROM positions WHERE position_id = ? AND user_id = ? AND status = 'OPEN'`,
             [positionId, req.user.id]
@@ -456,20 +477,24 @@ router.post("/api/futures/position/:position_id/close", verifyToken, async (req,
 
         const closeSide = pos.position_side === "LONG" ? "SELL" : "BUY";
 
+        // futures_orders.order_id is app-generated (SPO-###-AAA-###) now,
+        // not AUTO_INCREMENT — generate it up front instead of reading
+        // back insertResult.insertId, same as POST /api/futures/order.
+        const orderId = await generateUniqueWalletId(conn, "futures_orders", "order_id", "FTP");
+
         // FIX: same reasoning as POST /api/futures/order — this is
         // always a MARKET order (position closes execute immediately,
         // no matching), so it's written as already-filled rather than
         // 'OPEN'. It was never legitimate for a "Close Position" click
         // to show up in the Open Orders tab even for an instant.
-        const insertResult = await queryAsync(
+        await queryAsync(
             `INSERT INTO futures_orders
-                (user_id, wallet_id, symbol, side, order_type, position_side, margin_mode,
+                (order_id, user_id, wallet_id, symbol, side, order_type, position_side, margin_mode,
                  leverage, quantity, remaining_quantity, reduce_only, status, created_at)
-             VALUES (?, ?, ?, ?, 'MARKET', ?, ?, ?, ?, 0, 1, 'FILLED', NOW())`,
-            [req.user.id, wallet.walletId, pos.symbol, closeSide, pos.position_side, marginMode,
+             VALUES (?, ?, ?, ?, ?, 'MARKET', ?, ?, ?, ?, 0, 1, 'FILLED', NOW())`,
+            [orderId, req.user.id, wallet.walletId, pos.symbol, closeSide, pos.position_side, marginMode,
              pos.leverage, pos.quantity]
         );
-        const orderId = insertResult.insertId;
 
         let ackResult;
         try {

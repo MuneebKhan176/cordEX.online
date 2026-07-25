@@ -22,6 +22,14 @@
 // in MySQL; available_margin is read from the live cache purely to
 // decide how much of that balance is safe to move out right now.
 //
+// ID FORMAT: every VARCHAR(20) PRIMARY KEY in the v2 schema is an
+// app-generated PREFIX-###-AAA-### id (see Wallets_Config/walletIdGenerator.js).
+// creditWallet()'s spot fallback insert below creates a brand-new
+// spot_holdings row, so it must generate a fresh holding_id (prefix
+// "HLD") the same way every other insert does — spot_holdings.holding_id
+// has no default and previously had nothing populating it, which would
+// have thrown a NOT NULL error the first time that fallback ever fired.
+//
 // THIS REVISION — two bugs fixed:
 //
 // 1. "Transfer moves the ledger balance but the futures margin panel
@@ -62,6 +70,11 @@ const { getWalletSnapshot } = require("../Futures_Engine/LiveStateStore");
 // happens to touch this user. Fire-and-forget, same as every other
 // SYNC_* call in this codebase — see futuresEngineClient.js.
 const { syncWallet } = require("../Futures_Engine/futuresEngineClient");
+
+// Generates the PREFIX-###-AAA-### ids used for every app-generated
+// primary key in the v2 schema — needed here only for the spot_holdings
+// fallback insert in creditWallet(), which creates a brand-new row.
+const { generateUniqueWalletId } = require("./walletIdGenerator");
 
 const WALLET_TYPES = ["funding", "spot", "futures"];
 
@@ -285,12 +298,18 @@ async function creditWallet(connection, type, userId, wallet, amount) {
         }
         // Defensive fallback — the signup flow always creates this row, but
         // if it's ever missing, create it instead of failing the transfer.
+        // holding_id is a VARCHAR(20) PRIMARY KEY with no default (it's an
+        // app-generated HLD-###-AAA-### id like every other v2 PK), so it
+        // must be generated here before the insert — this was previously
+        // omitted entirely and would have thrown a NOT NULL violation the
+        // first time this fallback path ran.
+        const holdingId = await generateUniqueWalletId(connection, "spot_holdings", "holding_id", "HLD");
         return query(
             connection,
             `INSERT INTO spot_holdings
-                (wallet_id, symbol, available_quantity, locked_quantity, average_buy_price, total_cost)
-             VALUES (?, 'USDT', ?, 0, 1.00, 0)`,
-            [wallet.walletId, amount]
+                (holding_id, wallet_id, symbol, available_quantity, locked_quantity, average_buy_price, total_cost)
+             VALUES (?, ?, 'USDT', ?, 0, 1.00, 0)`,
+            [holdingId, wallet.walletId, amount]
         );
     }
     if (type === "futures") {

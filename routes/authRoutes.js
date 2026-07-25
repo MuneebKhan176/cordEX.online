@@ -21,6 +21,7 @@ const { conn, jwtSecret, getConnection } = require('../db_connection');
 const { createUserWallets } = require('../Wallets_Config/walletServices');
 const sendVerificationEmail = require('../mailer');
 const verifyToken = require('../middle/middleware');
+const { generateUniqueWalletId } = require('../Wallets_Config/walletIdGenerator');
 
 // 🔗 Mongo side — adjust this path if social_models.js lives somewhere else
 const { SocialProfile } = require('../Social_Platform/social_models');
@@ -85,6 +86,13 @@ function rollback(connection) {
 // wrap it so it can be awaited alongside the other promisified calls below,
 // while still passing it the SAME transactional connection so every insert
 // in this flow lives inside one BEGIN/COMMIT.
+//
+// NOTE: createUserWallets itself now needs to generate its own
+// SP-/FT-prefixed wallet_id via generateUniqueWalletId(connection,
+// 'spot_wallet', 'wallet_id', 'SP') and (..., 'futures_wallet',
+// 'wallet_id', 'FT') before inserting, since wallet_id is no longer
+// AUTO_INCREMENT. That file wasn't shared with me — send it over and
+// I'll wire it in the same way I did account_number below.
 function createUserWalletsAsync(connection, userId) {
     return new Promise((resolve, reject) => {
         createUserWallets(connection, userId, (err, wallets) => {
@@ -167,12 +175,22 @@ router.post('/register', (req, res) => {
             const code = generateCode();
             const expiresAt = new Date(Date.now() + CODE_EXPIRY_MS);
 
-            conn.query('DELETE FROM pending_users WHERE email = ?', [email], () => {
+            conn.query('DELETE FROM pending_users WHERE email = ?', [email], async () => {
+
+                // pending_users.id has no AUTO_INCREMENT anymore — generate
+                // it up front. pool.query works fine here since this isn't
+                // a multi-statement transaction.
+                let pendingId;
+                try {
+                    pendingId = await generateUniqueWalletId(conn, 'pending_users', 'id', 'UID');
+                } catch (idErr) {
+                    return sendResponse(res, 500, false, 'Could not generate a pending user id');
+                }
 
                 const insertPendingSql =
-                    'INSERT INTO pending_users (username, email, password, verification_code, expires_at) VALUES (?, ?, ?, ?, ?)';
+                    'INSERT INTO pending_users (id, username, email, password, verification_code, expires_at) VALUES (?, ?, ?, ?, ?, ?)';
 
-                conn.query(insertPendingSql, [username, email, hashedPassword, code, expiresAt], (err) => {
+                conn.query(insertPendingSql, [pendingId, username, email, hashedPassword, code, expiresAt], (err) => {
 
                     if (err) return sendResponse(res, 500, false, 'Insert failed');
 
@@ -191,12 +209,13 @@ router.get('/verify-email', (req, res) => {
 });
 
 // ================= VERIFY EMAIL =================
-// Flow: 1) users row created  2) accounts row created  3) spot + futures
-// wallets created (all SQL, all in ONE transaction, on ONE dedicated
-// connection)  4) transaction committed  5) ONLY THEN, once everything on
-// the SQL side is guaranteed to exist, do we create the Mongo
-// SocialProfile. Nothing on the Mongo side ever runs before the SQL
-// commit succeeds.
+// Flow: 1) users row created  2) accounts row created (account_number is
+// now a random ACC-123-XYZ-456 id, not derived from userId)  3) spot +
+// futures wallets created (all SQL, all in ONE transaction, on ONE
+// dedicated connection)  4) transaction committed  5) ONLY THEN, once
+// everything on the SQL side is guaranteed to exist, do we create the
+// Mongo SocialProfile. Nothing on the Mongo side ever runs before the
+// SQL commit succeeds.
 router.post('/verify-email', async (req, res) => {
 
     const email = req.body.email?.trim();
@@ -244,14 +263,27 @@ router.post('/verify-email', async (req, res) => {
     try {
         await beginTransaction(connection);
 
-        const userResult = await query(
+        // users.id has no AUTO_INCREMENT anymore — generate it up front,
+        // on the same transactional connection, so it's collision-checked
+        // consistently with everything else in this transaction.
+        const userId = await generateUniqueWalletId(connection, 'users', 'id', 'UID');
+
+        await query(
             connection,
-            'INSERT INTO users (username, email, password) VALUES (?, ?, ?)',
-            [pending.username, pending.email, pending.password]
+            'INSERT INTO users (id, username, email, password) VALUES (?, ?, ?, ?)',
+            [userId, pending.username, pending.email, pending.password]
         );
 
-        const userId = userResult.insertId;
-        const accountNumber = 'ACC' + String(userId).padStart(9, '0');
+        // account_number is now a random ACC-123-XYZ-456 id instead of
+        // 'ACC' + padded userId — generated + collision-checked on the
+        // same transactional connection so it's safe under concurrent
+        // signups.
+        const accountNumber = await generateUniqueWalletId(
+            connection,
+            'accounts',
+            'account_number',
+            'ACC'
+        );
 
         await query(
             connection,
@@ -261,16 +293,22 @@ router.post('/verify-email', async (req, res) => {
 
         // Create Spot & Futures wallets — on the SAME transactional
         // connection, so a failure here rolls back the user/account
-        // inserts above too.
+        // inserts above too. createUserWallets must generate its own
+        // SP-/FT- prefixed wallet_id internally now (see note above).
         const wallets = await createUserWalletsAsync(connection, userId);
 
-        // Create default USDT holding for the Spot wallet
+        // Create default USDT holding for the Spot wallet.
+        // spot_holdings.holding_id is app-generated (HLD-###-AAA-###) now,
+        // not AUTO_INCREMENT — generate it up front on this same
+        // transactional connection before inserting.
+        const holdingId = await generateUniqueWalletId(connection, 'spot_holdings', 'holding_id', 'HLD');
+
         await query(
             connection,
             `INSERT INTO spot_holdings
-                (wallet_id, symbol, available_quantity, locked_quantity, average_buy_price, total_cost)
-             VALUES (?, 'USDT', 0.00, 0.00, 1.00, 0.00)`,
-            [wallets.spotWalletId]
+                (holding_id, wallet_id, symbol, available_quantity, locked_quantity, average_buy_price, total_cost)
+             VALUES (?, ?, 'USDT', 0.00, 0.00, 1.00, 0.00)`,
+            [holdingId, wallets.spotWalletId]
         );
 
         // Remove pending user
