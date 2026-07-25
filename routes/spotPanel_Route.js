@@ -108,6 +108,10 @@ async function getMarketPrice(symbol) {
        upper, take-profit-style leg) and the new stop_price (the lower,
        stop-loss-style leg). Whichever leg the market reaches first fires;
        same semantics as the engine's OCO handling.
+
+   Reused as-is by the new PATCH-style "modify order" flow below: a
+   modification is validated with exactly the same rules as a brand-new
+   order of the same type, against a fresh market price.
    ═══════════════════════════════════════════════════════════════════════ */
 function validateOrderRequest(body, marketPrice) {
     const errors = [];
@@ -268,6 +272,10 @@ router.get("/api/spot/wallet", verifyToken, (req, res) => {
 
 /* ═══════════════════════════════════════════════════════════════════════
    OPEN ORDERS  (GET /api/spot/orders)
+   ───────────────────────────────────────────────────────────────────────
+   `is_modifiable` is derived here (order_type in LIMIT/OCO AND status ===
+   OPEN) so the frontend doesn't have to re-implement that rule to decide
+   whether to render the pencil/edit icon for a given row.
    ═══════════════════════════════════════════════════════════════════════ */
 router.get("/api/spot/orders", verifyToken, (req, res) => {
     const userId = req.user.id;
@@ -294,6 +302,11 @@ router.get("/api/spot/orders", verifyToken, (req, res) => {
                 stop_price: o.stop_price !== null ? parseFloat(o.stop_price) : null,
                 status: o.status,
                 created_at: o.created_at,
+                // MARKET orders fill immediately and never reach this
+                // list; PARTIALLY_FILLED orders already have a live fill
+                // on the books, so only untouched OPEN LIMIT/OCO orders
+                // can be modified.
+                is_modifiable: (o.order_type === "LIMIT" || o.order_type === "OCO") && o.status === "OPEN",
             }));
 
             return sendResponse(res, 200, true, "Open orders loaded", orders);
@@ -638,10 +651,291 @@ router.post("/api/spot/order/:order_id/cancel", verifyToken, async (req, res) =>
 });
 
 /* ═══════════════════════════════════════════════════════════════════════
+   MODIFY ORDER  (POST /api/spot/order/:order_id/modify)
+   ───────────────────────────────────────────────────────────────────────
+   The engine has no in-place "amend" concept, so a modification is
+   implemented as cancel-the-old + place-a-new, reusing the exact same
+   building blocks as the plain cancel and place-order endpoints above:
+
+     1. Only LIMIT and OCO orders that are still fully OPEN are eligible.
+        MARKET orders fill the instant they're submitted, so there's
+        nothing pending to edit. A PARTIALLY_FILLED order already has a
+        real fill booked against it — replacing "the rest of it" would
+        require splitting a trade history record, so it's excluded too
+        (matches spot_orders.status semantics: only a still-OPEN row has
+        never executed at all).
+     2. The new parameters are validated with the exact same rules as a
+        brand-new order of that type, against a fresh market price.
+     3. The existing order is cancelled on the engine first. If the
+        engine reports it couldn't cancel (most likely: it just filled),
+        nothing else happens — the original order is left exactly as-is
+        and the client is told the modification didn't go through.
+     4. Only once the engine confirms the cancel do we unwind the old
+        order's DB row and fund/asset lock (identical accounting to
+        POST /:order_id/cancel), then place the replacement using the
+        identical lock -> insert -> engine flow as POST /api/spot/order.
+
+   Because the cancel and the replacement are two separate engine round
+   trips, there's a brief window with no resting order on the book for
+   this position — by design, since the engine doesn't support atomic
+   amend. If the replacement leg fails after the cancel already
+   succeeded, that is surfaced explicitly in the response (old_order_id
+   cancelled, new_order_id may or may not exist) rather than silently
+   dropping the user's order.
+   ═══════════════════════════════════════════════════════════════════════ */
+router.post("/api/spot/order/:order_id/modify", verifyToken, async (req, res) => {
+    const userId = req.user.id;
+    const orderId = req.params.order_id;
+
+    // 1. Load the existing order and confirm it's actually eligible for
+    // modification.
+    let existingRows;
+    try {
+        existingRows = await query(
+            `SELECT order_id, wallet_id, symbol, side, order_type, status,
+                    quantity, remaining_quantity, locked_price
+             FROM spot_orders WHERE order_id = ? AND user_id = ?`,
+            [orderId, userId]
+        );
+    } catch (e) {
+        return sendResponse(res, 500, false, "Database error");
+    }
+    if (!existingRows.length) return sendResponse(res, 404, false, "Order not found");
+    const existing = existingRows[0];
+
+    if (existing.order_type === "MARKET") {
+        return sendResponse(res, 400, false, "Market orders execute immediately and cannot be modified");
+    }
+    if (existing.order_type !== "LIMIT" && existing.order_type !== "OCO") {
+        return sendResponse(res, 400, false, "This order type cannot be modified");
+    }
+    if (existing.status !== "OPEN") {
+        return sendResponse(res, 400, false,
+            `Order cannot be modified — current status is ${existing.status}. Only orders that have not started executing can be modified.`);
+    }
+
+    // 2. Validate the replacement parameters. Anything the client omits
+    // falls back to the existing order's own value, so a caller can send
+    // just the field(s) they actually changed (e.g. only a new
+    // limit_price).
+    let marketPrice;
+    try {
+        marketPrice = await getMarketPrice(existing.symbol);
+    } catch (e) {
+        return sendResponse(res, 502, false, "Could not fetch a live market price right now. Please try again.");
+    }
+
+    // Anything the caller didn't send falls back to the order's current
+    // value, so a client can submit just the field it actually changed
+    // (e.g. only a new limit_price) and still get a fully-formed packet
+    // to validate.
+    let currentPriceRow;
+    try {
+        const priceRows = await query("SELECT limit_price, stop_price FROM spot_orders WHERE order_id = ?", [orderId]);
+        currentPriceRow = priceRows[0] || {};
+    } catch (e) {
+        return sendResponse(res, 500, false, "Database error");
+    }
+
+    const body = req.body || {};
+    const hasValue = (v) => v !== undefined && v !== null && v !== "";
+
+    const modifyRequestBody = {
+        symbol: existing.symbol,
+        side: existing.side,
+        order_type: existing.order_type,
+        quantity: hasValue(body.quantity) ? body.quantity : parseFloat(existing.quantity),
+        limit_price: hasValue(body.limit_price)
+            ? body.limit_price
+            : (currentPriceRow.limit_price !== null ? parseFloat(currentPriceRow.limit_price) : undefined),
+        stop_price: hasValue(body.stop_price)
+            ? body.stop_price
+            : (currentPriceRow.stop_price !== null && currentPriceRow.stop_price !== undefined
+                ? parseFloat(currentPriceRow.stop_price)
+                : undefined),
+    };
+
+    const validation = validateOrderRequest(modifyRequestBody, marketPrice);
+    if (!validation.valid) {
+        return sendResponse(res, 400, false, "Order validation failed", { errors: validation.errors });
+    }
+    const packet = validation.normalized;
+
+    // 3. Cancel the existing order on the engine FIRST. If this fails
+    // (already filled / already gone), stop here — nothing about the
+    // original order or its lock is touched.
+    let cancelReply;
+    try {
+        cancelReply = await cancelOrderOnEngine(existing.order_id, toEnginePair(existing.symbol));
+    } catch (engineErr) {
+        return sendResponse(res, 502, false, `Trade engine unavailable: ${engineErr.message}`);
+    }
+    if (!cancelReply.cancelled) {
+        return sendResponse(res, 409, false,
+            cancelReply.message || "Order could not be modified — it may have already filled");
+    }
+
+    // 4. Engine-side cancel confirmed — unwind the old DB row + lock,
+    // identical accounting to POST /:order_id/cancel.
+    const oldRemaining = parseFloat(existing.remaining_quantity);
+    const oldLockedPrice = existing.locked_price !== null ? parseFloat(existing.locked_price) : null;
+    const oldLockSymbol = existing.side === "BUY" ? "USDT" : existing.symbol;
+    const oldLockAmount = existing.side === "BUY" ? oldRemaining * oldLockedPrice : oldRemaining;
+
+    try {
+        const cancelConnection = await getConnection();
+        try {
+            await beginTransaction(cancelConnection);
+            await unlockOnCancel(cancelConnection, { walletId: existing.wallet_id, lockSymbol: oldLockSymbol, lockAmount: oldLockAmount });
+            await txQuery(cancelConnection, "UPDATE spot_orders SET status = 'CANCELLED' WHERE order_id = ? AND user_id = ?", [orderId, userId]);
+            await commit(cancelConnection);
+        } catch (dbErr) {
+            await rollback(cancelConnection);
+            throw dbErr;
+        } finally {
+            cancelConnection.release();
+        }
+    } catch (dbErr) {
+        // The engine has already dropped the old order at this point —
+        // surface this loudly rather than letting the UI believe it's
+        // still live.
+        console.error(`Modify order: engine cancel succeeded but DB unwind failed for order_id=${orderId}:`, dbErr);
+        return sendResponse(res, 500, false,
+            "The order was cancelled on the trade engine, but updating the database failed. Please refresh your open orders before retrying.",
+            { old_order_id: orderId }
+        );
+    }
+
+    // 5. Place the replacement — identical lock -> insert -> engine flow
+    // as POST /api/spot/order.
+    let placeConnection;
+    try {
+        placeConnection = await getConnection();
+    } catch (e) {
+        return sendResponse(res, 500, false,
+            "The original order was cancelled, but a database connection could not be acquired to place the replacement. Please place a new order manually.",
+            { old_order_id: orderId }
+        );
+    }
+
+    let newOrderId;
+    let walletId;
+    try {
+        await beginTransaction(placeConnection);
+
+        const walletRows = await txQuery(placeConnection, "SELECT wallet_id, status FROM spot_wallet WHERE user_id = ?", [userId]);
+        if (!walletRows.length) {
+            await rollback(placeConnection);
+            return sendResponse(res, 404, false,
+                "The original order was cancelled, but your spot wallet could not be found for the replacement order.",
+                { old_order_id: orderId }
+            );
+        }
+        const wallet = walletRows[0];
+        if (wallet.status !== "ACTIVE") {
+            await rollback(placeConnection);
+            return sendResponse(res, 403, false,
+                "The original order was cancelled, but your spot wallet is blocked — the replacement order was not placed.",
+                { old_order_id: orderId }
+            );
+        }
+        walletId = wallet.wallet_id;
+
+        try {
+            await lockForOrder(placeConnection, {
+                walletId: wallet.wallet_id,
+                side: packet.side,
+                symbol: packet.symbol,
+                quantity: packet.quantity,
+                estimatedPrice: packet.entry_price_reference,
+            });
+        } catch (lockErr) {
+            await rollback(placeConnection);
+            return sendResponse(res, 400, false,
+                `The original order was cancelled, but the replacement could not be placed: ${lockErr.message}`,
+                { old_order_id: orderId }
+            );
+        }
+
+        newOrderId = await generateUniqueWalletId(placeConnection, "spot_orders", "order_id", "SPO");
+
+        await txQuery(
+            placeConnection,
+            `INSERT INTO spot_orders
+                (order_id, user_id, wallet_id, symbol, side, order_type, quantity, remaining_quantity,
+                 limit_price, locked_price, stop_price, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN')`,
+            [
+                newOrderId, userId, wallet.wallet_id, packet.symbol, packet.side, packet.order_type,
+                packet.quantity, packet.quantity, packet.limit_price, packet.entry_price_reference,
+                packet.stop_price,
+            ]
+        );
+
+        await commit(placeConnection);
+    } catch (dbErr) {
+        await rollback(placeConnection);
+        return sendResponse(res, 500, false,
+            "The original order was cancelled, but a database error occurred while placing the replacement order.",
+            { old_order_id: orderId }
+        );
+    } finally {
+        placeConnection.release();
+    }
+
+    const enginePacket = {
+        action: "PLACE_ORDER",
+        order_id: newOrderId,
+        user_id: userId,
+        wallet_id: walletId,
+        symbol: toEnginePair(packet.symbol),
+        side: packet.side,
+        order_type: packet.order_type,
+        quantity: packet.quantity,
+        limit_price: packet.limit_price,
+        stop_price: packet.stop_price,
+    };
+
+    let engineReply;
+    try {
+        engineReply = await sendOrderToEngine(enginePacket);
+    } catch (engineErr) {
+        return sendResponse(res, 502, false,
+            `The original order was cancelled. Trade engine unavailable while placing the replacement: ${engineErr.message}. The replacement (#${newOrderId}) was saved and will be retried automatically.`,
+            { old_order_id: orderId, new_order_id: newOrderId }
+        );
+    }
+
+    if (!engineReply.accepted) {
+        await releaseRejectedOrder(newOrderId, packet.side, packet.symbol, packet.quantity, packet.entry_price_reference, walletId);
+        return sendResponse(res, 400, false,
+            "The original order was cancelled, but the trade engine rejected the replacement order",
+            { old_order_id: orderId, new_order_id: newOrderId, errors: engineReply.errors || [] }
+        );
+    }
+
+    return sendResponse(res, 200, true, "Order modified", {
+        old_order_id: orderId,
+        order_id: newOrderId,
+        engine_order_id: engineReply.engine_order_id,
+        wallet_id: walletId,
+        symbol: packet.symbol,
+        side: packet.side,
+        order_type: packet.order_type,
+        quantity: packet.quantity,
+        limit_price: packet.limit_price,
+        stop_price: packet.stop_price,
+        entry_price_reference: packet.entry_price_reference,
+        market_price_reference: packet.market_price_reference,
+        status: "OPEN",
+    });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
    FILL PERSISTENCE  (driven by the engine's EXECUTION push events)
    ───────────────────────────────────────────────────────────────────────
    ID-FORMAT SCHEMA CHANGE: both spot_trades.trade_id AND
-   spot_holdings.holding_id are now app-generated PREFIX-###-AAA-###
+   spot_holdings.holding_id are all app-generated PREFIX-###-AAA-###
    strings (VARCHAR PK, no AUTO_INCREMENT). Neither was ever selected by
    this file before (spot_trades used a bare INSERT with no id column,
    spot_holdings relied on an implicit default on first insert) — both
@@ -886,4 +1180,13 @@ module.exports = router;
    status), so this stays cheap even as history grows — no new indexes
    required beyond what these tables already need for their primary
    lookups.
+
+   ORDER MODIFICATION NOTE (new): POST /api/spot/order/:order_id/modify
+   adds "edit" support for resting LIMIT/OCO orders. It is a cancel-then-
+   recreate against the engine (the engine has no atomic amend), reusing
+   validateOrderRequest, lockForOrder/unlockOnCancel, and the same
+   PLACE_ORDER/CANCEL_ORDER engine calls already used elsewhere in this
+   file. GET /api/spot/orders now also returns `is_modifiable` per row
+   (true only for OPEN LIMIT/OCO orders) so the frontend can decide when
+   to render the edit icon without re-deriving that rule itself.
    ═══════════════════════════════════════════════════════════════════════ */
