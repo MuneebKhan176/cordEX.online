@@ -8,6 +8,15 @@ const { SocialProfile, Post, Follow, Like, Hashtag, SENTIMENT_TYPES } = require(
 const { uploadPostMedia } = require('../chat/services/uploadService');
 const { calculateScore } = require('./services/feedScore');
 const { trackActivity, getInterestMap, TRACKABLE_ACTIVITY_TYPES } = require('./services/interestTracker');
+const { getManyProfiles } = require('./cache/profileCache');
+const { enrichPosts } = require('./services/Post_Services/enrichService'); // PHASE 6
+
+// PHASE 7 — the five independent post-creation side effects, each in its
+// own service. See the Promise.all block inside POST /api/posts below.
+const { increasePostCount } = require('./services/postStatsService');
+const { createNotifications } = require('./services/notificationService');
+const { updateTrending } = require('./services/trendingCreators');
+const { updateRecommendations } = require('./services/recommendationService');
 
 const PAGE_SIZE = 5;
 const MAX_HASHTAGS_PER_POST = 10;
@@ -40,39 +49,19 @@ const upload = multer({
 
 /* ============================================================================
  * HELPERS
+ * ----------------------------------------------------------------------------
+ * PHASE 6 — enrichPosts() used to live here as a monolithic function doing
+ * three separate lookups (authors/likes/follows) inline. That logic now
+ * lives in services/enrichService.js, which delegates each concern to its
+ * own service (authorService / likeService / followService) and merges the
+ * results. Here we just call it with this router's field-naming needs:
+ * followersCount on the author object + "isFollowingAuthor" flag.
  * ==========================================================================*/
-
-// Batch-attaches author info + per-user flags to a list of plain post
-// objects in a constant number of extra queries regardless of page size.
-async function enrichPosts(posts, myUsername) {
-    if (!posts.length) return [];
-
-    const usernames = [...new Set(posts.map(p => p.username))];
-    const postIds    = posts.map(p => p._id);
-
-    const [authors, myFollows, myLikes] = await Promise.all([
-        SocialProfile.find({ username: { $in: usernames } }, 'username displayName avatarUrl followersCount').lean(),
-        Follow.find({ followerUsername: myUsername }).select('followingUsername').lean(),
-        Like.find({ username: myUsername, targetType: 'Post', targetId: { $in: postIds } }).select('targetId').lean(),
-    ]);
-
-    const authorMap    = new Map(authors.map(a => [a.username, a]));
-    const followingSet = new Set(myFollows.map(f => f.followingUsername));
-    const likedSet      = new Set(myLikes.map(l => String(l.targetId)));
-
-    return posts.map(p => {
-        const author = authorMap.get(p.username);
-        return {
-            ...p,
-            author: {
-                displayName: author?.displayName || p.username,
-                avatarUrl: author?.avatarUrl || '',
-                followersCount: author?.followersCount || 0,
-            },
-            isSelf: p.username === myUsername,
-            isFollowingAuthor: followingSet.has(p.username),
-            isLiked: likedSet.has(String(p._id)),
-        };
+function enrichPostsForFeed(posts, myUsername) {
+    return enrichPosts(posts, myUsername, {
+        authorProjection: 'username displayName avatarUrl followersCount',
+        includeFollowersCount: true,
+        followingFieldName: 'isFollowingAuthor',
     });
 }
 
@@ -123,7 +112,30 @@ router.get('/create-post', verifyToken, (req, res) => {
 });
 
 /* ============================================================================
- * CREATE POST — media now uploaded to R2 instead of local disk
+ * CREATE POST — media uploaded to R2 instead of local disk
+ * ----------------------------------------------------------------------------
+ * PHASE 7 — post-creation side effects fan out in parallel instead of the
+ * old two-item Promise.all:
+ *
+ *      Upload
+ *        ↓
+ *   ┌────┼────┬────┬────┐
+ *   ↓    ↓    ↓    ↓    ↓
+ * Stats Tags Notify Trend Recs
+ *   └────┼────┴────┴────┘
+ *        ↓
+ *     Response
+ *
+ * Stats  -> increasePostCount()      (services/postStatsService.js)
+ * Tags   -> registerHashtags()       (this file, unchanged)
+ * Notify -> createNotifications()    (services/notificationService.js)
+ * Trend  -> updateTrending()         (services/trendingCreators.js)
+ * Recs   -> updateRecommendations()  (services/recommendationService.js)
+ *
+ * Trend depends on Stats having landed first (it reads the just-updated
+ * postsCount back out of SocialProfile to compute the new score), so those
+ * two are chained with .then() — everything else has no dependency on any
+ * other branch and runs fully in parallel with that chain.
  * ==========================================================================*/
 router.post('/api/posts', verifyToken, upload.fields([
     { name: 'images', maxCount: 4 },
@@ -207,9 +219,23 @@ router.post('/api/posts', verifyToken, upload.fields([
             hashtags,
         });
 
+        // PHASE 7 — fan out the five post-creation side effects. Each is
+        // wrapped in its own .catch() so one branch failing (e.g. a bad
+        // mention lookup) never fails the whole post creation — the post
+        // itself is already committed above by this point.
         await Promise.all([
-            SocialProfile.findOneAndUpdate({ username: myUsername }, { $inc: { postsCount: 1 } }),
-            registerHashtags(hashtags),
+            increasePostCount(myUsername)
+                .then(() => updateTrending(myUsername))
+                .catch(err => console.error('⚠️ POST /api/posts stats/trending branch error:', err)),
+
+            registerHashtags(hashtags)
+                .catch(err => console.error('⚠️ POST /api/posts tags branch error:', err)),
+
+            createNotifications({ post: newPost, authorUsername: myUsername })
+                .catch(err => console.error('⚠️ POST /api/posts notify branch error:', err)),
+
+            updateRecommendations(hashtags)
+                .catch(err => console.error('⚠️ POST /api/posts recommendations branch error:', err)),
         ]);
 
         return sendResponse(res, 201, true, 'Post created successfully', { post: newPost });
@@ -224,18 +250,16 @@ router.post('/api/posts', verifyToken, upload.fields([
 /* ============================================================================
  * DISCOVER FEED
  * ----------------------------------------------------------------------------
- * Ranking now goes through the shared calculateScore() helper (see
- * services/feedScore.js) instead of an inline $addFields formula inside the
- * aggregation pipeline. We pull the candidate posts + their authors'
+ * Ranking goes through the shared calculateScore() helper (see
+ * services/feedScore.js). We pull the candidate posts + their authors'
  * followersCount, score each post in application code, then sort/paginate
- * over that in-memory list — same helper every feed endpoint will use going
- * forward, so the ranking logic only ever lives in one place.
+ * over that in-memory list.
  *
- * PHASE 3 — personalized. We also pull the viewer's interest profile (see
- * services/interestTracker.js) and pass it into calculateScore(), so two
- * different users hitting this same endpoint at the same moment can get two
- * different orderings back, based on what hashtags they've been engaging
- * with (view_crypto/view_btc/view_eth, watch_video, open_profile).
+ * PHASE 3 — personalized via the viewer's interest profile (see
+ * services/interestTracker.js).
+ *
+ * PHASE 4 — author followersCount for scoring comes from the shared profile
+ * cache (via authorService, PHASE 6) instead of its own SocialProfile.find().
  * ==========================================================================*/
 router.get('/api/posts/discover', verifyToken, async (req, res) => {
 
@@ -254,7 +278,7 @@ router.get('/api/posts/discover', verifyToken, async (req, res) => {
                 { $sort: { createdAt: -1 } },
                 { $limit: 20 },
             ]);
-            const enriched = await enrichPosts(posts, myUsername);
+            const enriched = await enrichPostsForFeed(posts, myUsername);
             return sendResponse(res, 200, true, 'Newer discover posts fetched', { posts: enriched });
         }
 
@@ -264,11 +288,10 @@ router.get('/api/posts/discover', verifyToken, async (req, res) => {
         const candidatePosts = await Post.find(baseMatch).lean();
 
         const usernames = [...new Set(candidatePosts.map(p => p.username))];
-        const [authors, interestMap] = await Promise.all([
-            SocialProfile.find({ username: { $in: usernames } }, 'username followersCount').lean(),
+        const [authorMap, interestMap] = await Promise.all([
+            getManyProfiles(usernames, SocialProfile, 'username followersCount'),
             getInterestMap(myUsername),
         ]);
-        const authorMap = new Map(authors.map(a => [a.username, a]));
 
         const ranked = candidatePosts
             .map(post => ({ post, score: calculateScore(post, authorMap.get(post.username), interestMap) }))
@@ -276,7 +299,7 @@ router.get('/api/posts/discover', verifyToken, async (req, res) => {
 
         const posts = ranked.slice(skip, skip + PAGE_SIZE).map(r => r.post);
 
-        const enriched = await enrichPosts(posts, myUsername);
+        const enriched = await enrichPostsForFeed(posts, myUsername);
         const hasMore = skip + PAGE_SIZE < ranked.length;
 
         return sendResponse(res, 200, true, 'Discover feed fetched', { posts: enriched, page, hasMore });
@@ -288,7 +311,7 @@ router.get('/api/posts/discover', verifyToken, async (req, res) => {
 });
 
 /* ============================================================================
- * FOLLOWING FEED — unchanged
+ * FOLLOWING FEED — unchanged from Phase 6
  * ==========================================================================*/
 router.get('/api/posts/following', verifyToken, async (req, res) => {
 
@@ -310,7 +333,7 @@ router.get('/api/posts/following', verifyToken, async (req, res) => {
                 .sort({ createdAt: -1 })
                 .limit(20)
                 .lean();
-            const enriched = await enrichPosts(posts, myUsername);
+            const enriched = await enrichPostsForFeed(posts, myUsername);
             return sendResponse(res, 200, true, 'Newer following posts fetched', { posts: enriched });
         }
 
@@ -323,7 +346,7 @@ router.get('/api/posts/following', verifyToken, async (req, res) => {
             .limit(PAGE_SIZE)
             .lean();
 
-        const enriched = await enrichPosts(posts, myUsername);
+        const enriched = await enrichPostsForFeed(posts, myUsername);
         const hasMore = posts.length === PAGE_SIZE;
 
         return sendResponse(res, 200, true, 'Following feed fetched', { posts: enriched, page, hasMore });
@@ -335,7 +358,7 @@ router.get('/api/posts/following', verifyToken, async (req, res) => {
 });
 
 /* ============================================================================
- * NEW-POSTS COUNT — unchanged
+ * NEW-POSTS COUNT — unchanged from Phase 6
  * ==========================================================================*/
 router.get('/api/posts/new-count', verifyToken, async (req, res) => {
 
@@ -366,7 +389,7 @@ router.get('/api/posts/new-count', verifyToken, async (req, res) => {
 });
 
 /* ============================================================================
- * LIKE / UNLIKE (toggle) — unchanged
+ * LIKE / UNLIKE (toggle) — unchanged from Phase 6
  * ==========================================================================*/
 router.post('/api/posts/:id/like', verifyToken, async (req, res) => {
 
@@ -448,7 +471,7 @@ router.post('/api/posts/:id/view', verifyToken, async (req, res) => {
 });
 
 /* ============================================================================
- * TRACK ENGAGEMENT ACTIVITY (Phase 3)
+ * TRACK ENGAGEMENT ACTIVITY (Phase 3) — unchanged from Phase 6
  * ----------------------------------------------------------------------------
  * Generic hook the frontend calls for activity types that aren't implied by
  * an existing action:
@@ -492,7 +515,7 @@ router.post('/api/posts/:id/activity', verifyToken, async (req, res) => {
 });
 
 /* ============================================================================
- * MULTER ERROR HANDLER (router-level) — unchanged
+ * MULTER ERROR HANDLER (router-level) — unchanged from Phase 6
  * ==========================================================================*/
 router.use((err, req, res, next) => {
     if (err instanceof multer.MulterError) {

@@ -6,6 +6,7 @@ const verifyToken = require('../middle/middleware');
 const { SocialProfile, Post, Follow, Like } = require('./social_models');
 const { calculateScore } = require('./services/feedScore');
 const { getInterestMap } = require('./services/interestTracker');
+const { getManyProfiles } = require('./cache/profileCache');
 
 /* ============================================================================
  *  Social_Platform/insights.js  —  "Crypto Square" backend
@@ -49,6 +50,11 @@ router.get('/crypto-square', verifyToken, (req, res) => {
  * queries, regardless of how many posts are on the page — same pattern used
  * in posts.js, kept self-contained here so this file has no dependency on
  * posts.js internals.
+ *
+ * PHASE 4 — author info (displayName/avatarUrl) now comes from the shared
+ * in-memory profile cache (cache/profileCache.js) instead of a fresh
+ * SocialProfile.find() on every request. Follow/Like lookups stay live
+ * Mongo queries since those are per-viewer relationship data.
  * ==========================================================================*/
 async function enrichSquarePosts(posts, myUsername) {
     if (!posts.length) return [];
@@ -56,13 +62,12 @@ async function enrichSquarePosts(posts, myUsername) {
     const usernames = [...new Set(posts.map(p => p.username))];
     const postIds    = posts.map(p => p._id);
 
-    const [authors, myFollows, myLikes] = await Promise.all([
-        SocialProfile.find({ username: { $in: usernames } }, 'username displayName avatarUrl').lean(),
+    const [authorMap, myFollows, myLikes] = await Promise.all([
+        getManyProfiles(usernames, SocialProfile, 'username displayName avatarUrl'),
         Follow.find({ followerUsername: myUsername }).select('followingUsername').lean(),
         Like.find({ username: myUsername, targetType: 'Post', targetId: { $in: postIds } }).select('targetId').lean(),
     ]);
 
-    const authorMap    = new Map(authors.map(a => [a.username, a]));
     const followingSet = new Set(myFollows.map(f => f.followingUsername));
     const likedSet      = new Set(myLikes.map(l => String(l.targetId)));
 
@@ -84,8 +89,8 @@ async function enrichSquarePosts(posts, myUsername) {
 /* ============================================================================
  * DISCOVER FEED
  * ----------------------------------------------------------------------------
- * PHASE 3 — no longer a flat chronological sort. Ranking now goes through
- * the same shared calculateScore() helper used by posts.js's discover feed
+ * PHASE 3 — no longer a flat chronological sort. Ranking goes through the
+ * same shared calculateScore() helper used by posts.js's discover feed
  * (see services/feedScore.js), personalized per-viewer via their
  * UserInterest profile (see services/interestTracker.js). We pull the
  * candidate posts + their authors' followersCount + the viewer's interest
@@ -93,6 +98,9 @@ async function enrichSquarePosts(posts, myUsername) {
  * in-memory list — so two different users hitting this endpoint get two
  * different orderings back, weighted toward hashtags they've engaged with
  * (view_crypto/view_btc/view_eth, watch_video, open_profile).
+ *
+ * PHASE 4 — author followersCount for scoring now comes from the shared
+ * profile cache instead of its own SocialProfile.find() per request.
  * ==========================================================================*/
 router.get('/api/insights/discover', verifyToken, async (req, res) => {
 
@@ -104,11 +112,10 @@ router.get('/api/insights/discover', verifyToken, async (req, res) => {
         const candidatePosts = await Post.find({ isDeleted: false }).lean();
 
         const usernames = [...new Set(candidatePosts.map(p => p.username))];
-        const [authors, interestMap] = await Promise.all([
-            SocialProfile.find({ username: { $in: usernames } }, 'username followersCount').lean(),
+        const [authorMap, interestMap] = await Promise.all([
+            getManyProfiles(usernames, SocialProfile, 'username followersCount'),
             getInterestMap(myUsername),
         ]);
-        const authorMap = new Map(authors.map(a => [a.username, a]));
 
         const ranked = candidatePosts
             .map(post => ({ post, score: calculateScore(post, authorMap.get(post.username), interestMap) }))
@@ -133,7 +140,7 @@ router.get('/api/insights/discover', verifyToken, async (req, res) => {
  * Posts only from creators the logged-in user follows, newest first. The
  * logged-in user's own posts are explicitly excluded even though a self-
  * follow shouldn't normally exist (Follow /api/follow already blocks
- * following yourself) — belt and suspenders.
+ * following yourself) — belt and suspenders. Unchanged from your original.
  * ==========================================================================*/
 router.get('/api/insights/following', verifyToken, async (req, res) => {
 
@@ -175,7 +182,8 @@ router.get('/api/insights/following', verifyToken, async (req, res) => {
  * Same toggle pattern as posts.js's like endpoint: a Like doc is the source
  * of truth (unique per user+post via the compound index on Like), and
  * Post.likesCount is a denormalized counter kept in sync alongside it so
- * feed reads never need to COUNT() likes on the fly.
+ * feed reads never need to COUNT() likes on the fly. Unchanged from your
+ * original.
  * ==========================================================================*/
 router.post('/api/insights/posts/:id/like', verifyToken, async (req, res) => {
 

@@ -255,6 +255,26 @@ const HashtagSchema = new Schema(
 );
 
 /* ============================================================================
+ * 8b. TRENDING CREATOR (Phase 5 — precomputed top-creators leaderboard)
+ * ----------------------------------------------------------------------------
+ *  One row per user, kept in sync by services/trendingCreators.js whenever
+ *  someone follows/unfollows or posts. GET /api/top-creators just does
+ *  TrendingCreator.find().sort({ score: -1 }).limit(10) instead of loading
+ *  every SocialProfile into memory and quickselecting over it — a
+ *  constant-cost index scan instead of an O(n) full-table pull as the user
+ *  base grows.
+ * ==========================================================================*/
+const TrendingCreatorSchema = new Schema(
+  {
+    username: { type: String, required: true, unique: true, index: true },
+    followersCount: { type: Number, default: 0 },
+    score: { type: Number, default: 0 },
+  },
+  { timestamps: true }
+);
+TrendingCreatorSchema.index({ score: -1 });
+
+/* ============================================================================
  * 9. MEDIA (upload registry)
  * ==========================================================================*/
 const MediaSchema = new Schema(
@@ -325,6 +345,8 @@ const UserInterestSchema = new Schema(
 );
 UserInterestSchema.index({ username: 1, hashtag: 1 }, { unique: true });
 
+
+
 /* ============================================================================
  * 11. NOTIFICATION
  * ==========================================================================*/
@@ -355,6 +377,7 @@ module.exports = {
   Poll: mongoose.model("Poll", PollSchema),
   Hashtag: mongoose.model("Hashtag", HashtagSchema),
   Media: mongoose.model("Media", MediaSchema),
+  TrendingCreator: mongoose.model("TrendingCreator", TrendingCreatorSchema),
   UserActivity: mongoose.model("UserActivity", UserActivitySchema),
   UserInterest: mongoose.model("UserInterest", UserInterestSchema),
   Notification: mongoose.model("Notification", NotificationSchema),

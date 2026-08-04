@@ -23,11 +23,16 @@
       --green-dim: rgba(34,197,94,0.12);
       --red:       #ef4444;
       --red-dim:   rgba(239,68,68,0.12);
+      --shadow-card: 0 1px 0 rgba(255,255,255,0.02) inset, 0 16px 40px -22px rgba(0,0,0,0.65);
+      --ease: cubic-bezier(.16,1,.3,1);
     }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: var(--bg);
+      background:
+        radial-gradient(900px 500px at 15% -10%, rgba(59,130,246,0.07), transparent 60%),
+        radial-gradient(700px 420px at 100% 0%, rgba(139,92,246,0.05), transparent 55%),
+        var(--bg);
       color: var(--text);
       min-height: 100vh;
     }
@@ -83,30 +88,59 @@
       margin: 0 auto;
       padding: 32px 24px 64px;
     }
-    .page-title { font-size: 1.4rem; font-weight: 700; letter-spacing: -.5px; margin-bottom: 4px; }
+    .page-title {
+      font-size: 1.55rem; font-weight: 800; letter-spacing: -.6px; margin-bottom: 4px;
+      background: linear-gradient(90deg, #fff 30%, #a9c4f5 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
     .page-sub { font-size: .83rem; color: var(--text-2); margin-bottom: 22px; }
+
+    /* ── New-posts banner (Phase 7 — GET /api/posts/new-count polling) ── */
+    .new-posts-banner {
+      display: none;
+      width: 100%;
+      align-items: center; justify-content: center; gap: 7px;
+      margin-bottom: 14px;
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--blue), #2563eb);
+      color: #fff;
+      border: none;
+      font-size: .82rem; font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 22px -8px rgba(59,130,246,.7);
+      animation: bannerIn .25s var(--ease);
+    }
+    .new-posts-banner.show { display: flex; }
+    .new-posts-banner svg { width: 15px; height: 15px; }
+    @keyframes bannerIn { from { opacity:0; transform: translateY(-6px); } to { opacity:1; transform: translateY(0); } }
 
     /* ── Tabs ── */
     .tabs {
       display: flex; gap: 4px;
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: 10px; padding: 4px; margin-bottom: 22px;
+      border-radius: 12px; padding: 4px; margin-bottom: 22px;
+      box-shadow: var(--shadow-card);
     }
     .tab-btn {
-      flex: 1; padding: 9px 14px; border-radius: 7px;
+      flex: 1; padding: 9px 14px; border-radius: 9px;
       font-size: .85rem; font-weight: 600; text-align:center;
       background: none; border: none; color: var(--text-2);
-      cursor: pointer; transition: all .15s;
+      cursor: pointer; transition: all .18s var(--ease);
     }
-    .tab-btn.active { background: var(--blue); color: #fff; }
+    .tab-btn.active { background: linear-gradient(135deg, var(--blue), #2563eb); color: #fff; box-shadow: 0 6px 16px -6px rgba(59,130,246,.6); }
     .tab-btn:not(.active):hover { color: #fff; background: var(--surface2); }
 
     /* ── Post card ── */
     .post-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 12px; padding: 18px 20px; margin-bottom: 12px;
+      background: linear-gradient(180deg, var(--surface2) 0%, var(--surface) 65%);
+      border: 1px solid var(--border);
+      border-radius: 14px; padding: 18px 20px; margin-bottom: 12px;
       position: relative;
+      box-shadow: var(--shadow-card);
+      transition: border-color .2s, transform .2s var(--ease);
     }
+    .post-card:hover { border-color: var(--border2); }
     .post-header {
       display: flex; gap: 10px; align-items:flex-start;
       padding-right: 96px; /* reserve room for the absolutely-positioned follow button */
@@ -142,10 +176,11 @@
       position: absolute; top: 16px; right: 18px;
       padding: 6px 14px; border-radius: 999px;
       font-size: .76rem; font-weight: 700;
-      cursor: pointer; transition: all .15s;
-      background: var(--blue); border: 1px solid var(--blue); color: #fff;
+      cursor: pointer; transition: all .15s var(--ease);
+      background: linear-gradient(135deg, var(--blue), #2563eb); border: 1px solid var(--blue); color: #fff;
+      box-shadow: 0 4px 14px -6px rgba(59,130,246,.65);
     }
-    .follow-btn:hover { opacity: .88; }
+    .follow-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px -6px rgba(59,130,246,.75); }
     .follow-btn.following {
       background: transparent; border-color: var(--border2); color: var(--text-2);
     }
@@ -213,9 +248,10 @@
       font-size: .82rem; font-weight: 600; cursor: pointer; transition: all .15s;
     }
     .like-btn:hover { border-color: #444; color: #fff; }
-    .like-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; transition: fill .15s; }
+    .like-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; transition: fill .15s, transform .25s var(--ease); }
     .like-btn.liked { color: var(--red); border-color: rgba(239,68,68,.35); background: var(--red-dim); }
-    .like-btn.liked svg { fill: currentColor; }
+    .like-btn.liked svg { fill: currentColor; animation: likePulse .35s var(--ease); }
+    @keyframes likePulse { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
 
     .empty-state {
       background: var(--surface); border: 1px dashed var(--border2);
@@ -269,6 +305,11 @@
   <div class="page-title">Crypto Square</div>
   <div class="page-sub">See what the community is trading and thinking.</div>
 
+  <button type="button" class="new-posts-banner" id="newPostsBanner" onclick="refreshWithNewPosts()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
+    <span id="newPostsBannerText">New posts</span>
+  </button>
+
   <div class="tabs">
     <button class="tab-btn active" id="tab-discover" onclick="switchTab('discover')">Discover</button>
     <button class="tab-btn" id="tab-following" onclick="switchTab('following')">Following</button>
@@ -306,9 +347,11 @@
 let currentTab = 'discover';
 
 const tabState = {
-  discover:  { posts: [], page: 0, hasMore: true, loaded: false },
-  following: { posts: [], page: 0, hasMore: true, loaded: false },
+  discover:  { posts: [], page: 0, hasMore: true, loaded: false, sinceTimestamp: null },
+  following: { posts: [], page: 0, hasMore: true, loaded: false, sinceTimestamp: null },
 };
+
+let newPostsPollTimer = null;
 
 // Dedupe so we only fire each tracking call once per post per page load.
 const viewedPostIds = new Set();
@@ -329,6 +372,8 @@ function switchTab(tab) {
 
   document.getElementById('tab-discover').classList.toggle('active', tab === 'discover');
   document.getElementById('tab-following').classList.toggle('active', tab === 'following');
+
+  hideNewPostsBanner();
 
   if (tabState[tab].loaded) {
     renderFeed(tab);
@@ -364,6 +409,7 @@ async function fetchFeed(tab) {
     state.page = d.data.page || nextPage;
     state.hasMore = !!d.data.hasMore;
     state.loaded = true;
+    if (nextPage === 1) state.sinceTimestamp = new Date().toISOString();
 
     if (tab === currentTab) renderFeed(tab);
 
@@ -753,10 +799,62 @@ async function toggleLike(btn) {
 }
 
 /* ═══════════════════════════════════════════════════════
+   NEW-POSTS BANNER
+   ───────────────────────────────────────────────────────
+   Backend: Social_Platform/posts.js
+     GET /api/posts/new-count?feed=discover|following&since=<ISO>
+       -> { count } — posts created after `since`. Same Post
+          collection insights.js reads from, so it works
+          regardless of which router served the feed itself.
+   Polled every 20s for whichever tab is currently open. Tapping
+   the banner does a full reload of that tab so the personalized
+   ranking (feedScore.js) is recomputed with the new posts in play,
+   rather than just prepending raw unranked rows.
+   ═══════════════════════════════════════════════════════ */
+const NEW_POSTS_POLL_MS = 20000;
+
+async function pollNewPostsCount() {
+  const state = tabState[currentTab];
+  if (!state.sinceTimestamp) return;
+
+  try {
+    const feedParam = currentTab === 'following' ? '&feed=following' : '';
+    const r = await fetch(`/api/posts/new-count?since=${encodeURIComponent(state.sinceTimestamp)}${feedParam}`);
+    const d = await r.json();
+    if (!d.success) return;
+
+    const count = d.data?.count || 0;
+    if (count > 0) showNewPostsBanner(count);
+  } catch (e) {
+    // silent — polling failures shouldn't interrupt the feed
+  }
+}
+
+function showNewPostsBanner(count) {
+  const banner = document.getElementById('newPostsBanner');
+  document.getElementById('newPostsBannerText').textContent =
+    count === 1 ? '1 new post' : `${count} new posts`;
+  banner.classList.add('show');
+}
+
+function hideNewPostsBanner() {
+  document.getElementById('newPostsBanner').classList.remove('show');
+}
+
+function refreshWithNewPosts() {
+  hideNewPostsBanner();
+  const tab = currentTab;
+  tabState[tab] = { posts: [], page: 0, hasMore: true, loaded: false, sinceTimestamp: null };
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  fetchFeed(tab);
+}
+
+/* ═══════════════════════════════════════════════════════
    INIT
    ═══════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
   fetchFeed('discover');
+  newPostsPollTimer = setInterval(pollNewPostsCount, NEW_POSTS_POLL_MS);
 });
 </script>
 </body>

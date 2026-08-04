@@ -23,11 +23,17 @@
       --green-dim: rgba(34,197,94,0.12);
       --red:       #ef4444;
       --red-dim:   rgba(239,68,68,0.12);
+      --purple:    #8b5cf6;
+      --shadow-card: 0 1px 0 rgba(255,255,255,0.02) inset, 0 20px 50px -20px rgba(0,0,0,0.6);
+      --ease: cubic-bezier(.16,1,.3,1);
     }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: var(--bg);
+      background:
+        radial-gradient(900px 500px at 15% -10%, rgba(59,130,246,0.07), transparent 60%),
+        radial-gradient(700px 420px at 100% 0%, rgba(139,92,246,0.05), transparent 55%),
+        var(--bg);
       color: var(--text);
       min-height: 100vh;
     }
@@ -83,22 +89,27 @@
       margin: 0 auto;
       padding: 32px 24px 64px;
     }
-    .page-title { font-size: 1.4rem; font-weight: 700; letter-spacing: -.5px; margin-bottom: 4px; }
+    .page-title {
+      font-size: 1.55rem; font-weight: 800; letter-spacing: -.6px; margin-bottom: 4px;
+      background: linear-gradient(90deg, #fff 30%, #a9c4f5 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
     .page-sub { font-size: .83rem; color: var(--text-2); margin-bottom: 26px; }
 
     /* ── Composer card ── */
     .composer-card {
-      background: var(--surface);
+      background: linear-gradient(180deg, var(--surface2) 0%, var(--surface) 60%);
       border: 1px solid var(--border);
-      border-radius: 14px;
+      border-radius: 16px;
       padding: 28px;
       position: relative;
       overflow: hidden;
+      box-shadow: var(--shadow-card);
     }
     .composer-card::before {
       content:''; position:absolute; top:-60px; right:-60px;
       width:260px; height:260px;
-      background: radial-gradient(circle, rgba(59,130,246,.08) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(59,130,246,.1) 0%, transparent 70%);
       pointer-events: none;
     }
 
@@ -110,7 +121,7 @@
       padding: 10px 13px; outline:none; transition: border-color .2s; font-family:inherit;
       resize: vertical;
     }
-    .form-input:focus { border-color:#444; }
+    .form-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-dim); }
     textarea.form-input { min-height: 140px; line-height:1.6; }
     .char-count { font-size:.7rem; color:var(--text-3); margin-top:4px; text-align:right; }
     .char-count.warn { color: var(--red); }
@@ -135,7 +146,7 @@
       cursor: pointer; transition: all .15s; padding: 0;
     }
     .tool-btn svg { width: 18px; height: 18px; display: block; }
-    .tool-btn:hover { color: #fff; border-color: var(--blue); background: var(--blue-dim); }
+    .tool-btn:hover { color: #fff; border-color: var(--blue); background: var(--blue-dim); transform: translateY(-1px); }
     .tool-btn.active { color: var(--blue); border-color: var(--blue); background: var(--blue-dim); }
     .tool-btn:disabled { opacity: .35; cursor: not-allowed; }
     .tool-btn:disabled:hover { color: var(--text-2); border-color: var(--border2); background: var(--surface2); }
@@ -166,6 +177,34 @@
       line-height: 1;
     }
     .image-thumb .remove-btn:hover { background: rgba(239,68,68,0.85); }
+
+    /* Video thumbnails — landscape, same row as photos, with a play badge */
+    .video-thumb {
+      position: relative;
+      width: 104px; height: 83px;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid var(--border2);
+      background: var(--surface2);
+      flex-shrink: 0;
+    }
+    .video-thumb video { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+    .video-thumb .play-badge {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.25);
+      pointer-events: none;
+    }
+    .video-thumb .play-badge svg { width: 22px; height: 22px; fill: #fff; opacity: .9; filter: drop-shadow(0 1px 3px rgba(0,0,0,.5)); }
+    .video-thumb .remove-btn {
+      position: absolute; top: 2px; right: 2px;
+      width: 17px; height: 17px; border-radius: 50%;
+      background: rgba(0,0,0,0.7); border: none;
+      color: #fff; font-size: .6rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      line-height: 1;
+    }
+    .video-thumb .remove-btn:hover { background: rgba(239,68,68,0.85); }
 
     /* ── Emoji picker popover ── */
     .emoji-picker-wrap { position: relative; }
@@ -234,12 +273,17 @@
       margin-top: 24px; position:relative; z-index:1;
     }
     .btn-post, .btn-cancel-post {
-      padding: 10px 20px; border-radius: 7px; font-size: .85rem; font-weight: 600;
-      cursor:pointer; border:none; transition:.15s;
+      padding: 10px 22px; border-radius: 8px; font-size: .85rem; font-weight: 700;
+      cursor:pointer; border:none; transition: transform .15s var(--ease), box-shadow .15s, opacity .15s, border-color .15s, color .15s;
     }
-    .btn-post { background: var(--blue); color:#fff; }
-    .btn-post:hover { opacity:.88; }
-    .btn-post:disabled { opacity:.4; cursor:not-allowed; }
+    .btn-post {
+      background: linear-gradient(135deg, var(--blue), #2563eb);
+      color:#fff;
+      box-shadow: 0 6px 18px -6px rgba(59,130,246,.55);
+    }
+    .btn-post:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -8px rgba(59,130,246,.65); }
+    .btn-post:active { transform: translateY(0); }
+    .btn-post:disabled { opacity:.4; cursor:not-allowed; transform:none; box-shadow:none; }
     .btn-cancel-post { background: var(--surface2); border:1px solid var(--border2); color: var(--text-2); }
     .btn-cancel-post:hover { color:#fff; border-color:#444; }
 
@@ -290,6 +334,13 @@
           </svg>
         </button>
 
+        <button type="button" class="tool-btn" id="addVideoBtn" onclick="triggerVideoPick()" title="Add video">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2.5" y="6" width="14" height="12" rx="2.5"/>
+            <path d="M16.5 10.5l4.3-2.7a.8.8 0 0 1 1.2.68v6.04a.8.8 0 0 1-1.2.68l-4.3-2.7"/>
+          </svg>
+        </button>
+
         <div class="emoji-picker-wrap">
           <button type="button" class="tool-btn" id="emojiBtn" onclick="toggleEmojiPicker()" title="Add emoji">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -306,12 +357,15 @@
 
         <div class="toolbar-spacer"></div>
         <span class="toolbar-hint" id="imageCountBadge">0 / 2 photos</span>
+        <span class="toolbar-hint" id="videoCountBadge">0 / 2 videos</span>
       </div>
 
-      <!-- Attached photo previews — their own row, below the icon row -->
+      <!-- Attached photo/video previews — same row, below the icon row -->
       <div class="image-thumbs" id="imageThumbs"></div>
+      <div class="image-thumbs" id="videoThumbs"></div>
 
       <input type="file" id="hiddenFileInput" accept="image/*" style="display:none;"/>
+      <input type="file" id="hiddenVideoInput" accept="video/*" style="display:none;"/>
     </div>
 
     <div class="form-group sentiment-section">
@@ -359,9 +413,12 @@
    ═══════════════════════════════════════════════════════ */
 const MAX_IMAGES = 2;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB per photo
+const MAX_VIDEOS = 2;                    // backend allows up to 2 videos
+const MAX_VIDEO_BYTES = 20 * 1024 * 1024; // 20MB per video (matches multer limit)
 
 // slotFiles[0] / slotFiles[1] hold the File object for each slot, or null
 let slotFiles = [null, null];
+let videoSlotFiles = [null, null];
 let selectedSentiment = null; // null | 'bullish' | 'bearish'
 
 // 12 quick-pick emojis: the crypto shorthand + face reactions most
@@ -510,6 +567,67 @@ function removeSlot(slotIndex) {
 }
 
 /* ═══════════════════════════════════════════════════════
+   VIDEOS — same pattern as photos, own file input + own
+   slot array, up to MAX_VIDEOS.
+   ═══════════════════════════════════════════════════════ */
+function triggerVideoPick() {
+  const filledCount = videoSlotFiles.filter(Boolean).length;
+  if (filledCount >= MAX_VIDEOS) return;
+  document.getElementById('hiddenVideoInput').click();
+}
+
+document.getElementById('hiddenVideoInput').addEventListener('change', function (e) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+
+  const emptySlot = videoSlotFiles.findIndex(f => !f);
+  if (emptySlot === -1) return;
+
+  if (!file.type.startsWith('video/')) {
+    showMsg('⚠ Please select a video file.', 'error');
+    return;
+  }
+  if (file.size > MAX_VIDEO_BYTES) {
+    showMsg('⚠ That video is too large. Max size is 20MB.', 'error');
+    return;
+  }
+
+  videoSlotFiles[emptySlot] = file;
+  renderVideoThumbs();
+  hideMsg();
+});
+
+function renderVideoThumbs() {
+  const wrap = document.getElementById('videoThumbs');
+  const filled = videoSlotFiles.map((file, idx) => ({ file, idx })).filter(x => x.file);
+
+  wrap.innerHTML = '';
+  wrap.classList.toggle('has-items', filled.length > 0);
+
+  filled.forEach(({ file, idx }) => {
+    const url = URL.createObjectURL(file);
+    const div = document.createElement('div');
+    div.className = 'video-thumb';
+    div.innerHTML = `
+      <video src="${url}" muted playsinline preload="metadata"></video>
+      <div class="play-badge"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+      <button type="button" class="remove-btn" onclick="removeVideoSlot(${idx})" title="Remove">✕</button>
+    `;
+    wrap.appendChild(div);
+  });
+
+  const count = filled.length;
+  document.getElementById('videoCountBadge').textContent = `${count} / ${MAX_VIDEOS} videos`;
+  document.getElementById('addVideoBtn').disabled = count >= MAX_VIDEOS;
+}
+
+function removeVideoSlot(slotIndex) {
+  videoSlotFiles[slotIndex] = null;
+  renderVideoThumbs();
+}
+
+/* ═══════════════════════════════════════════════════════
    SUBMIT
    ═══════════════════════════════════════════════════════ */
 async function submitPost() {
@@ -533,6 +651,7 @@ async function submitPost() {
   if (selectedSentiment) formData.append('sentiment', selectedSentiment);
   if (hashtagsRaw) formData.append('hashtags', hashtagsRaw);
   slotFiles.forEach(file => { if (file) formData.append('images', file); });
+  videoSlotFiles.forEach(file => { if (file) formData.append('videos', file); });
 
   btn.disabled = true;
   btn.textContent = 'Posting…';
