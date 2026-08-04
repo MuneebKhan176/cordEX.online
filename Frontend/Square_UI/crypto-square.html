@@ -117,11 +117,13 @@
       background: linear-gradient(135deg,#3b82f6,#1d4ed8);
       display:flex; align-items:center; justify-content:center;
       font-size:.76rem; font-weight:700; color:#fff; flex-shrink:0;
+      cursor: pointer; /* Phase 3: tappable — logs open_profile interest */
     }
     .post-header .mini-avatar img { width:100%; height:100%; object-fit:cover; }
     .post-header-text { min-width:0; flex:1; }
     .post-header .who-row { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
-    .post-header .who { font-size:.88rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:220px; }
+    .post-header .who { font-size:.88rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:220px; cursor: pointer; }
+    .post-header .who:hover { text-decoration: underline; }
     .post-header .meta-row { font-size:.75rem; color:var(--text-3); margin-top:2px; }
 
     /* Bullish / Bearish sentiment pill */
@@ -287,11 +289,19 @@
    ═══════════════════════════════════════════════════════
    Backend: Social_Platform/insights.js
      GET  /api/insights/discover?page=N   -> { posts, page, hasMore }
+                                              (personalized — Phase 3)
      GET  /api/insights/following?page=N  -> { posts, page, hasMore }
      POST /api/insights/posts/:id/like    -> { liked, likesCount }
    Follow/unfollow reuses the existing endpoints:
      POST /api/follow    { username }
      POST /api/unfollow  { username }
+   Engagement tracking reuses the shared endpoints from posts.js — same
+   Post collection, so they work regardless of which router registered
+   them (Phase 3 personalization):
+     POST /api/posts/:id/view              -> viewsCount + auto-tracks
+                                               view_crypto/view_btc/view_eth
+                                               when the post carries that tag
+     POST /api/posts/:id/activity          -> { activityType: 'watch_video' | 'open_profile' }
    ═══════════════════════════════════════════════════════ */
 let currentTab = 'discover';
 
@@ -299,6 +309,10 @@ const tabState = {
   discover:  { posts: [], page: 0, hasMore: true, loaded: false },
   following: { posts: [], page: 0, hasMore: true, loaded: false },
 };
+
+// Dedupe so we only fire each tracking call once per post per page load.
+const viewedPostIds = new Set();
+const watchedVideoIds = new Set();
 
 function escapeHtml(str) {
   const div = document.createElement('div');
@@ -478,12 +492,12 @@ function renderFeed(tab) {
       </button>`;
 
     return `
-      <div class="post-card" data-post-id="${post._id || ''}" data-author="${escapeHtml(post.username)}">
+      <div class="post-card" data-post-id="${post._id || ''}" data-author="${escapeHtml(post.username)}" data-self="${post.isSelf ? '1' : '0'}">
         <div class="post-header">
-          <div class="mini-avatar">${avatarHtml}</div>
+          <div class="mini-avatar" data-open-profile="1">${avatarHtml}</div>
           <div class="post-header-text">
             <div class="who-row">
-              <span class="who">${escapeHtml(post.author?.displayName || post.username)}</span>
+              <span class="who" data-open-profile="1">${escapeHtml(post.author?.displayName || post.username)}</span>
               ${sentimentPillHtml(post.sentiment)}
             </div>
             <div class="meta-row" title="${escapeHtml(whenFull)}">@${escapeHtml(post.username)} · ${escapeHtml(whenShort)}</div>
@@ -516,12 +530,25 @@ function renderFeed(tab) {
   });
 
   loadMoreWrap.style.display = state.hasMore ? 'block' : 'none';
+
+  setupViewTracking();
+  setupVideoWatchTracking();
 }
 
 /* ═══════════════════════════════════════════════════════
-   EVENT DELEGATION — read more + media slider controls
+   EVENT DELEGATION — read more + media slider controls +
+   open-profile tracking (Phase 3)
    ═══════════════════════════════════════════════════════ */
 document.getElementById('feedContainer').addEventListener('click', (e) => {
+  const openProfileEl = e.target.closest('[data-open-profile]');
+  if (openProfileEl) {
+    const card = openProfileEl.closest('.post-card');
+    if (card && card.dataset.self !== '1') {
+      trackOpenProfile(card.dataset.postId);
+    }
+    return;
+  }
+
   const readMoreBtn = e.target.closest('.read-more-btn');
   if (readMoreBtn) {
     const contentEl = document.getElementById(readMoreBtn.dataset.target);
@@ -568,6 +595,63 @@ function goToSlide(wrap, idx) {
 
   const counter = wrap.querySelector('.slider-counter');
   if (counter) counter.textContent = `${idx + 1} / ${count}`;
+}
+
+/* ═══════════════════════════════════════════════════════
+   PHASE 3 — PERSONALIZATION TRACKING
+   ───────────────────────────────────────────────────────
+   Three signals feed the discover feed's ranking:
+     1. Viewing a post   -> POST /api/posts/:id/view
+        (server derives view_crypto/view_btc/view_eth from the post's
+        own hashtags, so no hashtag needs to be sent from here)
+     2. Playing a video  -> POST /api/posts/:id/activity {watch_video}
+     3. Tapping an author -> POST /api/posts/:id/activity {open_profile}
+   All fire-and-forget: tracking failures never interrupt the UI.
+   ═══════════════════════════════════════════════════════ */
+function setupViewTracking() {
+  if (!('IntersectionObserver' in window)) return;
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const postId = entry.target.dataset.postId;
+      if (!postId || viewedPostIds.has(postId)) return;
+      viewedPostIds.add(postId);
+      fetch(`/api/posts/${postId}/view`, { method: 'POST' }).catch(() => {});
+      observer.unobserve(entry.target);
+    });
+  }, { threshold: 0.5 });
+
+  document.querySelectorAll('#feedContainer .post-card[data-post-id]').forEach(card => {
+    if (card.dataset.postId) observer.observe(card);
+  });
+}
+
+function setupVideoWatchTracking() {
+  document.querySelectorAll('#feedContainer video').forEach(video => {
+    const card = video.closest('.post-card');
+    const postId = card?.dataset.postId;
+    if (!postId) return;
+
+    video.addEventListener('play', () => {
+      if (watchedVideoIds.has(postId)) return;
+      watchedVideoIds.add(postId);
+      trackActivity(postId, 'watch_video');
+    }, { once: false });
+  });
+}
+
+function trackOpenProfile(postId) {
+  if (!postId) return;
+  trackActivity(postId, 'open_profile');
+}
+
+function trackActivity(postId, activityType) {
+  fetch(`/api/posts/${postId}/activity`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ activityType }),
+  }).catch(() => {});
 }
 
 /* ═══════════════════════════════════════════════════════

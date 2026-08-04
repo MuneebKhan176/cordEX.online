@@ -10,9 +10,9 @@ const transporter = nodemailer.createTransport({
 
 function sendVerificationEmail(toEmail, code) {
     return transporter.sendMail({
-        from: process.env.EMAIL_USER,
+        from: `"cordEX.io" <${process.env.EMAIL_USER}>`,
         to: toEmail,
-        subject: "Verify your email",
+        subject: "Verify your cordEX Account.",
         text: `Your verification code is ${code}. It expires in 10 minutes.`,
 
         html: `

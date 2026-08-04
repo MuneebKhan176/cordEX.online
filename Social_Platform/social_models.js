@@ -33,6 +33,20 @@
  *                                 permanently showing 0. Incremented once per
  *                                 viewer via POST /api/posts/:id/view
  *                                 (IntersectionObserver on the frontend).
+ *   - Post.sharesCount        -> NEW. Times this post has been shared/reposted.
+ *                                 Feeds into feedScore.js — Facebook-style
+ *                                 ranking weights shares above comments and
+ *                                 likes, so this is the single highest engagement
+ *                                 signal.
+ *   - Post.saveCount          -> NEW. Times this post has been bookmarked/saved
+ *                                 by a viewer. Strong intent signal, ranked
+ *                                 below shares/comments but above raw likes.
+ *   - Post.clickCount         -> NEW. Times a viewer clicked into the post
+ *                                 (e.g. to open the full picture, a link, or
+ *                                 a "read more"). Weak/soft engagement signal.
+ *   - Post.watchSeconds       -> NEW. Cumulative seconds of video watch-time
+ *                                 across all viewers. Used for video-heavy
+ *                                 posts as an attention signal in feedScore.js.
  *   - MediaAttachmentSchema   -> width/height kept so the frontend slider can
  *                                 reserve the correct box before the image
  *                                 loads (no layout jump) and render the
@@ -50,6 +64,7 @@ const SENTIMENT_TYPES = ["bullish", "bearish"];
 const MediaAttachmentSchema = new Schema(
   {
     url: { type: String, required: true },
+    thumbUrl: { type: String, default: null }, // NEW — R2 grid-thumbnail URL for images
     type: { type: String, enum: ["image", "video"], required: true },
     width: Number,
     height: Number,
@@ -119,6 +134,14 @@ const PostSchema = new Schema(
     likesCount: { type: Number, default: 0 },
     commentsCount: { type: Number, default: 0 },
     viewsCount: { type: Number, default: 0 },
+
+    // NEW — engagement-ranking counters (see services/feedScore.js).
+    // Facebook-style priority: shares > comments > likes, with saves,
+    // clicks, and watch-time as supporting signals.
+    sharesCount: { type: Number, default: 0 },
+    saveCount: { type: Number, default: 0 },
+    clickCount: { type: Number, default: 0 },
+    watchSeconds: { type: Number, default: 0 },
 
     isEdited: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false }, // soft delete
@@ -251,13 +274,28 @@ const MediaSchema = new Schema(
 
 /* ============================================================================
  * 10. USER ACTIVITY
+ * ----------------------------------------------------------------------------
+ *  activityType additions (Phase 3 — personalized discover feed):
+ *    view_crypto / view_btc / view_eth -> fired when a user views a post
+ *                                          tagged with that hashtag (see
+ *                                          POST /api/posts/:id/view).
+ *    watch_video                       -> fired when a user actually plays
+ *                                          a video attached to a post (see
+ *                                          POST /api/posts/:id/activity).
+ *    open_profile                      -> fired when a user taps into a
+ *                                          post's author (same endpoint).
+ *  These raw events are what services/interestTracker.js reads to build
+ *  each user's UserInterest score profile.
  * ==========================================================================*/
 const UserActivitySchema = new Schema(
   {
     username: { type: String, required: true, index: true },
     activityType: {
       type: String,
-      enum: ["view_post", "like", "comment", "follow", "search"],
+      enum: [
+        "view_post", "like", "comment", "follow", "search",
+        "view_crypto", "view_btc", "view_eth", "watch_video", "open_profile",
+      ],
       required: true,
     },
     targetType: { type: String, enum: TARGET_TYPES, default: null },
@@ -267,6 +305,25 @@ const UserActivitySchema = new Schema(
   { timestamps: true }
 );
 UserActivitySchema.index({ username: 1, createdAt: -1 });
+
+/* ============================================================================
+ * 10b. USER INTEREST (Phase 3 — personalization score per user+hashtag)
+ * ----------------------------------------------------------------------------
+ *  Derived from UserActivity by services/interestTracker.js. One row per
+ *  (username, hashtag) pair, e.g. { username: "muneeb", hashtag: "crypto",
+ *  score: 35 }. feedScore.js reads this back out to boost posts a given
+ *  user is likely to care about, so /api/posts/discover and
+ *  /api/insights/discover show a different ranking per person.
+ * ==========================================================================*/
+const UserInterestSchema = new Schema(
+  {
+    username: { type: String, required: true, index: true },
+    hashtag: { type: String, required: true, index: true },
+    score: { type: Number, default: 0 },
+  },
+  { timestamps: true }
+);
+UserInterestSchema.index({ username: 1, hashtag: 1 }, { unique: true });
 
 /* ============================================================================
  * 11. NOTIFICATION
@@ -299,5 +356,6 @@ module.exports = {
   Hashtag: mongoose.model("Hashtag", HashtagSchema),
   Media: mongoose.model("Media", MediaSchema),
   UserActivity: mongoose.model("UserActivity", UserActivitySchema),
+  UserInterest: mongoose.model("UserInterest", UserInterestSchema),
   Notification: mongoose.model("Notification", NotificationSchema),
 };

@@ -1,25 +1,23 @@
 /**
  * uploadService.js
  * -----------------------------------------------------------------------
- * Validates and uploads chat attachments — and profile avatars — to
- * Cloudflare R2 (S3-compatible).
+ * Validates and uploads chat attachments, profile avatars, AND post
+ * media (images/videos) to Cloudflare R2 (S3-compatible).
  *
- *   - uploadAvatar(buffer, mimetype, userId, version): uploads a resized,
- *     square (512x512) profile photo to R2 under
- *     `avatars/{userId}_v{version}.jpg`. The version is a monotonically
- *     increasing counter (SocialProfile.avatarVersion) bumped on every
- *     upload, so each new photo gets a brand-new URL and can therefore be
- *     cached forever (immutable) on the CDN/browser without ever risking
- *     a stale image after a user updates their photo.
+ *   - uploadAvatar(buffer, mimetype, userId, version): square 512x512
+ *     avatar under `avatars/{userId}_v{version}.jpg`.
+ *   - uploadOne / uploadAttachments: chat attachments under
+ *     `chat/{roomId}/{id}...` (unchanged behavior).
+ *   - uploadPostMedia: NEW — post images/videos under
+ *     `posts/{username}/{id}...`, same validation/thumbnailing pipeline
+ *     as chat attachments (display image capped at 1600px, 480x480 grid
+ *     thumbnail, blurred LQIP placeholder for images).
  *
- * ── PHASE 2 ──────────────────────────────────────────────────────────
- * `uploadOne` is now exported (it was previously a private helper).
- * chunkedUploadService.js reuses it as-is to finalize a resumable/
- * chunked upload through the exact same validation, thumbnailing, and
- * R2-upload pipeline as the classic single-shot upload — no duplicated
- * logic between the two upload paths. Nothing else in this file changed.
+ * Both uploadOne and uploadPostMedia now delegate to a shared internal
+ * uploadMediaFile({ buffer, mimetype, originalName, folder }) helper so
+ * there's exactly one place that does resizing/thumbnailing/R2 puts.
  * -----------------------------------------------------------------------
- * Requires: npm install sharp
+ * Requires: npm install sharp @aws-sdk/client-s3
  * -----------------------------------------------------------------------
  */
 
@@ -66,9 +64,8 @@ const ALLOWED_MIME = {
   ],
 };
 
-// Cache forever — filenames are content-addressed (random UUID per chat
-// upload, or {userId}_v{version} for avatars), so there is never a
-// "stale" version to worry about invalidating.
+// Cache forever — filenames are content-addressed (random UUID), so
+// there is never a "stale" version to worry about invalidating.
 const CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
 function classify(mimetype) {
@@ -97,11 +94,10 @@ async function putObject(key, buffer, mimetype) {
 
 /**
  * Builds the "display" image (what the lightbox/full view loads) capped
- * at 1600px on the long edge, re-encoded at sane quality. This alone
- * usually cuts image payloads by 60-90% vs. an uncompressed phone photo.
+ * at 1600px on the long edge, re-encoded at sane quality.
  */
 async function buildDisplayImage(buffer, mimetype) {
-  const img = sharp(buffer, { failOn: 'none' }).rotate(); // .rotate() auto-applies EXIF orientation
+  const img = sharp(buffer, { failOn: 'none' }).rotate(); // auto-applies EXIF orientation
   const meta = await img.metadata();
 
   let pipeline = img.resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true });
@@ -116,7 +112,7 @@ async function buildDisplayImage(buffer, mimetype) {
   return { buffer: out, width: meta.width, height: meta.height };
 }
 
-/** Small grid thumbnail — what renders inside the chat bubble itself. */
+/** Small grid thumbnail — chat bubble / post card thumbnail. */
 async function buildThumb(buffer) {
   return sharp(buffer, { failOn: 'none' })
     .rotate()
@@ -136,7 +132,12 @@ async function buildLqip(buffer) {
   return `data:image/jpeg;base64,${tiny.toString('base64')}`;
 }
 
-async function uploadOne({ buffer, mimetype, originalName, roomId }) {
+/**
+ * Shared core: validates, resizes/thumbnails (images only), uploads to
+ * R2 under `${folder}/${randomId}...`. Used by both chat uploads
+ * (folder = `chat/{roomId}`) and post uploads (folder = `posts/{username}`).
+ */
+async function uploadMediaFile({ buffer, mimetype, originalName, folder }) {
   const kind = classify(mimetype);
   if (!kind) {
     const err = new Error('Unsupported file type');
@@ -151,7 +152,7 @@ async function uploadOne({ buffer, mimetype, originalName, roomId }) {
 
   const ext = extFor(originalName);
   const id = crypto.randomUUID();
-  const base = `chat/${roomId}/${id}`;
+  const base = `${folder}/${id}`;
 
   if (kind === 'image') {
     const [display, thumb, lqip] = await Promise.all([
@@ -174,8 +175,8 @@ async function uploadOne({ buffer, mimetype, originalName, roomId }) {
     };
   }
 
-  // video / document: upload as-is (re-encoding video server-side is out of
-  // scope here — a poster-frame thumbnail could be added later with ffmpeg)
+  // video / document: upload as-is (poster-frame thumbnail via ffmpeg is
+  // out of scope here, same as before)
   const url = await putObject(`${base}${ext ? '.' + ext : ''}`, buffer, mimetype);
   return {
     url,
@@ -188,6 +189,11 @@ async function uploadOne({ buffer, mimetype, originalName, roomId }) {
     width: null,
     height: null,
   };
+}
+
+/** Chat attachment upload — unchanged public behavior, now backed by uploadMediaFile. */
+async function uploadOne({ buffer, mimetype, originalName, roomId }) {
+  return uploadMediaFile({ buffer, mimetype, originalName, folder: `chat/${roomId}` });
 }
 
 /** Upload 1+ files that belong to a single outgoing chat message. */
@@ -212,10 +218,20 @@ async function uploadAttachment({ buffer, mimetype, originalName, roomId }) {
 }
 
 /**
+ * NEW — Upload a single post image/video to R2 under
+ * `posts/{username}/{id}...`. Returns the same shape as a chat upload
+ * (url, thumbUrl, lqip, width, height, etc.) so posts.js can build
+ * Post.media[] entries directly from the result.
+ */
+async function uploadPostMedia({ buffer, mimetype, originalName, username }) {
+  return uploadMediaFile({ buffer, mimetype, originalName, folder: `posts/${username}` });
+}
+
+/**
  * Uploads a profile avatar to R2 as a resized, square 512x512 JPEG under
- * `avatars/{userId}_v{version}.jpg`. Callers are expected to bump
- * `version` (SocialProfile.avatarVersion) *before* calling this, so the
- * resulting URL is unique per upload and safe to cache immutably forever.
+ * `avatars/{userId}_v{version}.jpg`. Callers bump `version`
+ * (SocialProfile.avatarVersion) *before* calling this, so the resulting
+ * URL is unique per upload and safe to cache immutably forever.
  */
 async function uploadAvatar(buffer, mimetype, userId, version) {
   const kind = classify(mimetype);
@@ -242,7 +258,16 @@ async function uploadAvatar(buffer, mimetype, userId, version) {
 
 /** Wipes every object under chat/{roomId}/ — call this when a room is deleted. */
 async function deleteRoomAttachments(roomId) {
-  const prefix = `chat/${roomId}/`;
+  return deleteFolder(`chat/${roomId}/`);
+}
+
+/** NEW — wipes every object under posts/{username}/ (e.g. on account deletion). */
+async function deleteUserPostMedia(username) {
+  return deleteFolder(`posts/${username}/`);
+}
+
+/** Shared prefix-delete helper used by both cleanup functions above. */
+async function deleteFolder(prefix) {
   let continuationToken;
   let deletedCount = 0;
 
@@ -275,8 +300,10 @@ module.exports = {
   uploadAttachment,
   uploadAttachments,
   uploadAvatar,
+  uploadPostMedia,      // NEW
   deleteRoomAttachments,
+  deleteUserPostMedia,  // NEW
   LIMITS,
   ALLOWED_MIME,
-  uploadOne, // PHASE 2 — reused by chunkedUploadService.js
+  uploadOne,
 };

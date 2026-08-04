@@ -1,11 +1,13 @@
 const express  = require('express');
 const router   = express.Router();
 const path     = require('path');
-const fs       = require('fs');
 const multer   = require('multer');
 
 const verifyToken = require('../middle/middleware');
 const { SocialProfile, Post, Follow, Like, Hashtag, SENTIMENT_TYPES } = require('./social_models');
+const { uploadPostMedia } = require('../chat/services/uploadService');
+const { calculateScore } = require('./services/feedScore');
+const { trackActivity, getInterestMap, TRACKABLE_ACTIVITY_TYPES } = require('./services/interestTracker');
 
 const PAGE_SIZE = 5;
 const MAX_HASHTAGS_PER_POST = 10;
@@ -15,29 +17,17 @@ function sendResponse(res, statusCode, success, message, data = null) {
 }
 
 /* ============================================================================
- * MEDIA UPLOAD (multer, disk storage)
+ * MEDIA UPLOAD (multer, in-memory — CHANGED from disk storage)
  * ----------------------------------------------------------------------------
- * Posts can carry photos AND video, so instead of base64-encoding media into
- * the Mongo document (fine for a small avatar, risky for video against the
- * 16MB document cap), files are saved to /uploads/posts on disk and only the
- * resulting URL is stored on Post.media[].url — matches MediaAttachmentSchema.
- * Requires `express.static` for /uploads to be registered in web.js (see the
- * setup note at the bottom of this file).
+ * Files are held in memory just long enough to validate/resize/thumbnail
+ * them via uploadPostMedia() and push them to Cloudflare R2 — nothing is
+ * ever written to local disk anymore. Post.media[].url and .thumbUrl now
+ * store R2 CDN URLs (posts/{username}/{id}.jpg + _thumb.jpg), same pattern
+ * already used for avatars and chat attachments.
  * ==========================================================================*/
 
-const uploadDir = path.join(__dirname, '../uploads/posts');
-fs.mkdirSync(uploadDir, { recursive: true });
-
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadDir),
-    filename: (req, file, cb) => {
-        const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        cb(null, unique + path.extname(file.originalname || ''));
-    },
-});
-
 const upload = multer({
-    storage,
+    storage: multer.memoryStorage(),
     limits: { fileSize: 20 * 1024 * 1024, files: 6 }, // 20MB per file, 6 files max total
     fileFilter: (req, file, cb) => {
         if (file.fieldname === 'images' && !file.mimetype.startsWith('image/'))
@@ -106,9 +96,7 @@ function parseHashtags(raw) {
 }
 
 // Upserts the Hashtag registry (postsCount / trendScore / lastUsedAt) for
-// every tag used on a new post. Fire-and-forget from the caller's
-// perspective is fine here, but we await it so trending numbers are never
-// stale immediately after a post goes live.
+// every tag used on a new post.
 async function registerHashtags(tags) {
     if (!tags.length) return;
     const ops = tags.map(tag => ({
@@ -135,7 +123,7 @@ router.get('/create-post', verifyToken, (req, res) => {
 });
 
 /* ============================================================================
- * CREATE POST
+ * CREATE POST — media now uploaded to R2 instead of local disk
  * ==========================================================================*/
 router.post('/api/posts', verifyToken, upload.fields([
     { name: 'images', maxCount: 4 },
@@ -152,9 +140,6 @@ router.post('/api/posts', verifyToken, upload.fields([
         if (title.length > 100)
             return sendResponse(res, 400, false, 'Title must be 100 characters or fewer');
 
-        // The Post schema has no dedicated `title` field, so an optional
-        // title is folded into `content` as a leading "## Title" line and
-        // split back out again on the frontend for display.
         const bodyWithTitle = title ? `## ${title}\n${content}` : content;
 
         if (bodyWithTitle.length > 2000)
@@ -163,9 +148,56 @@ router.post('/api/posts', verifyToken, upload.fields([
         const sentiment = parseSentiment(req.body.sentiment);
         const hashtags  = parseHashtags(req.body.hashtags);
 
+        const imageFiles = req.files?.images || [];
+        const videoFiles = req.files?.videos || [];
+
+        // Upload every image/video to R2 in parallel via uploadPostMedia()
+        // (validates size/type, builds a 1600px display version + 480px
+        // thumbnail + LQIP for images, stores raw for video).
         const media = [];
-        (req.files?.images || []).forEach((f, i) => media.push({ url: `/uploads/posts/${f.filename}`, type: 'image', order: i }));
-        (req.files?.videos || []).forEach((f, i) => media.push({ url: `/uploads/posts/${f.filename}`, type: 'video', order: media.length + i }));
+        try {
+            const uploadedImages = await Promise.all(
+                imageFiles.map(f =>
+                    uploadPostMedia({
+                        buffer: f.buffer,
+                        mimetype: f.mimetype,
+                        originalName: f.originalname,
+                        username: myUsername,
+                    })
+                )
+            );
+            uploadedImages.forEach((u, i) => media.push({
+                url: u.url,
+                thumbUrl: u.thumbUrl,
+                type: 'image',
+                width: u.width,
+                height: u.height,
+                order: i,
+            }));
+
+            const uploadedVideos = await Promise.all(
+                videoFiles.map(f =>
+                    uploadPostMedia({
+                        buffer: f.buffer,
+                        mimetype: f.mimetype,
+                        originalName: f.originalname,
+                        username: myUsername,
+                    })
+                )
+            );
+            uploadedVideos.forEach((u, i) => media.push({
+                url: u.url,
+                thumbUrl: null,
+                type: 'video',
+                width: null,
+                height: null,
+                order: media.length + i,
+            }));
+        } catch (uploadErr) {
+            const status = uploadErr.code === 'TOO_LARGE' || uploadErr.code === 'UNSUPPORTED_TYPE' ? 400 : 500;
+            console.error('⚠️ POST /api/posts media upload error:', uploadErr);
+            return sendResponse(res, status, false, uploadErr.message || 'Failed to upload media');
+        }
 
         const newPost = await Post.create({
             username: myUsername,
@@ -192,11 +224,18 @@ router.post('/api/posts', verifyToken, upload.fields([
 /* ============================================================================
  * DISCOVER FEED
  * ----------------------------------------------------------------------------
- * Ranked with a "hot" score in the style of Reddit/Hacker News: a
- * log10-scaled popularity term (author's followersCount) added to a linear
- * recency term (post age in seconds, scaled). A brand-new post from a small
- * account still surfaces near the top and ages out gradually rather than
- * the feed being permanently dominated by the biggest accounts.
+ * Ranking now goes through the shared calculateScore() helper (see
+ * services/feedScore.js) instead of an inline $addFields formula inside the
+ * aggregation pipeline. We pull the candidate posts + their authors'
+ * followersCount, score each post in application code, then sort/paginate
+ * over that in-memory list — same helper every feed endpoint will use going
+ * forward, so the ranking logic only ever lives in one place.
+ *
+ * PHASE 3 — personalized. We also pull the viewer's interest profile (see
+ * services/interestTracker.js) and pass it into calculateScore(), so two
+ * different users hitting this same endpoint at the same moment can get two
+ * different orderings back, based on what hashtags they've been engaging
+ * with (view_crypto/view_btc/view_eth, watch_video, open_profile).
  * ==========================================================================*/
 router.get('/api/posts/discover', verifyToken, async (req, res) => {
 
@@ -219,28 +258,26 @@ router.get('/api/posts/discover', verifyToken, async (req, res) => {
             return sendResponse(res, 200, true, 'Newer discover posts fetched', { posts: enriched });
         }
 
-        const page  = Math.max(1, parseInt(req.query.page) || 1);
-        const skip  = (page - 1) * PAGE_SIZE;
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const skip = (page - 1) * PAGE_SIZE;
 
-        const posts = await Post.aggregate([
-            { $match: baseMatch },
-            { $lookup: { from: 'socialprofiles', localField: 'username', foreignField: 'username', as: 'authorLookup' } },
-            { $unwind: { path: '$authorLookup', preserveNullAndEmptyArrays: true } },
-            { $addFields: {
-                popularityScore: { $log10: { $add: [{ $ifNull: ['$authorLookup.followersCount', 0] }, 1] } },
-                recencySeconds:  { $divide: [{ $toLong: '$createdAt' }, 1000] },
-            } },
-            { $addFields: {
-                feedScore: { $add: ['$popularityScore', { $divide: ['$recencySeconds', 45000] }] },
-            } },
-            { $sort: { feedScore: -1, _id: -1 } },
-            { $skip: skip },
-            { $limit: PAGE_SIZE },
-            { $project: { authorLookup: 0, popularityScore: 0, recencySeconds: 0, feedScore: 0 } },
+        const candidatePosts = await Post.find(baseMatch).lean();
+
+        const usernames = [...new Set(candidatePosts.map(p => p.username))];
+        const [authors, interestMap] = await Promise.all([
+            SocialProfile.find({ username: { $in: usernames } }, 'username followersCount').lean(),
+            getInterestMap(myUsername),
         ]);
+        const authorMap = new Map(authors.map(a => [a.username, a]));
+
+        const ranked = candidatePosts
+            .map(post => ({ post, score: calculateScore(post, authorMap.get(post.username), interestMap) }))
+            .sort((a, b) => b.score - a.score || String(b.post._id).localeCompare(String(a.post._id)));
+
+        const posts = ranked.slice(skip, skip + PAGE_SIZE).map(r => r.post);
 
         const enriched = await enrichPosts(posts, myUsername);
-        const hasMore = posts.length === PAGE_SIZE;
+        const hasMore = skip + PAGE_SIZE < ranked.length;
 
         return sendResponse(res, 200, true, 'Discover feed fetched', { posts: enriched, page, hasMore });
 
@@ -251,7 +288,7 @@ router.get('/api/posts/discover', verifyToken, async (req, res) => {
 });
 
 /* ============================================================================
- * FOLLOWING FEED — pure chronological order among people the user follows.
+ * FOLLOWING FEED — unchanged
  * ==========================================================================*/
 router.get('/api/posts/following', verifyToken, async (req, res) => {
 
@@ -298,7 +335,7 @@ router.get('/api/posts/following', verifyToken, async (req, res) => {
 });
 
 /* ============================================================================
- * NEW-POSTS COUNT (for the "N new posts" banner)
+ * NEW-POSTS COUNT — unchanged
  * ==========================================================================*/
 router.get('/api/posts/new-count', verifyToken, async (req, res) => {
 
@@ -329,7 +366,7 @@ router.get('/api/posts/new-count', verifyToken, async (req, res) => {
 });
 
 /* ============================================================================
- * LIKE / UNLIKE (toggle)
+ * LIKE / UNLIKE (toggle) — unchanged
  * ==========================================================================*/
 router.post('/api/posts/:id/like', verifyToken, async (req, res) => {
 
@@ -371,10 +408,11 @@ router.post('/api/posts/:id/like', verifyToken, async (req, res) => {
 /* ============================================================================
  * REGISTER A VIEW
  * ----------------------------------------------------------------------------
- * Called once per post per page load (frontend uses an IntersectionObserver
- * + an in-memory "already counted" Set so a post isn't double-counted while
- * scrolling back and forth). A single atomic $inc keeps this cheap even
- * under heavy traffic — no read-modify-write race like the like counter.
+ * PHASE 3 — besides bumping viewsCount, this is also where view_crypto /
+ * view_btc / view_eth activity gets logged: if the viewed post carries one
+ * of those hashtags, trackActivity() bumps the viewer's UserInterest score
+ * for it. Fire-and-forget (doesn't block or affect the response) so a slow
+ * activity write never delays the view counter itself.
  * ==========================================================================*/
 router.post('/api/posts/:id/view', verifyToken, async (req, res) => {
 
@@ -383,11 +421,23 @@ router.post('/api/posts/:id/view', verifyToken, async (req, res) => {
         const post = await Post.findOneAndUpdate(
             { _id: postId, isDeleted: false },
             { $inc: { viewsCount: 1 } },
-            { new: true, projection: { viewsCount: 1 } }
+            { new: true, projection: { viewsCount: 1, hashtags: 1 } }
         );
 
         if (!post)
             return sendResponse(res, 404, false, 'Post not found');
+
+        ['crypto', 'btc', 'eth'].forEach(tag => {
+            if (post.hashtags?.includes(tag)) {
+                trackActivity({
+                    username: req.user.username,
+                    activityType: `view_${tag}`,
+                    post,
+                    targetType: 'Post',
+                    targetId: post._id,
+                }).catch(() => {});
+            }
+        });
 
         return sendResponse(res, 200, true, 'View registered', { viewsCount: post.viewsCount });
 
@@ -398,7 +448,51 @@ router.post('/api/posts/:id/view', verifyToken, async (req, res) => {
 });
 
 /* ============================================================================
- * MULTER ERROR HANDLER (router-level)
+ * TRACK ENGAGEMENT ACTIVITY (Phase 3)
+ * ----------------------------------------------------------------------------
+ * Generic hook the frontend calls for activity types that aren't implied by
+ * an existing action:
+ *   watch_video   -> fired when a viewer actually plays a video on a post
+ *   open_profile  -> fired when a viewer taps into a post's author
+ * Both feed into the viewer's UserInterest profile via the post's hashtags
+ * (see services/interestTracker.js), same as the view_crypto/btc/eth
+ * tracking above.
+ * ==========================================================================*/
+router.post('/api/posts/:id/activity', verifyToken, async (req, res) => {
+
+    try {
+        const myUsername = req.user.username;
+        const { activityType } = req.body;
+
+        if (!TRACKABLE_ACTIVITY_TYPES.includes(activityType))
+            return sendResponse(res, 400, false, 'Unsupported activity type');
+
+        const post = await Post.findOne({ _id: req.params.id, isDeleted: false })
+            .select('hashtags username')
+            .lean();
+
+        if (!post)
+            return sendResponse(res, 404, false, 'Post not found');
+
+        await trackActivity({
+            username: myUsername,
+            activityType,
+            post,
+            targetType: 'Post',
+            targetId: post._id,
+            metadata: activityType === 'open_profile' ? { authorUsername: post.username } : {},
+        });
+
+        return sendResponse(res, 200, true, 'Activity recorded');
+
+    } catch (err) {
+        console.error('⚠️ POST /api/posts/:id/activity error:', err);
+        return sendResponse(res, 500, false, 'Failed to record activity');
+    }
+});
+
+/* ============================================================================
+ * MULTER ERROR HANDLER (router-level) — unchanged
  * ==========================================================================*/
 router.use((err, req, res, next) => {
     if (err instanceof multer.MulterError) {
@@ -411,4 +505,3 @@ router.use((err, req, res, next) => {
 });
 
 module.exports = router;
-

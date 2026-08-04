@@ -4,13 +4,15 @@ const path    = require('path');
 
 const verifyToken = require('../middle/middleware');
 const { SocialProfile, Post, Follow, Like } = require('./social_models');
+const { calculateScore } = require('./services/feedScore');
+const { getInterestMap } = require('./services/interestTracker');
 
 /* ============================================================================
  *  Social_Platform/insights.js  —  "Crypto Square" backend
  * ----------------------------------------------------------------------------
  *  Powers Frontend/crypto-square.html:
  *    GET  /crypto-square                 -> serves the page (auth required)
- *    GET  /api/insights/discover         -> every post, newest first
+ *    GET  /api/insights/discover         -> personalized ranked feed
  *    GET  /api/insights/following        -> posts only from people you follow
  *    POST /api/insights/posts/:id/like   -> toggle like on a post
  *
@@ -82,12 +84,15 @@ async function enrichSquarePosts(posts, myUsername) {
 /* ============================================================================
  * DISCOVER FEED
  * ----------------------------------------------------------------------------
- * Every post from every user, newest first. A pure chronological sort mixes
- * creators naturally without any grouping — no ranking algorithm needed for
- * v1 (posts.js already has a separate "hot" ranked discover feed for the
- * dashboard if that's ever wanted here instead — this stays simple on
- * purpose, per spec, and can be swapped for a smarter feedScore later
- * without changing the response shape).
+ * PHASE 3 — no longer a flat chronological sort. Ranking now goes through
+ * the same shared calculateScore() helper used by posts.js's discover feed
+ * (see services/feedScore.js), personalized per-viewer via their
+ * UserInterest profile (see services/interestTracker.js). We pull the
+ * candidate posts + their authors' followersCount + the viewer's interest
+ * map, score every post in application code, then sort/paginate over that
+ * in-memory list — so two different users hitting this endpoint get two
+ * different orderings back, weighted toward hashtags they've engaged with
+ * (view_crypto/view_btc/view_eth, watch_video, open_profile).
  * ==========================================================================*/
 router.get('/api/insights/discover', verifyToken, async (req, res) => {
 
@@ -96,14 +101,23 @@ router.get('/api/insights/discover', verifyToken, async (req, res) => {
         const page = Math.max(1, parseInt(req.query.page) || 1);
         const skip = (page - 1) * PAGE_SIZE;
 
-        const posts = await Post.find({ isDeleted: false })
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(PAGE_SIZE)
-            .lean();
+        const candidatePosts = await Post.find({ isDeleted: false }).lean();
+
+        const usernames = [...new Set(candidatePosts.map(p => p.username))];
+        const [authors, interestMap] = await Promise.all([
+            SocialProfile.find({ username: { $in: usernames } }, 'username followersCount').lean(),
+            getInterestMap(myUsername),
+        ]);
+        const authorMap = new Map(authors.map(a => [a.username, a]));
+
+        const ranked = candidatePosts
+            .map(post => ({ post, score: calculateScore(post, authorMap.get(post.username), interestMap) }))
+            .sort((a, b) => b.score - a.score || String(b.post._id).localeCompare(String(a.post._id)));
+
+        const posts = ranked.slice(skip, skip + PAGE_SIZE).map(r => r.post);
 
         const enriched = await enrichSquarePosts(posts, myUsername);
-        const hasMore = posts.length === PAGE_SIZE;
+        const hasMore = skip + PAGE_SIZE < ranked.length;
 
         return sendResponse(res, 200, true, 'Discover feed fetched', { posts: enriched, page, hasMore });
 
