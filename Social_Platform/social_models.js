@@ -7,52 +7,13 @@
  *   } = require('./social_models');
  * ----------------------------------------------------------------------------
  *  CHANGELOG (this revision):
- *   - SocialProfile.avatarVersion -> NEW. Monotonically increasing counter,
- *                                bumped once per avatar upload (see
- *                                Social_Platform routes: POST
- *                                /api/profile/avatar). Used to build a
- *                                unique, cache-bustable R2 object key
- *                                (`avatars/{userId}_v{version}.jpg`) so
- *                                avatarUrl can be cached immutably forever
- *                                on the CDN/browser and still update
- *                                instantly whenever someone changes their
- *                                photo. avatarUrl itself now stores a
- *                                Cloudflare R2 URL rather than a raw
- *                                base64 data string, which is what makes
- *                                profile photos load quickly wherever
- *                                they're shown (feed, profile, chat).
- *   - Post.sentiment          -> "bullish" | "bearish" | null (the button the
- *                                 user taps on the composer; rendered as a
- *                                 green ▲ / red ▼ pill next to the display
- *                                 name on the profile page).
- *   - Post.hashtags           -> already existed, kept + indexed. Frontend
- *                                 now renders these as pill tags at the very
- *                                 end of the post (after the media block).
- *   - Post.viewsCount         -> added so the "views" icon in the engagement
- *                                 bar reflects a real number instead of
- *                                 permanently showing 0. Incremented once per
- *                                 viewer via POST /api/posts/:id/view
- *                                 (IntersectionObserver on the frontend).
- *   - Post.sharesCount        -> NEW. Times this post has been shared/reposted.
- *                                 Feeds into feedScore.js — Facebook-style
- *                                 ranking weights shares above comments and
- *                                 likes, so this is the single highest engagement
- *                                 signal.
- *   - Post.saveCount          -> NEW. Times this post has been bookmarked/saved
- *                                 by a viewer. Strong intent signal, ranked
- *                                 below shares/comments but above raw likes.
- *   - Post.clickCount         -> NEW. Times a viewer clicked into the post
- *                                 (e.g. to open the full picture, a link, or
- *                                 a "read more"). Weak/soft engagement signal.
- *   - Post.watchSeconds       -> NEW. Cumulative seconds of video watch-time
- *                                 across all viewers. Used for video-heavy
- *                                 posts as an attention signal in feedScore.js.
- *   - MediaAttachmentSchema   -> width/height kept so the frontend slider can
- *                                 reserve the correct box before the image
- *                                 loads (no layout jump) and render the
- *                                 picture in full with object-fit: contain
- *                                 instead of a cropping object-fit: cover.
- *   - Post.hashtags/sentiment -> both indexed for discovery / filtering.
+ *   - PHASE 8 — MediaAttachmentSchema gained progressive-image fields
+ *               (thumbnailUrl, compressedUrl, blurHash, aspectRatio) and
+ *               adaptive-video fields (duration, quality, video480p,
+ *               video720p). See Social_Platform/routes/upload.js for how
+ *               these get populated.
+ *   - avatarVersion, sentiment, hashtags, viewsCount, sharesCount,
+ *     saveCount, clickCount, watchSeconds — unchanged from prior revision.
  * ==========================================================================*/
 
 const mongoose = require("mongoose");
@@ -63,13 +24,29 @@ const SENTIMENT_TYPES = ["bullish", "bearish"];
 
 const MediaAttachmentSchema = new Schema(
   {
-    url: { type: String, required: true },
-    thumbUrl: { type: String, default: null }, // NEW — R2 grid-thumbnail URL for images
+    url: { type: String, required: true },        // original (image) / source file (video)
+    thumbUrl: { type: String, default: null },     // existing small grid thumbnail (backward compat)
     type: { type: String, enum: ["image", "video"], required: true },
     width: Number,
     height: Number,
-    durationSeconds: Number, // for video
+    durationSeconds: Number, // legacy field, kept for backward compat — use `duration` below going forward
     order: { type: Number, default: 0 }, // slide order in the picture slider
+
+    // ---- PHASE 8: images — progressive loading (blur -> compressed -> original) ----
+    thumbnailUrl: { type: String, default: null },  // tiny (~480px), loads first
+    compressedUrl: { type: String, default: null }, // ~800px mid-quality, loads second
+    blurHash: { type: String, default: null },      // paints instantly before any bytes arrive
+    aspectRatio: { type: Number, default: null },   // width/height, prevents layout jump while loading
+
+    // ---- PHASE 8: video — adaptive quality / streaming ----
+    duration: { type: Number, default: null },        // seconds
+    quality: {
+      type: String,
+      enum: ["processing", "ready", "failed", null],
+      default: null,
+    },
+    video480p: { type: String, default: null },
+    video720p: { type: String, default: null },
   },
   { _id: false }
 );
@@ -135,9 +112,7 @@ const PostSchema = new Schema(
     commentsCount: { type: Number, default: 0 },
     viewsCount: { type: Number, default: 0 },
 
-    // NEW — engagement-ranking counters (see services/feedScore.js).
-    // Facebook-style priority: shares > comments > likes, with saves,
-    // clicks, and watch-time as supporting signals.
+    // Engagement-ranking counters (see services/feedRanking.js).
     sharesCount: { type: Number, default: 0 },
     saveCount: { type: Number, default: 0 },
     clickCount: { type: Number, default: 0 },
@@ -255,14 +230,7 @@ const HashtagSchema = new Schema(
 );
 
 /* ============================================================================
- * 8b. TRENDING CREATOR (Phase 5 — precomputed top-creators leaderboard)
- * ----------------------------------------------------------------------------
- *  One row per user, kept in sync by services/trendingCreators.js whenever
- *  someone follows/unfollows or posts. GET /api/top-creators just does
- *  TrendingCreator.find().sort({ score: -1 }).limit(10) instead of loading
- *  every SocialProfile into memory and quickselecting over it — a
- *  constant-cost index scan instead of an O(n) full-table pull as the user
- *  base grows.
+ * 8b. TRENDING CREATOR (precomputed top-creators leaderboard)
  * ==========================================================================*/
 const TrendingCreatorSchema = new Schema(
   {
@@ -294,18 +262,6 @@ const MediaSchema = new Schema(
 
 /* ============================================================================
  * 10. USER ACTIVITY
- * ----------------------------------------------------------------------------
- *  activityType additions (Phase 3 — personalized discover feed):
- *    view_crypto / view_btc / view_eth -> fired when a user views a post
- *                                          tagged with that hashtag (see
- *                                          POST /api/posts/:id/view).
- *    watch_video                       -> fired when a user actually plays
- *                                          a video attached to a post (see
- *                                          POST /api/posts/:id/activity).
- *    open_profile                      -> fired when a user taps into a
- *                                          post's author (same endpoint).
- *  These raw events are what services/interestTracker.js reads to build
- *  each user's UserInterest score profile.
  * ==========================================================================*/
 const UserActivitySchema = new Schema(
   {
@@ -327,13 +283,7 @@ const UserActivitySchema = new Schema(
 UserActivitySchema.index({ username: 1, createdAt: -1 });
 
 /* ============================================================================
- * 10b. USER INTEREST (Phase 3 — personalization score per user+hashtag)
- * ----------------------------------------------------------------------------
- *  Derived from UserActivity by services/interestTracker.js. One row per
- *  (username, hashtag) pair, e.g. { username: "muneeb", hashtag: "crypto",
- *  score: 35 }. feedScore.js reads this back out to boost posts a given
- *  user is likely to care about, so /api/posts/discover and
- *  /api/insights/discover show a different ranking per person.
+ * 10b. USER INTEREST (personalization score per user+hashtag)
  * ==========================================================================*/
 const UserInterestSchema = new Schema(
   {
@@ -344,8 +294,6 @@ const UserInterestSchema = new Schema(
   { timestamps: true }
 );
 UserInterestSchema.index({ username: 1, hashtag: 1 }, { unique: true });
-
-
 
 /* ============================================================================
  * 11. NOTIFICATION

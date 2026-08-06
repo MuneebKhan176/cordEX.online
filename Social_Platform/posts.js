@@ -1,18 +1,13 @@
 const express  = require('express');
 const router   = express.Router();
 const path     = require('path');
-const multer   = require('multer');
 
 const verifyToken = require('../middle/middleware');
-const { SocialProfile, Post, Follow, Like, Hashtag, SENTIMENT_TYPES } = require('./social_models');
-const { uploadPostMedia } = require('../chat/services/uploadService');
-const { calculateScore } = require('./services/feedScore');
-const { trackActivity, getInterestMap, TRACKABLE_ACTIVITY_TYPES } = require('./services/interestTracker');
-const { getManyProfiles } = require('./cache/profileCache');
-const { enrichPosts } = require('./services/Post_Services/enrichService'); // PHASE 6
+const { Post, Like, Hashtag, SENTIMENT_TYPES } = require('./social_models');
+const feedService = require('./services/feedService'); // PHASE 10.1 — was direct Post/ranking queries
+const { enrichPosts } = require('./services/Post_Services/enrichService');
 
-// PHASE 7 — the five independent post-creation side effects, each in its
-// own service. See the Promise.all block inside POST /api/posts below.
+// The five independent post-creation side effects, each in its own service.
 const { increasePostCount } = require('./services/postStatsService');
 const { createNotifications } = require('./services/notificationService');
 const { updateTrending } = require('./services/trendingCreators');
@@ -20,42 +15,20 @@ const { updateRecommendations } = require('./services/recommendationService');
 
 const PAGE_SIZE = 5;
 const MAX_HASHTAGS_PER_POST = 10;
+const MAX_IMAGES_PER_POST = 4;
+const MAX_VIDEOS_PER_POST = 1; // PHASE 8 — down from 2
 
 function sendResponse(res, statusCode, success, message, data = null) {
     return res.status(statusCode).json({ success, message, data });
 }
 
 /* ============================================================================
- * MEDIA UPLOAD (multer, in-memory — CHANGED from disk storage)
- * ----------------------------------------------------------------------------
- * Files are held in memory just long enough to validate/resize/thumbnail
- * them via uploadPostMedia() and push them to Cloudflare R2 — nothing is
- * ever written to local disk anymore. Post.media[].url and .thumbUrl now
- * store R2 CDN URLs (posts/{username}/{id}.jpg + _thumb.jpg), same pattern
- * already used for avatars and chat attachments.
- * ==========================================================================*/
-
-const upload = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: 20 * 1024 * 1024, files: 6 }, // 20MB per file, 6 files max total
-    fileFilter: (req, file, cb) => {
-        if (file.fieldname === 'images' && !file.mimetype.startsWith('image/'))
-            return cb(new Error('Only image files are allowed in the photos field'));
-        if (file.fieldname === 'videos' && !file.mimetype.startsWith('video/'))
-            return cb(new Error('Only video files are allowed in the videos field'));
-        cb(null, true);
-    },
-});
-
-/* ============================================================================
  * HELPERS
  * ----------------------------------------------------------------------------
- * PHASE 6 — enrichPosts() used to live here as a monolithic function doing
- * three separate lookups (authors/likes/follows) inline. That logic now
- * lives in services/enrichService.js, which delegates each concern to its
- * own service (authorService / likeService / followService) and merges the
- * results. Here we just call it with this router's field-naming needs:
- * followersCount on the author object + "isFollowingAuthor" flag.
+ * enrichPosts() lives in services/enrichService.js, which delegates each
+ * concern to its own service (authorService / likeService / followService)
+ * and merges the results. Here we just call it with this router's
+ * field-naming needs: followersCount on the author object + "isFollowingAuthor" flag.
  * ==========================================================================*/
 function enrichPostsForFeed(posts, myUsername) {
     return enrichPosts(posts, myUsername, {
@@ -104,6 +77,28 @@ async function registerHashtags(tags) {
     );
 }
 
+// PHASE 8 — validates + whitelists the media array the client sends after
+// it has already uploaded/processed everything through /api/upload/*.
+// Never trust field shapes coming straight from the client.
+const ALLOWED_MEDIA_FIELDS = new Set([
+    'url', 'thumbUrl', 'type', 'width', 'height', 'order',
+    'thumbnailUrl', 'compressedUrl', 'blurHash', 'aspectRatio',
+    'duration', 'quality', 'video480p', 'video720p',
+]);
+
+function cleanMediaArray(rawMedia) {
+    if (!Array.isArray(rawMedia)) return [];
+    return rawMedia
+        .filter(m => m && typeof m.url === 'string' && ['image', 'video'].includes(m.type))
+        .map((m, i) => {
+            const clean = { order: i };
+            for (const key of ALLOWED_MEDIA_FIELDS) {
+                if (m[key] !== undefined) clean[key] = m[key];
+            }
+            return clean;
+        });
+}
+
 /* ============================================================================
  * CREATE POST PAGE
  * ==========================================================================*/
@@ -112,12 +107,17 @@ router.get('/create-post', verifyToken, (req, res) => {
 });
 
 /* ============================================================================
- * CREATE POST — media uploaded to R2 instead of local disk
+ * CREATE POST
  * ----------------------------------------------------------------------------
- * PHASE 7 — post-creation side effects fan out in parallel instead of the
- * old two-item Promise.all:
+ * PHASE 8 — no longer handles file uploads directly (no multer). The
+ * composer now uploads each image/video through /api/upload/init ->
+ * /api/upload/chunk -> /api/upload/complete (+ /api/upload/status polling)
+ * BEFORE calling this endpoint, then sends the resulting media array
+ * (already-hosted URLs + metadata) as plain JSON.
  *
- *      Upload
+ * Side effects still fan out in parallel exactly as before:
+ *
+ *      Post created
  *        ↓
  *   ┌────┼────┬────┬────┐
  *   ↓    ↓    ↓    ↓    ↓
@@ -125,22 +125,8 @@ router.get('/create-post', verifyToken, (req, res) => {
  *   └────┼────┴────┴────┘
  *        ↓
  *     Response
- *
- * Stats  -> increasePostCount()      (services/postStatsService.js)
- * Tags   -> registerHashtags()       (this file, unchanged)
- * Notify -> createNotifications()    (services/notificationService.js)
- * Trend  -> updateTrending()         (services/trendingCreators.js)
- * Recs   -> updateRecommendations()  (services/recommendationService.js)
- *
- * Trend depends on Stats having landed first (it reads the just-updated
- * postsCount back out of SocialProfile to compute the new score), so those
- * two are chained with .then() — everything else has no dependency on any
- * other branch and runs fully in parallel with that chain.
  * ==========================================================================*/
-router.post('/api/posts', verifyToken, upload.fields([
-    { name: 'images', maxCount: 4 },
-    { name: 'videos', maxCount: 2 },
-]), async (req, res) => {
+router.post('/api/posts', verifyToken, async (req, res) => {
 
     try {
         const myUsername = req.user.username;
@@ -159,57 +145,21 @@ router.post('/api/posts', verifyToken, upload.fields([
 
         const sentiment = parseSentiment(req.body.sentiment);
         const hashtags  = parseHashtags(req.body.hashtags);
+        const media     = cleanMediaArray(req.body.media);
 
-        const imageFiles = req.files?.images || [];
-        const videoFiles = req.files?.videos || [];
+        // PHASE 8 restrictions — final authority (composer already guards
+        // these client-side, but never trust the client alone)
+        const imageCount = media.filter(m => m.type === 'image').length;
+        if (imageCount > MAX_IMAGES_PER_POST)
+            return sendResponse(res, 400, false, `Maximum ${MAX_IMAGES_PER_POST} images per post`);
 
-        // Upload every image/video to R2 in parallel via uploadPostMedia()
-        // (validates size/type, builds a 1600px display version + 480px
-        // thumbnail + LQIP for images, stores raw for video).
-        const media = [];
-        try {
-            const uploadedImages = await Promise.all(
-                imageFiles.map(f =>
-                    uploadPostMedia({
-                        buffer: f.buffer,
-                        mimetype: f.mimetype,
-                        originalName: f.originalname,
-                        username: myUsername,
-                    })
-                )
-            );
-            uploadedImages.forEach((u, i) => media.push({
-                url: u.url,
-                thumbUrl: u.thumbUrl,
-                type: 'image',
-                width: u.width,
-                height: u.height,
-                order: i,
-            }));
+        const videoCount = media.filter(m => m.type === 'video').length;
+        if (videoCount > MAX_VIDEOS_PER_POST)
+            return sendResponse(res, 400, false, `Only ${MAX_VIDEOS_PER_POST} video is allowed per post`);
 
-            const uploadedVideos = await Promise.all(
-                videoFiles.map(f =>
-                    uploadPostMedia({
-                        buffer: f.buffer,
-                        mimetype: f.mimetype,
-                        originalName: f.originalname,
-                        username: myUsername,
-                    })
-                )
-            );
-            uploadedVideos.forEach((u, i) => media.push({
-                url: u.url,
-                thumbUrl: null,
-                type: 'video',
-                width: null,
-                height: null,
-                order: media.length + i,
-            }));
-        } catch (uploadErr) {
-            const status = uploadErr.code === 'TOO_LARGE' || uploadErr.code === 'UNSUPPORTED_TYPE' ? 400 : 500;
-            console.error('⚠️ POST /api/posts media upload error:', uploadErr);
-            return sendResponse(res, status, false, uploadErr.message || 'Failed to upload media');
-        }
+        const unreadyVideo = media.find(m => m.type === 'video' && m.quality !== 'ready');
+        if (unreadyVideo)
+            return sendResponse(res, 400, false, 'Video is still processing — wait for it to finish before posting');
 
         const newPost = await Post.create({
             username: myUsername,
@@ -219,10 +169,9 @@ router.post('/api/posts', verifyToken, upload.fields([
             hashtags,
         });
 
-        // PHASE 7 — fan out the five post-creation side effects. Each is
-        // wrapped in its own .catch() so one branch failing (e.g. a bad
-        // mention lookup) never fails the whole post creation — the post
-        // itself is already committed above by this point.
+        // Fan out the four post-creation side effects. Each is wrapped in
+        // its own .catch() so one branch failing never fails the whole post
+        // creation — the post itself is already committed above.
         await Promise.all([
             increasePostCount(myUsername)
                 .then(() => updateTrending(myUsername))
@@ -242,67 +191,42 @@ router.post('/api/posts', verifyToken, upload.fields([
 
     } catch (err) {
         console.error('⚠️ POST /api/posts error:', err);
-        const isUploadError = err.message && /allowed|File too large|Unexpected field/i.test(err.message);
-        return sendResponse(res, isUploadError ? 400 : 500, false, err.message || 'Failed to create post');
+        return sendResponse(res, 500, false, err.message || 'Failed to create post');
     }
 });
 
 /* ============================================================================
  * DISCOVER FEED
  * ----------------------------------------------------------------------------
- * Ranking goes through the shared calculateScore() helper (see
- * services/feedScore.js). We pull the candidate posts + their authors'
- * followersCount, score each post in application code, then sort/paginate
- * over that in-memory list.
+ * PHASE 10.1/10.2 — candidate-fetch + Phase 9 ranking + pagination live in
+ * services/feedService.js (shared with insights.js).
  *
- * PHASE 3 — personalized via the viewer's interest profile (see
- * services/interestTracker.js).
- *
- * PHASE 4 — author followersCount for scoring comes from the shared profile
- * cache (via authorService, PHASE 6) instead of its own SocialProfile.find().
+ * PHASE 10.3 — enrichPostsForFeed() (this file's own author/like/follow
+ * enrichment, via services/Post_Services/enrichService.js) is now passed
+ * to feedService as the `enrich` callback instead of being called here
+ * after the fact. feedService runs it as the last pipeline step, after
+ * ranking and the recommendation boost, so this route body just describes
+ * what it wants and hands off.
  * ==========================================================================*/
 router.get('/api/posts/discover', verifyToken, async (req, res) => {
 
     try {
         const myUsername = req.user.username;
-        const baseMatch = { isDeleted: false };
-
-        if (req.query.hashtag) {
-            baseMatch.hashtags = String(req.query.hashtag).toLowerCase().replace(/^#/, '');
-        }
+        const hashtag = req.query.hashtag
+            ? String(req.query.hashtag).toLowerCase().replace(/^#/, '')
+            : null;
+        const enrich = (pagePosts) => enrichPostsForFeed(pagePosts, myUsername); // PHASE 10.3
 
         if (req.query.after) {
             const afterDate = new Date(req.query.after);
-            const posts = await Post.aggregate([
-                { $match: { ...baseMatch, createdAt: { $gt: afterDate } } },
-                { $sort: { createdAt: -1 } },
-                { $limit: 20 },
-            ]);
-            const enriched = await enrichPostsForFeed(posts, myUsername);
-            return sendResponse(res, 200, true, 'Newer discover posts fetched', { posts: enriched });
+            const posts = await feedService.getDiscoverFeedAfter(afterDate, { limit: 20, hashtag, myUsername, enrich });
+            return sendResponse(res, 200, true, 'Newer discover posts fetched', { posts });
         }
 
         const page = Math.max(1, parseInt(req.query.page) || 1);
-        const skip = (page - 1) * PAGE_SIZE;
+        const { posts, hasMore } = await feedService.getDiscoverFeed(myUsername, { page, pageSize: PAGE_SIZE, hashtag, enrich });
 
-        const candidatePosts = await Post.find(baseMatch).lean();
-
-        const usernames = [...new Set(candidatePosts.map(p => p.username))];
-        const [authorMap, interestMap] = await Promise.all([
-            getManyProfiles(usernames, SocialProfile, 'username followersCount'),
-            getInterestMap(myUsername),
-        ]);
-
-        const ranked = candidatePosts
-            .map(post => ({ post, score: calculateScore(post, authorMap.get(post.username), interestMap) }))
-            .sort((a, b) => b.score - a.score || String(b.post._id).localeCompare(String(a.post._id)));
-
-        const posts = ranked.slice(skip, skip + PAGE_SIZE).map(r => r.post);
-
-        const enriched = await enrichPostsForFeed(posts, myUsername);
-        const hasMore = skip + PAGE_SIZE < ranked.length;
-
-        return sendResponse(res, 200, true, 'Discover feed fetched', { posts: enriched, page, hasMore });
+        return sendResponse(res, 200, true, 'Discover feed fetched', { posts, page, hasMore });
 
     } catch (err) {
         console.error('⚠️ GET /api/posts/discover error:', err);
@@ -311,45 +235,32 @@ router.get('/api/posts/discover', verifyToken, async (req, res) => {
 });
 
 /* ============================================================================
- * FOLLOWING FEED — unchanged from Phase 6
+ * FOLLOWING FEED
+ * ----------------------------------------------------------------------------
+ * PHASE 10.1 — calls feedService.getFollowingFeed()/getFollowingFeedAfter()
+ * instead of running Follow.find()/Post.find() inline. Chronological, no
+ * ranking/recommendation boost applied — "people you follow" is already
+ * the relevance signal.
+ *
+ * PHASE 10.3 — enrichPostsForFeed() passed in as feedService's `enrich`
+ * callback, same as the discover route above.
  * ==========================================================================*/
 router.get('/api/posts/following', verifyToken, async (req, res) => {
 
     try {
         const myUsername = req.user.username;
-
-        const myFollows = await Follow.find({ followerUsername: myUsername }).select('followingUsername').lean();
-        const followingUsernames = myFollows.map(f => f.followingUsername);
-
-        if (!followingUsernames.length) {
-            return sendResponse(res, 200, true, 'Following feed fetched', { posts: [], page: 1, hasMore: false });
-        }
-
-        const baseMatch = { isDeleted: false, username: { $in: followingUsernames } };
+        const enrich = (pagePosts) => enrichPostsForFeed(pagePosts, myUsername); // PHASE 10.3
 
         if (req.query.after) {
             const afterDate = new Date(req.query.after);
-            const posts = await Post.find({ ...baseMatch, createdAt: { $gt: afterDate } })
-                .sort({ createdAt: -1 })
-                .limit(20)
-                .lean();
-            const enriched = await enrichPostsForFeed(posts, myUsername);
-            return sendResponse(res, 200, true, 'Newer following posts fetched', { posts: enriched });
+            const posts = await feedService.getFollowingFeedAfter(myUsername, afterDate, { limit: 20, enrich });
+            return sendResponse(res, 200, true, 'Newer following posts fetched', { posts });
         }
 
         const page = Math.max(1, parseInt(req.query.page) || 1);
-        const skip = (page - 1) * PAGE_SIZE;
+        const { posts, hasMore } = await feedService.getFollowingFeed(myUsername, { page, pageSize: PAGE_SIZE, enrich });
 
-        const posts = await Post.find(baseMatch)
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(PAGE_SIZE)
-            .lean();
-
-        const enriched = await enrichPostsForFeed(posts, myUsername);
-        const hasMore = posts.length === PAGE_SIZE;
-
-        return sendResponse(res, 200, true, 'Following feed fetched', { posts: enriched, page, hasMore });
+        return sendResponse(res, 200, true, 'Following feed fetched', { posts, page, hasMore });
 
     } catch (err) {
         console.error('⚠️ GET /api/posts/following error:', err);
@@ -358,7 +269,10 @@ router.get('/api/posts/following', verifyToken, async (req, res) => {
 });
 
 /* ============================================================================
- * NEW-POSTS COUNT — unchanged from Phase 6
+ * NEW-POSTS COUNT
+ * ----------------------------------------------------------------------------
+ * PHASE 10.1 — now calls feedService.getNewPostsCount() instead of
+ * building the Follow-scoped match inline. Behavior unchanged.
  * ==========================================================================*/
 router.get('/api/posts/new-count', verifyToken, async (req, res) => {
 
@@ -369,17 +283,7 @@ router.get('/api/posts/new-count', verifyToken, async (req, res) => {
         const sinceDate = new Date(since);
         if (isNaN(sinceDate.getTime())) return sendResponse(res, 400, false, 'Invalid since timestamp');
 
-        const match = { isDeleted: false, createdAt: { $gt: sinceDate } };
-
-        if (feed === 'following') {
-            const myUsername = req.user.username;
-            const myFollows = await Follow.find({ followerUsername: myUsername }).select('followingUsername').lean();
-            const usernames = myFollows.map(f => f.followingUsername);
-            if (!usernames.length) return sendResponse(res, 200, true, 'ok', { count: 0 });
-            match.username = { $in: usernames };
-        }
-
-        const count = await Post.countDocuments(match);
+        const count = await feedService.getNewPostsCount({ since: sinceDate, feed, myUsername: req.user.username });
         return sendResponse(res, 200, true, 'ok', { count });
 
     } catch (err) {
@@ -389,7 +293,7 @@ router.get('/api/posts/new-count', verifyToken, async (req, res) => {
 });
 
 /* ============================================================================
- * LIKE / UNLIKE (toggle) — unchanged from Phase 6
+ * LIKE / UNLIKE (toggle) — unchanged
  * ==========================================================================*/
 router.post('/api/posts/:id/like', verifyToken, async (req, res) => {
 
@@ -429,13 +333,7 @@ router.post('/api/posts/:id/like', verifyToken, async (req, res) => {
 });
 
 /* ============================================================================
- * REGISTER A VIEW
- * ----------------------------------------------------------------------------
- * PHASE 3 — besides bumping viewsCount, this is also where view_crypto /
- * view_btc / view_eth activity gets logged: if the viewed post carries one
- * of those hashtags, trackActivity() bumps the viewer's UserInterest score
- * for it. Fire-and-forget (doesn't block or affect the response) so a slow
- * activity write never delays the view counter itself.
+ * REGISTER A VIEW — unchanged
  * ==========================================================================*/
 router.post('/api/posts/:id/view', verifyToken, async (req, res) => {
 
@@ -450,6 +348,7 @@ router.post('/api/posts/:id/view', verifyToken, async (req, res) => {
         if (!post)
             return sendResponse(res, 404, false, 'Post not found');
 
+        const { trackActivity } = require('./services/interestTracker');
         ['crypto', 'btc', 'eth'].forEach(tag => {
             if (post.hashtags?.includes(tag)) {
                 trackActivity({
@@ -471,21 +370,14 @@ router.post('/api/posts/:id/view', verifyToken, async (req, res) => {
 });
 
 /* ============================================================================
- * TRACK ENGAGEMENT ACTIVITY (Phase 3) — unchanged from Phase 6
- * ----------------------------------------------------------------------------
- * Generic hook the frontend calls for activity types that aren't implied by
- * an existing action:
- *   watch_video   -> fired when a viewer actually plays a video on a post
- *   open_profile  -> fired when a viewer taps into a post's author
- * Both feed into the viewer's UserInterest profile via the post's hashtags
- * (see services/interestTracker.js), same as the view_crypto/btc/eth
- * tracking above.
+ * TRACK ENGAGEMENT ACTIVITY — unchanged
  * ==========================================================================*/
 router.post('/api/posts/:id/activity', verifyToken, async (req, res) => {
 
     try {
         const myUsername = req.user.username;
         const { activityType } = req.body;
+        const { trackActivity, TRACKABLE_ACTIVITY_TYPES } = require('./services/interestTracker');
 
         if (!TRACKABLE_ACTIVITY_TYPES.includes(activityType))
             return sendResponse(res, 400, false, 'Unsupported activity type');
@@ -512,19 +404,6 @@ router.post('/api/posts/:id/activity', verifyToken, async (req, res) => {
         console.error('⚠️ POST /api/posts/:id/activity error:', err);
         return sendResponse(res, 500, false, 'Failed to record activity');
     }
-});
-
-/* ============================================================================
- * MULTER ERROR HANDLER (router-level) — unchanged from Phase 6
- * ==========================================================================*/
-router.use((err, req, res, next) => {
-    if (err instanceof multer.MulterError) {
-        return sendResponse(res, 400, false, `Upload error: ${err.message}`);
-    }
-    if (err) {
-        return sendResponse(res, 400, false, err.message || 'Upload failed');
-    }
-    next();
 });
 
 module.exports = router;

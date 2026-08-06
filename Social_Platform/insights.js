@@ -3,10 +3,9 @@ const router  = express.Router();
 const path    = require('path');
 
 const verifyToken = require('../middle/middleware');
-const { SocialProfile, Post, Follow, Like } = require('./social_models');
-const { calculateScore } = require('./services/feedScore');
-const { getInterestMap } = require('./services/interestTracker');
-const { getManyProfiles } = require('./cache/profileCache');
+const { Post, Like } = require('./social_models');
+const feedService = require('./services/feedService'); // PHASE 10.1 — was direct Post/ranking queries
+const { enrichPosts } = require('./services/Post_Services/enrichService'); // PHASE 6
 
 /* ============================================================================
  *  Social_Platform/insights.js  —  "Crypto Square" backend
@@ -17,16 +16,29 @@ const { getManyProfiles } = require('./cache/profileCache');
  *    GET  /api/insights/following        -> posts only from people you follow
  *    POST /api/insights/posts/:id/like   -> toggle like on a post
  *
- *  Deliberately kept separate from Social_Platform/posts.js (which already
- *  owns post *creation*) so this file can grow independently — comments,
- *  reposts, trending, and recommendation logic can all be added here later
- *  without touching the composer/upload code in posts.js.
- *
  *  Reuses the existing SocialProfile / Post / Follow / Like models and the
  *  existing verifyToken auth middleware. Follow/unfollow itself is NOT
  *  duplicated here — the frontend calls the existing POST /api/follow and
  *  POST /api/unfollow endpoints already defined in Social_Platform/
  *  top-creators.js.
+ *
+ *  PHASE 10.1 — the discover/following query + ranking pipeline that used
+ *  to live inline in these two route handlers now lives in
+ *  services/feedService.js (shared with Social_Platform/posts.js, which
+ *  had its own near-identical copy).
+ *
+ *  PHASE 6 — this file used to have its own hand-rolled enrichSquarePosts()
+ *  (its own SocialProfile/Follow/Like queries, duplicating what
+ *  authorService/followService/likeService already do for posts.js). It
+ *  now calls the same shared services/Post_Services/enrichService.js that
+ *  posts.js uses, just with the field shape Crypto Square needs
+ *  (no followersCount on author, "isFollowing" instead of
+ *  "isFollowingAuthor") — see enrichSquareFeed() below.
+ *
+ *  PHASE 10.3 — enrichSquareFeed() is passed into feedService as the
+ *  `enrich` callback rather than being called here after the fact, so
+ *  feedService owns the full pipeline order (rank -> recommend ->
+ *  paginate -> enrich).
  * ==========================================================================*/
 
 const PAGE_SIZE = 10;
@@ -45,88 +57,43 @@ router.get('/crypto-square', verifyToken, (req, res) => {
 /* ============================================================================
  * HELPERS
  * ----------------------------------------------------------------------------
- * Batch-attaches author info + per-viewer flags (isSelf / isFollowing /
- * isLiked) to a list of plain post objects in a constant number of extra
- * queries, regardless of how many posts are on the page — same pattern used
- * in posts.js, kept self-contained here so this file has no dependency on
- * posts.js internals.
- *
- * PHASE 4 — author info (displayName/avatarUrl) now comes from the shared
- * in-memory profile cache (cache/profileCache.js) instead of a fresh
- * SocialProfile.find() on every request. Follow/Like lookups stay live
- * Mongo queries since those are per-viewer relationship data.
+ * PHASE 6 — thin wrapper around the shared enrichPosts() (see
+ * services/Post_Services/enrichService.js), matching how posts.js's
+ * enrichPostsForFeed() calls the same function. Crypto Square doesn't show
+ * follower counts on the author chip and uses "isFollowing" as its field
+ * name (vs posts.js's "isFollowingAuthor") — that's the only difference,
+ * expressed here as options rather than a second hand-written enrichment
+ * function.
  * ==========================================================================*/
-async function enrichSquarePosts(posts, myUsername) {
-    if (!posts.length) return [];
-
-    const usernames = [...new Set(posts.map(p => p.username))];
-    const postIds    = posts.map(p => p._id);
-
-    const [authorMap, myFollows, myLikes] = await Promise.all([
-        getManyProfiles(usernames, SocialProfile, 'username displayName avatarUrl'),
-        Follow.find({ followerUsername: myUsername }).select('followingUsername').lean(),
-        Like.find({ username: myUsername, targetType: 'Post', targetId: { $in: postIds } }).select('targetId').lean(),
-    ]);
-
-    const followingSet = new Set(myFollows.map(f => f.followingUsername));
-    const likedSet      = new Set(myLikes.map(l => String(l.targetId)));
-
-    return posts.map(p => {
-        const author = authorMap.get(p.username);
-        return {
-            ...p,
-            author: {
-                displayName: author?.displayName || p.username,
-                avatarUrl: author?.avatarUrl || '',
-            },
-            isSelf: p.username === myUsername,
-            isFollowing: followingSet.has(p.username),
-            isLiked: likedSet.has(String(p._id)),
-        };
+function enrichSquareFeed(posts, myUsername) {
+    return enrichPosts(posts, myUsername, {
+        authorProjection: 'username displayName avatarUrl',
+        includeFollowersCount: false,
+        followingFieldName: 'isFollowing',
     });
 }
 
 /* ============================================================================
  * DISCOVER FEED
  * ----------------------------------------------------------------------------
- * PHASE 3 — no longer a flat chronological sort. Ranking goes through the
- * same shared calculateScore() helper used by posts.js's discover feed
- * (see services/feedScore.js), personalized per-viewer via their
- * UserInterest profile (see services/interestTracker.js). We pull the
- * candidate posts + their authors' followersCount + the viewer's interest
- * map, score every post in application code, then sort/paginate over that
- * in-memory list — so two different users hitting this endpoint get two
- * different orderings back, weighted toward hashtags they've engaged with
- * (view_crypto/view_btc/view_eth, watch_video, open_profile).
- *
- * PHASE 4 — author followersCount for scoring now comes from the shared
- * profile cache instead of its own SocialProfile.find() per request.
+ * PHASE 10.1 — ranking + pagination now happen inside
+ * feedService.getDiscoverFeed(); this route only asks for a page, enriches
+ * it, and returns it. The Phase 9 formula itself (friendship/interest/
+ * engagement/recency) is unchanged — it just moved one layer down.
  * ==========================================================================*/
 router.get('/api/insights/discover', verifyToken, async (req, res) => {
 
     try {
         const myUsername = req.user.username;
         const page = Math.max(1, parseInt(req.query.page) || 1);
-        const skip = (page - 1) * PAGE_SIZE;
 
-        const candidatePosts = await Post.find({ isDeleted: false }).lean();
+        const { posts, hasMore } = await feedService.getDiscoverFeed(myUsername, {
+            page,
+            pageSize: PAGE_SIZE,
+            enrich: (pagePosts) => enrichSquareFeed(pagePosts, myUsername), // PHASE 10.3
+        });
 
-        const usernames = [...new Set(candidatePosts.map(p => p.username))];
-        const [authorMap, interestMap] = await Promise.all([
-            getManyProfiles(usernames, SocialProfile, 'username followersCount'),
-            getInterestMap(myUsername),
-        ]);
-
-        const ranked = candidatePosts
-            .map(post => ({ post, score: calculateScore(post, authorMap.get(post.username), interestMap) }))
-            .sort((a, b) => b.score - a.score || String(b.post._id).localeCompare(String(a.post._id)));
-
-        const posts = ranked.slice(skip, skip + PAGE_SIZE).map(r => r.post);
-
-        const enriched = await enrichSquarePosts(posts, myUsername);
-        const hasMore = skip + PAGE_SIZE < ranked.length;
-
-        return sendResponse(res, 200, true, 'Discover feed fetched', { posts: enriched, page, hasMore });
+        return sendResponse(res, 200, true, 'Discover feed fetched', { posts, page, hasMore });
 
     } catch (err) {
         console.error('⚠️ GET /api/insights/discover error:', err);
@@ -137,38 +104,23 @@ router.get('/api/insights/discover', verifyToken, async (req, res) => {
 /* ============================================================================
  * FOLLOWING FEED
  * ----------------------------------------------------------------------------
- * Posts only from creators the logged-in user follows, newest first. The
- * logged-in user's own posts are explicitly excluded even though a self-
- * follow shouldn't normally exist (Follow /api/follow already blocks
- * following yourself) — belt and suspenders. Unchanged from your original.
+ * PHASE 10.1 — now calls feedService.getFollowingFeed() instead of running
+ * Follow.find()/Post.find() inline. Behavior is unchanged (chronological,
+ * no ranking).
  * ==========================================================================*/
 router.get('/api/insights/following', verifyToken, async (req, res) => {
 
     try {
         const myUsername = req.user.username;
-
-        const myFollows = await Follow.find({ followerUsername: myUsername }).select('followingUsername').lean();
-        const followingUsernames = myFollows
-            .map(f => f.followingUsername)
-            .filter(u => u !== myUsername);
-
-        if (!followingUsernames.length) {
-            return sendResponse(res, 200, true, 'Following feed fetched', { posts: [], page: 1, hasMore: false });
-        }
-
         const page = Math.max(1, parseInt(req.query.page) || 1);
-        const skip = (page - 1) * PAGE_SIZE;
 
-        const posts = await Post.find({ isDeleted: false, username: { $in: followingUsernames } })
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(PAGE_SIZE)
-            .lean();
+        const { posts, hasMore } = await feedService.getFollowingFeed(myUsername, {
+            page,
+            pageSize: PAGE_SIZE,
+            enrich: (pagePosts) => enrichSquareFeed(pagePosts, myUsername), // PHASE 10.3
+        });
 
-        const enriched = await enrichSquarePosts(posts, myUsername);
-        const hasMore = posts.length === PAGE_SIZE;
-
-        return sendResponse(res, 200, true, 'Following feed fetched', { posts: enriched, page, hasMore });
+        return sendResponse(res, 200, true, 'Following feed fetched', { posts, page, hasMore });
 
     } catch (err) {
         console.error('⚠️ GET /api/insights/following error:', err);
@@ -177,13 +129,7 @@ router.get('/api/insights/following', verifyToken, async (req, res) => {
 });
 
 /* ============================================================================
- * LIKE / UNLIKE (toggle)
- * ----------------------------------------------------------------------------
- * Same toggle pattern as posts.js's like endpoint: a Like doc is the source
- * of truth (unique per user+post via the compound index on Like), and
- * Post.likesCount is a denormalized counter kept in sync alongside it so
- * feed reads never need to COUNT() likes on the fly. Unchanged from your
- * original.
+ * LIKE / UNLIKE (toggle) — unchanged
  * ==========================================================================*/
 router.post('/api/insights/posts/:id/like', verifyToken, async (req, res) => {
 

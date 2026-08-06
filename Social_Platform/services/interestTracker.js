@@ -3,10 +3,20 @@
  * ----------------------------------------------------------------------------
  *  Turns raw UserActivity events into a personalized interest profile per
  *  user, stored as { username, hashtag, score } rows in UserInterest (e.g.
- *  { username: "muneeb", hashtag: "crypto", score: 35 }). feedScore.js reads
- *  that profile back out to boost posts a given user is likely to care
- *  about — this is what makes the discover feeds show a different ranking
- *  per person instead of the same feed for everyone.
+ *  { username: "muneeb", hashtag: "crypto", score: 35 }). feedRanking.js
+ *  reads that profile back out (via getInterestMap -> interestScore()) to
+ *  boost posts a given user is likely to care about — this is what makes
+ *  the discover feeds show a different ranking per person instead of the
+ *  same feed for everyone.
+ *
+ *  PHASE 11 — added `comment` as a scored activity type. Posting a comment
+ *  or reply (services/commentService.js) is a much stronger intent signal
+ *  than a passive view, so it's weighted above watch_video/open_profile.
+ *  This reuses the `"comment"` value already present in
+ *  UserActivitySchema.activityType's enum (social_models.js) — no schema
+ *  change required. Hashtags are resolved the same generic way
+ *  watch_video/open_profile already work: whatever tags the post being
+ *  commented on carries (see resolveHashtags() below).
  * ==========================================================================*/
 
 const { UserActivity, UserInterest } = require('../social_models');
@@ -22,11 +32,12 @@ const FIXED_HASHTAG_ACTIVITIES = {
 // How many points each activity type contributes per matched hashtag —
 // mirrors the "if (interest === 'crypto') score += 50;" rule, kept in one
 // place so tuning personalization stays a one-line change, same spirit as
-// feedScore.js's engagement weights.
+// feedRanking.js's engagement weights.
 const ACTIVITY_SCORE_WEIGHTS = {
     view_crypto: 50,
     view_btc: 50,
     view_eth: 50,
+    comment: 40,       // PHASE 11 — commenting/replying: stronger intent than a passive view
     watch_video: 30,   // stronger intent than a passive view
     open_profile: 15,  // curiosity about the author, weaker than a direct view
 };
@@ -37,8 +48,8 @@ const TRACKABLE_ACTIVITY_TYPES = Object.keys(ACTIVITY_SCORE_WEIGHTS);
 //  - view_crypto/view_btc/view_eth are fixed to their own hashtag, but only
 //    score if the post actually carries that tag (no free points for
 //    viewing an untagged post).
-//  - watch_video/open_profile inherit whatever hashtags the triggering
-//    post already has.
+//  - watch_video/open_profile/comment inherit whatever hashtags the
+//    triggering post already has.
 function resolveHashtags(activityType, post) {
     const postTags = post?.hashtags || [];
 
@@ -76,7 +87,7 @@ async function trackActivity({ username, activityType, post = null, targetType =
 }
 
 // Returns a Map<hashtag, score> for a user's current interest profile —
-// consumed by feedScore.js's calculateScore() to personalize ranking.
+// consumed by feedRanking.js's calculateScore() to personalize ranking.
 async function getInterestMap(username) {
     if (!username) return new Map();
     const rows = await UserInterest.find({ username }).select('hashtag score').lean();

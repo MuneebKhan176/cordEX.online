@@ -26,6 +26,9 @@ const crypto_square=require('./Social_Platform/insights')
 const spotPanel = require('./routes/spotPanel_Route');
 const futuresPanel= require('./routes/futuresPanel_Route');
 const uploadRoutes = require('./routes/uploadRoutes');
+const commentRoutes = require('./Social_Platform/Social_Routes_Utils/comments');
+const mediaUploadRoutes = require('./Social_Platform/Social_Routes_Utils/upload');
+const mediaRoutes = require('./Social_Platform/Social_Routes_Utils/media');
 
 // ---------------- Managers ----------------
 
@@ -70,12 +73,31 @@ app.use(spotPanel);
 app.use(futuresPanel);
 app.use('/api/chat', verifyToken, uploadRoutes);
 
+// FIX 1 — comments.js already defines its own full paths
+// (/api/posts/:postId/comments, /api/comments/:commentId/like, etc),
+// same as socialProfile/create_Post/crypto_square above. Mounting it at
+// '/api/comments' was double-prefixing every route inside it
+// (-> /api/comments/api/posts/.../comments, which never matches what the
+// frontend calls), which is what produced the 404s / "Route not found"
+// SyntaxErrors in the console.
+app.use(commentRoutes);
+
+// FIX 2 — these were previously registered AFTER the 404 catch-all, so
+// Express never reached them; every /api/upload/* and /api/media/*
+// request was silently falling into "Route not found" too. Moved above
+// the catch-all so they're actually live.
+app.use(mediaUploadRoutes);
+app.use(mediaRoutes);
+
 
 // ---------------- 404 ----------------
-
+// Must be the LAST app.use() — anything registered after this point is
+// unreachable, since Express stops at the first middleware that sends a
+// response.
 app.use((req, res) => {
-    res.status(404).send("Route not found");
+    res.status(404).json({ success: false, message: 'Route not found' });
 });
+
 
 // ---------------- HTTP Server ----------------
 

@@ -253,6 +253,95 @@
     .like-btn.liked svg { fill: currentColor; animation: likePulse .35s var(--ease); }
     @keyframes likePulse { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
 
+    /* ── Comments (PHASE 11) ── */
+    .comment-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 14px; border-radius: 8px; margin-left: 8px;
+      background: var(--surface2); border: 1px solid var(--border2); color: var(--text-2);
+      font-size: .82rem; font-weight: 600; cursor: pointer; transition: all .15s;
+    }
+    .comment-btn:hover { border-color: #444; color: #fff; }
+    .comment-btn.open { border-color: var(--blue); color: var(--blue); }
+    .comment-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+
+    .comments-section { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .comments-section.open { display: block; }
+
+    .comment-composer { display: flex; gap: 8px; margin-bottom: 14px; }
+    .comment-input {
+      flex: 1; background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: 8px; color: var(--text); font-size: .84rem;
+      padding: 9px 12px; outline: none; transition: border-color .2s; font-family: inherit;
+    }
+    .comment-input:focus { border-color: #444; }
+    .comment-post-btn {
+      padding: 9px 16px; border-radius: 8px; font-size: .82rem; font-weight: 700;
+      background: linear-gradient(135deg, var(--blue), #2563eb); color: #fff; border: none;
+      cursor: pointer; transition: transform .15s var(--ease); flex-shrink: 0;
+    }
+    .comment-post-btn:hover { transform: translateY(-1px); }
+    .comment-post-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+    .comment-list { display: flex; flex-direction: column; gap: 14px; }
+    .comment-item { display: flex; gap: 10px; }
+    .comment-avatar {
+      width: 30px; height: 30px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
+      background: linear-gradient(135deg,#3b82f6,#1d4ed8);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .68rem; font-weight: 700; color: #fff;
+    }
+    .comment-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .comment-body { flex: 1; min-width: 0; }
+    .comment-bubble {
+      background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: 12px; padding: 8px 12px; display: inline-block; max-width: 100%;
+    }
+    .comment-who { font-size: .8rem; font-weight: 700; color: #fff; display: block; margin-bottom: 2px; }
+    .comment-text { font-size: .83rem; color: var(--text-2); line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+    .comment-meta-row { display: flex; align-items: center; gap: 14px; margin-top: 5px; padding-left: 4px; flex-wrap: wrap; }
+    .comment-time { font-size: .7rem; color: var(--text-3); }
+
+    /* Like-only controls (no dislike button anywhere in this UI) */
+    .comment-like-btn, .comment-reply-toggle, .comment-delete-btn, .view-replies-btn, .load-more-replies-btn {
+      background: none; border: none; padding: 0; cursor: pointer;
+      font-size: .72rem; font-weight: 700; color: var(--text-3);
+      display: inline-flex; align-items: center; gap: 4px; transition: color .15s;
+    }
+    .comment-like-btn:hover, .comment-reply-toggle:hover, .view-replies-btn:hover, .load-more-replies-btn:hover { color: #fff; }
+    .comment-delete-btn:hover { color: var(--red); }
+    .comment-like-btn svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; }
+    .comment-like-btn.liked { color: var(--red); }
+    .comment-like-btn.liked svg { fill: currentColor; }
+    .comment-like-btn:disabled, .comment-reply-toggle:disabled { opacity: .5; cursor: not-allowed; }
+
+    .view-replies-btn { margin-top: 6px; margin-left: 4px; color: var(--blue); }
+    .load-more-replies-btn { margin-top: 4px; margin-left: 40px; }
+    .replies-list { margin-top: 8px; margin-left: 30px; display: flex; flex-direction: column; gap: 10px; }
+    .replies-loading { font-size: .72rem; color: var(--text-3); margin-left: 4px; margin-top: 4px; }
+
+    .reply-composer { display: flex; gap: 6px; margin-top: 8px; margin-left: 4px; }
+    .reply-input {
+      flex: 1; background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: 999px; color: var(--text); font-size: .78rem;
+      padding: 6px 12px; outline: none; font-family: inherit;
+    }
+    .reply-post-btn {
+      padding: 6px 12px; border-radius: 999px; font-size: .74rem; font-weight: 700;
+      background: var(--surface3); border: 1px solid var(--border2); color: var(--text-2);
+      cursor: pointer; flex-shrink: 0;
+    }
+    .reply-post-btn:hover { color: #fff; border-color: #444; }
+    .reply-post-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    .comments-empty { font-size: .8rem; color: var(--text-3); padding: 6px 4px; }
+    .comments-loading { font-size: .8rem; color: var(--text-3); padding: 6px 4px; }
+    .load-more-comments-btn {
+      display: block; margin: 4px auto 0; padding: 7px 16px; border-radius: 8px;
+      background: var(--surface2); border: 1px solid var(--border2); color: var(--text-2);
+      font-size: .78rem; font-weight: 600; cursor: pointer;
+    }
+    .load-more-comments-btn:hover { color: #fff; border-color: #444; }
+
     .empty-state {
       background: var(--surface); border: 1px dashed var(--border2);
       border-radius: 10px; padding: 40px 20px; text-align:center;
@@ -343,6 +432,15 @@
                                                view_crypto/view_btc/view_eth
                                                when the post carries that tag
      POST /api/posts/:id/activity          -> { activityType: 'watch_video' | 'open_profile' }
+   Comments (PHASE 11): Social_Platform/routes/comments.js
+     GET    /api/posts/:postId/comments
+     POST   /api/posts/:postId/comments
+     DELETE /api/comments/:commentId
+     POST   /api/comments/:commentId/like        (like-only, toggles)
+     GET    /api/comments/:commentId/replies
+     POST   /api/comments/:commentId/replies
+     DELETE /api/replies/:replyId
+     POST   /api/replies/:replyId/like           (like-only, toggles)
    ═══════════════════════════════════════════════════════ */
 let currentTab = 'discover';
 
@@ -462,6 +560,7 @@ function formatPostDate(dateInput) {
 const ICON_LIKE = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.6z"/></svg>';
 const ICON_UP   = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l8 10h-5v6h-6v-6H4z"/></svg>';
 const ICON_DOWN = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 20l-8-10h5V4h6v6h5z"/></svg>';
+const ICON_COMMENT = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.4 8.4 8.3 8.3 0 0 1-3.8-.9L3 21l1.9-5.7a8.3 8.3 0 0 1-.9-3.8A8.4 8.4 0 0 1 12.5 3h.1A8.4 8.4 0 0 1 21 11.4v.1z"/></svg>';
 
 function sentimentPillHtml(sentiment) {
   if (sentiment === 'bullish') return `<span class="sentiment-pill bullish">${ICON_UP}Bullish</span>`;
@@ -537,6 +636,8 @@ function renderFeed(tab) {
         ${post.isFollowing ? 'Following' : 'Follow'}
       </button>`;
 
+    const commentsOpen = !!commentsState[post._id]?.open;
+
     return `
       <div class="post-card" data-post-id="${post._id || ''}" data-author="${escapeHtml(post.username)}" data-self="${post.isSelf ? '1' : '0'}">
         <div class="post-header">
@@ -562,6 +663,15 @@ function renderFeed(tab) {
                   onclick="toggleLike(this)">
             ${ICON_LIKE}<span class="like-count">${formatCount(post.likesCount || 0)}</span>
           </button>
+          <button type="button"
+                  class="comment-btn${commentsOpen ? ' open' : ''}"
+                  data-post-id="${post._id}"
+                  onclick="toggleComments(this)">
+            ${ICON_COMMENT}<span class="comment-count">${formatCount(post.commentsCount || 0)}</span>
+          </button>
+        </div>
+        <div class="comments-section${commentsOpen ? ' open' : ''}" id="comments-${post._id}">
+          ${commentsOpen ? renderCommentsInner(post._id) : ''}
         </div>
       </div>`;
   }).join('');
@@ -652,6 +762,10 @@ function goToSlide(wrap, idx) {
         own hashtags, so no hashtag needs to be sent from here)
      2. Playing a video  -> POST /api/posts/:id/activity {watch_video}
      3. Tapping an author -> POST /api/posts/:id/activity {open_profile}
+   A fourth signal — commenting — is tracked server-side automatically
+   inside commentService.js the moment a comment/reply is created, so
+   there's no separate client-side call for it (see PHASE 11 comment
+   block below).
    All fire-and-forget: tracking failures never interrupt the UI.
    ═══════════════════════════════════════════════════════ */
 function setupViewTracking() {
@@ -766,7 +880,7 @@ function cssEscape(str) {
 }
 
 /* ═══════════════════════════════════════════════════════
-   LIKE / UNLIKE
+   LIKE / UNLIKE (post)
    ═══════════════════════════════════════════════════════ */
 async function toggleLike(btn) {
   const postId = btn.dataset.postId;
@@ -799,6 +913,455 @@ async function toggleLike(btn) {
 }
 
 /* ═══════════════════════════════════════════════════════
+   PHASE 11 — COMMENTS + REPLIES
+   ───────────────────────────────────────────────────────
+   Backend: Social_Platform/routes/comments.js
+     GET    /api/posts/:postId/comments          -> { comments, page, hasMore }
+     POST   /api/posts/:postId/comments             { content }
+     DELETE /api/comments/:commentId
+     POST   /api/comments/:commentId/like         -> { liked, likesCount } (like-only, toggles)
+     GET    /api/comments/:commentId/replies      -> { replies, page, hasMore }
+     POST   /api/comments/:commentId/replies         { content }
+     DELETE /api/replies/:replyId
+     POST   /api/replies/:replyId/like            -> { liked, likesCount } (like-only, toggles)
+
+   State lives outside renderFeed() so opening a comment thread survives a
+   feed re-render (renderFeed() rebuilds #feedContainer's innerHTML wholesale
+   on every load-more/tab switch, same as the rest of this page).
+     commentsState[postId]    = { open, comments, page, hasMore, loading }
+     repliesState[commentId]  = { open, composerOpen, replies, page, hasMore, loading }
+
+   There is no dislike/downvote anywhere in this block — comment-like-btn
+   toggles a single Like row on/off, matching the backend's like-only design.
+   ═══════════════════════════════════════════════════════ */
+const commentsState = {};
+const repliesState  = {};
+
+function ensureCommentsState(postId) {
+  if (!commentsState[postId]) {
+    commentsState[postId] = { open: false, comments: [], page: 0, hasMore: true, loading: false };
+  }
+  return commentsState[postId];
+}
+
+function ensureRepliesState(commentId) {
+  if (!repliesState[commentId]) {
+    repliesState[commentId] = { open: false, composerOpen: false, replies: [], page: 0, hasMore: true, loading: false };
+  }
+  return repliesState[commentId];
+}
+
+function refreshCommentsSection(postId) {
+  const section = document.getElementById(`comments-${postId}`);
+  if (section) section.innerHTML = renderCommentsInner(postId);
+}
+
+// Updates commentsCount in the in-memory tab caches (so it survives a tab
+// switch / re-render) and refreshes the visible badge on the comment button.
+function bumpCommentCountBadge(postId, delta) {
+  let updatedCount = null;
+
+  ['discover', 'following'].forEach(tab => {
+    const p = tabState[tab].posts.find(p => String(p._id) === String(postId));
+    if (p) {
+      p.commentsCount = Math.max(0, (p.commentsCount || 0) + delta);
+      if (tab === currentTab) updatedCount = p.commentsCount;
+    }
+  });
+
+  const badge = document.querySelector(`.comment-btn[data-post-id="${cssEscape(postId)}"] .comment-count`);
+  if (badge && updatedCount !== null) badge.textContent = formatCount(updatedCount);
+}
+
+/* ── OPEN / CLOSE the panel ── */
+async function toggleComments(btn) {
+  const postId = btn.dataset.postId;
+  const st = ensureCommentsState(postId);
+  st.open = !st.open;
+  btn.classList.toggle('open', st.open);
+
+  const section = document.getElementById(`comments-${postId}`);
+  if (!section) return;
+
+  if (!st.open) {
+    section.classList.remove('open');
+    section.innerHTML = '';
+    return;
+  }
+
+  section.classList.add('open');
+  refreshCommentsSection(postId);
+
+  if (!st.comments.length && st.hasMore && !st.loading) {
+    await loadComments(postId);
+  }
+}
+
+/* ── FETCH ── */
+async function loadComments(postId) {
+  const st = ensureCommentsState(postId);
+  st.loading = true;
+  refreshCommentsSection(postId);
+
+  try {
+    const nextPage = st.page + 1;
+    const r = await fetch(`/api/posts/${postId}/comments?page=${nextPage}`);
+    const d = await r.json();
+    if (d.success) {
+      st.comments = st.comments.concat(d.data.comments || []);
+      st.page = d.data.page || nextPage;
+      st.hasMore = !!d.data.hasMore;
+    }
+  } catch (e) {
+    console.error('loadComments error:', e);
+  } finally {
+    st.loading = false;
+    refreshCommentsSection(postId);
+  }
+}
+
+function loadMoreComments(btn) {
+  loadComments(btn.dataset.postId);
+}
+
+/* ── POST a new top-level comment ── */
+async function submitComment(btn) {
+  const postId = btn.dataset.postId;
+  const input = document.getElementById(`commentInput-${postId}`);
+  const content = (input?.value || '').trim();
+  if (!content) return;
+
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/api/posts/${postId}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    });
+    const d = await r.json();
+    if (!d.success) { alert(d.message || 'Failed to post comment.'); return; }
+
+    const st = ensureCommentsState(postId);
+    st.comments.unshift(d.data.comment);
+
+    bumpCommentCountBadge(postId, 1);
+    refreshCommentsSection(postId);
+    if (input) input.value = '';
+  } catch (e) {
+    console.error('submitComment error:', e);
+    alert('Network error while posting your comment.');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ── DELETE a comment ── */
+async function deleteComment(btn) {
+  const postId = btn.dataset.postId;
+  const commentId = btn.dataset.commentId;
+  if (!confirm('Delete this comment?')) return;
+
+  try {
+    const r = await fetch(`/api/comments/${commentId}`, { method: 'DELETE' });
+    const d = await r.json();
+    if (!d.success) { alert(d.message || 'Failed to delete comment.'); return; }
+
+    const st = ensureCommentsState(postId);
+    st.comments = st.comments.filter(c => String(c._id) !== String(commentId));
+    delete repliesState[commentId];
+
+    bumpCommentCountBadge(postId, -1);
+    refreshCommentsSection(postId);
+  } catch (e) {
+    console.error('deleteComment error:', e);
+    alert('Network error while deleting the comment.');
+  }
+}
+
+/* ── LIKE / UNLIKE a comment (like-only toggle) ── */
+async function toggleCommentLike(btn) {
+  const postId = btn.dataset.postId;
+  const commentId = btn.dataset.commentId;
+  btn.disabled = true;
+
+  try {
+    const r = await fetch(`/api/comments/${commentId}/like`, { method: 'POST' });
+    const d = await r.json();
+    if (!d.success) return;
+
+    const liked = !!d.data.liked;
+    const likesCount = d.data.likesCount ?? 0;
+
+    const st = ensureCommentsState(postId);
+    const c = st.comments.find(c => String(c._id) === String(commentId));
+    if (c) { c.isLiked = liked; c.likesCount = likesCount; }
+
+    btn.classList.toggle('liked', liked);
+    const countEl = btn.querySelector('.comment-like-count');
+    if (countEl) countEl.textContent = likesCount > 0 ? formatCount(likesCount) : '';
+  } catch (e) {
+    console.error('toggleCommentLike error:', e);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ── Reply composer toggle ── */
+function toggleReplyComposer(btn) {
+  const postId = btn.dataset.postId;
+  const commentId = btn.dataset.commentId;
+  const rst = ensureRepliesState(commentId);
+  rst.composerOpen = !rst.composerOpen;
+  refreshCommentsSection(postId);
+}
+
+/* ── View / hide replies ── */
+async function toggleRepliesList(btn) {
+  const postId = btn.dataset.postId;
+  const commentId = btn.dataset.commentId;
+  const rst = ensureRepliesState(commentId);
+  rst.open = !rst.open;
+
+  if (rst.open && !rst.replies.length && rst.hasMore) {
+    await loadReplies(commentId, postId);
+  } else {
+    refreshCommentsSection(postId);
+  }
+}
+
+async function loadReplies(commentId, postId) {
+  const rst = ensureRepliesState(commentId);
+  rst.loading = true;
+  refreshCommentsSection(postId);
+
+  try {
+    const nextPage = rst.page + 1;
+    const r = await fetch(`/api/comments/${commentId}/replies?page=${nextPage}`);
+    const d = await r.json();
+    if (d.success) {
+      rst.replies = rst.replies.concat(d.data.replies || []);
+      rst.page = d.data.page || nextPage;
+      rst.hasMore = !!d.data.hasMore;
+    }
+  } catch (e) {
+    console.error('loadReplies error:', e);
+  } finally {
+    rst.loading = false;
+    refreshCommentsSection(postId);
+  }
+}
+
+function loadMoreReplies(btn) {
+  loadReplies(btn.dataset.commentId, btn.dataset.postId);
+}
+
+/* ── POST a reply ── */
+async function submitReply(btn) {
+  const postId = btn.dataset.postId;
+  const commentId = btn.dataset.commentId;
+  const input = document.getElementById(`replyInput-${commentId}`);
+  const content = (input?.value || '').trim();
+  if (!content) return;
+
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/api/comments/${commentId}/replies`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    });
+    const d = await r.json();
+    if (!d.success) { alert(d.message || 'Failed to post reply.'); return; }
+
+    const st = ensureCommentsState(postId);
+    const comment = st.comments.find(c => String(c._id) === String(commentId));
+    if (comment) comment.repliesCount = d.data.repliesCount;
+
+    const rst = ensureRepliesState(commentId);
+    rst.replies.push(d.data.reply);
+    rst.open = true;
+    rst.composerOpen = false;
+
+    refreshCommentsSection(postId);
+  } catch (e) {
+    console.error('submitReply error:', e);
+    alert('Network error while posting your reply.');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ── DELETE a reply ── */
+async function deleteReply(btn) {
+  const postId = btn.dataset.postId;
+  const commentId = btn.dataset.commentId;
+  const replyId = btn.dataset.replyId;
+  if (!confirm('Delete this reply?')) return;
+
+  try {
+    const r = await fetch(`/api/replies/${replyId}`, { method: 'DELETE' });
+    const d = await r.json();
+    if (!d.success) { alert(d.message || 'Failed to delete reply.'); return; }
+
+    const st = ensureCommentsState(postId);
+    const comment = st.comments.find(c => String(c._id) === String(commentId));
+    if (comment) comment.repliesCount = d.data.repliesCount;
+
+    const rst = ensureRepliesState(commentId);
+    rst.replies = rst.replies.filter(rp => String(rp._id) !== String(replyId));
+
+    refreshCommentsSection(postId);
+  } catch (e) {
+    console.error('deleteReply error:', e);
+    alert('Network error while deleting the reply.');
+  }
+}
+
+/* ── LIKE / UNLIKE a reply (like-only toggle) ── */
+async function toggleReplyLike(btn) {
+  const commentId = btn.dataset.commentId;
+  const replyId = btn.dataset.replyId;
+  btn.disabled = true;
+
+  try {
+    const r = await fetch(`/api/replies/${replyId}/like`, { method: 'POST' });
+    const d = await r.json();
+    if (!d.success) return;
+
+    const liked = !!d.data.liked;
+    const likesCount = d.data.likesCount ?? 0;
+
+    const rst = ensureRepliesState(commentId);
+    const rp = rst.replies.find(rp => String(rp._id) === String(replyId));
+    if (rp) { rp.isLiked = liked; rp.likesCount = likesCount; }
+
+    btn.classList.toggle('liked', liked);
+    const countEl = btn.querySelector('.comment-like-count');
+    if (countEl) countEl.textContent = likesCount > 0 ? formatCount(likesCount) : '';
+  } catch (e) {
+    console.error('toggleReplyLike error:', e);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ── RENDER HELPERS ── */
+function commentAvatarHtml(author, username) {
+  return author?.avatarUrl
+    ? `<img src="${author.avatarUrl}" alt="avatar"/>`
+    : (author?.displayName || username || '?').slice(0, 2).toUpperCase();
+}
+
+function replyItemHtml(reply, commentId, postId) {
+  const { short: whenShort, full: whenFull } = formatPostDate(reply.createdAt);
+  return `
+    <div class="comment-item">
+      <div class="comment-avatar">${commentAvatarHtml(reply.author, reply.username)}</div>
+      <div class="comment-body">
+        <div class="comment-bubble">
+          <span class="comment-who">${escapeHtml(reply.author?.displayName || reply.username)}</span>
+          <div class="comment-text">${escapeHtml(reply.content)}</div>
+        </div>
+        <div class="comment-meta-row" title="${escapeHtml(whenFull)}">
+          <span class="comment-time">${escapeHtml(whenShort)}</span>
+          <button type="button"
+                  class="comment-like-btn${reply.isLiked ? ' liked' : ''}"
+                  data-comment-id="${commentId}" data-reply-id="${reply._id}"
+                  onclick="toggleReplyLike(this)">
+            ${ICON_LIKE}<span class="comment-like-count">${reply.likesCount > 0 ? formatCount(reply.likesCount) : ''}</span>
+          </button>
+          ${reply.isSelf ? `<button type="button" class="comment-delete-btn" data-post-id="${postId}" data-comment-id="${commentId}" data-reply-id="${reply._id}" onclick="deleteReply(this)">Delete</button>` : ''}
+        </div>
+      </div>
+    </div>`;
+}
+
+function repliesBlockHtml(comment, postId) {
+  const commentId = comment._id;
+  const rst = ensureRepliesState(commentId);
+  const totalReplies = comment.repliesCount || 0;
+
+  let html = '';
+
+  if (totalReplies > 0 && !rst.open) {
+    html += `<button type="button" class="view-replies-btn" data-post-id="${postId}" data-comment-id="${commentId}" onclick="toggleRepliesList(this)">
+      View ${totalReplies} repl${totalReplies === 1 ? 'y' : 'ies'}
+    </button>`;
+  }
+
+  if (rst.open) {
+    html += `<div class="replies-list">`;
+    html += rst.replies.map(rp => replyItemHtml(rp, commentId, postId)).join('');
+    if (rst.loading) html += `<div class="replies-loading"><span class="spinner-inline"></span>Loading…</div>`;
+    if (rst.hasMore && !rst.loading) {
+      html += `<button type="button" class="load-more-replies-btn" data-post-id="${postId}" data-comment-id="${commentId}" onclick="loadMoreReplies(this)">Load more replies</button>`;
+    }
+    if (totalReplies > 0) {
+      html += `<button type="button" class="view-replies-btn" data-post-id="${postId}" data-comment-id="${commentId}" onclick="toggleRepliesList(this)">Hide replies</button>`;
+    }
+    html += `</div>`;
+  }
+
+  if (rst.composerOpen) {
+    html += `<div class="reply-composer">
+      <input type="text" class="reply-input" id="replyInput-${commentId}" placeholder="Write a reply…" maxlength="1000"/>
+      <button type="button" class="reply-post-btn" data-post-id="${postId}" data-comment-id="${commentId}" onclick="submitReply(this)">Reply</button>
+    </div>`;
+  }
+
+  return html;
+}
+
+function commentItemHtml(comment, postId) {
+  const { short: whenShort, full: whenFull } = formatPostDate(comment.createdAt);
+  return `
+    <div class="comment-item">
+      <div class="comment-avatar">${commentAvatarHtml(comment.author, comment.username)}</div>
+      <div class="comment-body">
+        <div class="comment-bubble">
+          <span class="comment-who">${escapeHtml(comment.author?.displayName || comment.username)}</span>
+          <div class="comment-text">${escapeHtml(comment.content)}</div>
+        </div>
+        <div class="comment-meta-row" title="${escapeHtml(whenFull)}">
+          <span class="comment-time">${escapeHtml(whenShort)}</span>
+          <button type="button"
+                  class="comment-like-btn${comment.isLiked ? ' liked' : ''}"
+                  data-post-id="${postId}" data-comment-id="${comment._id}"
+                  onclick="toggleCommentLike(this)">
+            ${ICON_LIKE}<span class="comment-like-count">${comment.likesCount > 0 ? formatCount(comment.likesCount) : ''}</span>
+          </button>
+          <button type="button" class="comment-reply-toggle" data-post-id="${postId}" data-comment-id="${comment._id}" onclick="toggleReplyComposer(this)">Reply</button>
+          ${comment.isSelf ? `<button type="button" class="comment-delete-btn" data-post-id="${postId}" data-comment-id="${comment._id}" onclick="deleteComment(this)">Delete</button>` : ''}
+        </div>
+        ${repliesBlockHtml(comment, postId)}
+      </div>
+    </div>`;
+}
+
+function renderCommentsInner(postId) {
+  const st = ensureCommentsState(postId);
+
+  let listHtml;
+  if (st.loading && !st.comments.length) {
+    listHtml = `<div class="comments-loading"><span class="spinner-inline"></span>Loading comments…</div>`;
+  } else if (!st.comments.length) {
+    listHtml = `<div class="comments-empty">No comments yet. Be the first to say something.</div>`;
+  } else {
+    listHtml = `<div class="comment-list">${st.comments.map(c => commentItemHtml(c, postId)).join('')}</div>`;
+    if (st.hasMore) {
+      listHtml += `<button type="button" class="load-more-comments-btn" data-post-id="${postId}" onclick="loadMoreComments(this)">Load more comments</button>`;
+    }
+  }
+
+  return `
+    <div class="comment-composer">
+      <input type="text" class="comment-input" id="commentInput-${postId}" placeholder="Write a comment…" maxlength="1000"/>
+      <button type="button" class="comment-post-btn" data-post-id="${postId}" onclick="submitComment(this)">Post</button>
+    </div>
+    ${listHtml}`;
+}
+
+/* ═══════════════════════════════════════════════════════
    NEW-POSTS BANNER
    ───────────────────────────────────────────────────────
    Backend: Social_Platform/posts.js
@@ -808,7 +1371,7 @@ async function toggleLike(btn) {
           regardless of which router served the feed itself.
    Polled every 20s for whichever tab is currently open. Tapping
    the banner does a full reload of that tab so the personalized
-   ranking (feedScore.js) is recomputed with the new posts in play,
+   ranking (feedRanking.js) is recomputed with the new posts in play,
    rather than just prepending raw unranked rows.
    ═══════════════════════════════════════════════════════ */
 const NEW_POSTS_POLL_MS = 20000;
