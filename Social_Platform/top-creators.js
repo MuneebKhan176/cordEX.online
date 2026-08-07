@@ -4,7 +4,7 @@ const path = require('path');
 
 const verifyToken = require('../middle/middleware');
 const { SocialProfile, Follow } = require('./social_models');
-const { syncTrendingCreator } = require('./services/trendingCreators');
+const { syncTrendingCreator } = require('./services/Feed_Engine/trendingCreators');
 const { getManyProfiles, patchCached, invalidate } = require('./cache/profileCache');
 
 // NOTE: SocialProfile is still required for both models AND the

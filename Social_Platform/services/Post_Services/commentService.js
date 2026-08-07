@@ -41,10 +41,10 @@
  * ==========================================================================*/
 
 const mongoose = require('mongoose');
-const { Post, Comment, Reply, Like } = require('../social_models');
-const { getAuthors } = require('./Post_Services/authorService');
-const { getLikes } = require('./Post_Services/likeService');
-const { trackActivity } = require('./interestTracker'); // PHASE 11 — ranking-engine wiring
+const { Post, Comment, Reply, Like } = require('../../social_models');
+const { getAuthors } = require('./authorService');
+const { getLikes } = require('./likeService');
+const { trackActivity } = require('../Feed_Engine/interestTracker'); // PHASE 11 — ranking-engine wiring
 
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_CONTENT_LENGTH = 1000; // matches Comment/Reply schema maxlength

@@ -4,7 +4,7 @@ const path = require('path');
 const mongoose = require('mongoose');
 
 const verifyToken = require('../middle/middleware');
-const { SocialProfile, Post } = require('./social_models');
+const { SocialProfile, Post, Follow } = require('./social_models'); // PHASE 12 — added Follow
 
 // NOTE ON REQUIRE PATHS: these assume `Social_Platform/` and `chat/` are
 // sibling directories under the same backend root. Adjust if your layout
@@ -25,6 +25,16 @@ function sendResponse(res, statusCode, success, message, data = null) {
 // Serves the standalone profile.html page (Frontend/profile.html).
 router.get('/profile', verifyToken, (req, res) => {
     res.sendFile(path.join(__dirname, '../Frontend/Square_UI/profile.html'));
+});
+
+// ================= PUBLIC SQUARE PROFILE PAGE (PHASE 12) =================
+// Serves square-profile.html — the read-only "view someone else's Crypto
+// Square" page reached by clicking a display name/avatar in the feed. Also
+// works if a user reaches their own /square-profile/<username> URL; the
+// API route below reports isSelf so the page can adapt (no follow button,
+// "Edit Profile" instead) rather than needing a hard redirect.
+router.get('/square-profile/:username', verifyToken, (req, res) => {
+    res.sendFile(path.join(__dirname, '../Frontend/Square_UI/square-profile.html'));
 });
 
 // ================= GET CURRENT USER'S PROFILE + POSTS =================
@@ -53,6 +63,53 @@ router.get('/api/profile', verifyToken, async (req, res) => {
 
     } catch (err) {
         console.error('⚠️ GET /api/profile error:', err);
+        return sendResponse(res, 500, false, 'Failed to load profile');
+    }
+});
+
+// ================= GET ANY USER'S PUBLIC PROFILE + POSTS (PHASE 12) =================
+// Powers square-profile.html. Unlike /api/profile above (which resolves the
+// *viewer* via req.user.id), this resolves the *target* via the :username
+// route param — so it can show anyone's public Square, not just your own.
+//   - email is stripped when viewing someone else's profile (never exposed
+//     publicly — /api/profile above only ever returns it for yourself anyway)
+//   - isFollowing is computed against the viewer, same Follow collection
+//     top-creators.js already uses
+//   - isSelf lets the frontend swap the Follow button for "Edit Profile"
+router.get('/api/profile/:username', verifyToken, async (req, res) => {
+
+    try {
+        const viewerUsername = req.user.username;
+        const { username } = req.params;
+
+        const profile = await SocialProfile.findOne({ username }).lean();
+
+        if (!profile)
+            return sendResponse(res, 404, false, 'User not found');
+
+        const isSelf = username === viewerUsername;
+
+        const [posts, isFollowing] = await Promise.all([
+            Post.find({ username, isDeleted: false })
+                .sort({ createdAt: -1 })
+                .limit(50)
+                .lean(),
+            isSelf
+                ? Promise.resolve(false)
+                : Follow.exists({ followerUsername: viewerUsername, followingUsername: username }),
+        ]);
+
+        if (!isSelf) delete profile.email;
+
+        return sendResponse(res, 200, true, 'Profile fetched successfully', {
+            profile,
+            posts,
+            isSelf,
+            isFollowing: !!isFollowing,
+        });
+
+    } catch (err) {
+        console.error('⚠️ GET /api/profile/:username error:', err);
         return sendResponse(res, 500, false, 'Failed to load profile');
     }
 });

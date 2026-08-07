@@ -24,7 +24,7 @@ const express = require('express');
 const router = express.Router();
 
 const verifyToken = require('../../middle/middleware');
-const commentService = require('../services/commentService');
+const commentService = require('../services/Post_Services/commentService');
 
 function sendResponse(res, statusCode, success, message, data = null) {
     return res.status(statusCode).json({ success, message, data });

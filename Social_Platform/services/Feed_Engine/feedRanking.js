@@ -1,5 +1,5 @@
 /* ============================================================================
- *  Social_Platform/services/feedRanking.js
+ *  Social_Platform/services/Feed_Engine/feedRanking.js
  * ----------------------------------------------------------------------------
  *  PHASE 9 — replaces the old "followers + time" score with:
  *

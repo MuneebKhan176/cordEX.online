@@ -4,14 +4,15 @@ const path     = require('path');
 
 const verifyToken = require('../middle/middleware');
 const { Post, Like, Hashtag, SENTIMENT_TYPES } = require('./social_models');
-const feedService = require('./services/feedService'); // PHASE 10.1 — was direct Post/ranking queries
+const feedService = require('./services/Feed_Engine/feedService'); // PHASE 10.1 — was direct Post/ranking queries
 const { enrichPosts } = require('./services/Post_Services/enrichService');
+const bookmarkService = require('./services/Post_Services/bookmarkService'); // PHASE 12
 
 // The five independent post-creation side effects, each in its own service.
-const { increasePostCount } = require('./services/postStatsService');
-const { createNotifications } = require('./services/notificationService');
-const { updateTrending } = require('./services/trendingCreators');
-const { updateRecommendations } = require('./services/recommendationService');
+const { increasePostCount } = require('./services/Post_Services/postStatsService');
+const { createNotifications } = require('./services/Feed_Engine/notificationService');
+const { updateTrending } = require('./services/Feed_Engine/trendingCreators');
+const { updateRecommendations } = require('./services/Feed_Engine/recommendationService');
 
 const PAGE_SIZE = 5;
 const MAX_HASHTAGS_PER_POST = 10;
@@ -22,13 +23,22 @@ function sendResponse(res, statusCode, success, message, data = null) {
     return res.status(statusCode).json({ success, message, data });
 }
 
+// Service-layer errors carry a `.status` (400/403/404/409) — used by the
+// bookmark routes below, same convention routes/comments.js established.
+function handleServiceError(res, err, fallbackMessage) {
+    if (err.status) return sendResponse(res, err.status, false, err.message);
+    console.error(`⚠️ ${fallbackMessage}:`, err);
+    return sendResponse(res, 500, false, fallbackMessage);
+}
+
 /* ============================================================================
  * HELPERS
  * ----------------------------------------------------------------------------
  * enrichPosts() lives in services/enrichService.js, which delegates each
- * concern to its own service (authorService / likeService / followService)
- * and merges the results. Here we just call it with this router's
- * field-naming needs: followersCount on the author object + "isFollowingAuthor" flag.
+ * concern to its own service (authorService / likeService / followService /
+ * bookmarkService) and merges the results. Here we just call it with this
+ * router's field-naming needs: followersCount on the author object +
+ * "isFollowingAuthor" flag.
  * ==========================================================================*/
 function enrichPostsForFeed(posts, myUsername) {
     return enrichPosts(posts, myUsername, {
@@ -201,10 +211,10 @@ router.post('/api/posts', verifyToken, async (req, res) => {
  * PHASE 10.1/10.2 — candidate-fetch + Phase 9 ranking + pagination live in
  * services/feedService.js (shared with insights.js).
  *
- * PHASE 10.3 — enrichPostsForFeed() (this file's own author/like/follow
- * enrichment, via services/Post_Services/enrichService.js) is now passed
- * to feedService as the `enrich` callback instead of being called here
- * after the fact. feedService runs it as the last pipeline step, after
+ * PHASE 10.3 — enrichPostsForFeed() (this file's own author/like/follow/
+ * bookmark enrichment, via services/Post_Services/enrichService.js) is now
+ * passed to feedService as the `enrich` callback instead of being called
+ * here after the fact. feedService runs it as the last pipeline step, after
  * ranking and the recommendation boost, so this route body just describes
  * what it wants and hands off.
  * ==========================================================================*/
@@ -265,6 +275,46 @@ router.get('/api/posts/following', verifyToken, async (req, res) => {
     } catch (err) {
         console.error('⚠️ GET /api/posts/following error:', err);
         return sendResponse(res, 500, false, 'Failed to load following feed');
+    }
+});
+
+/* ============================================================================
+ * BOOKMARKS  (PHASE 12)
+ * ----------------------------------------------------------------------------
+ * GET  /api/posts/bookmarks         -> the viewer's saved posts, newest
+ *                                       saved first (chronological, not
+ *                                       re-ranked — see bookmarkService.js)
+ * POST /api/posts/:id/bookmark      -> toggle save/unsave, also nudges
+ *                                       Post.saveCount which feedRanking.js
+ *                                       already reads
+ * Both usable from any page (crypto-square.html, square-profile.html) since
+ * they operate on the shared Post collection, same as like/view/activity.
+ * ==========================================================================*/
+router.get('/api/posts/bookmarks', verifyToken, async (req, res) => {
+
+    try {
+        const myUsername = req.user.username;
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+
+        const { posts: rawPosts, hasMore } = await bookmarkService.getBookmarkedFeed(myUsername, { page, pageSize: PAGE_SIZE });
+        const posts = await enrichPostsForFeed(rawPosts, myUsername);
+
+        return sendResponse(res, 200, true, 'Bookmarks fetched', { posts, page, hasMore });
+
+    } catch (err) {
+        console.error('⚠️ GET /api/posts/bookmarks error:', err);
+        return sendResponse(res, 500, false, 'Failed to load bookmarks');
+    }
+});
+
+router.post('/api/posts/:id/bookmark', verifyToken, async (req, res) => {
+
+    try {
+        const { bookmarked, saveCount } = await bookmarkService.toggleBookmark(req.params.id, req.user.username);
+        return sendResponse(res, 200, true, bookmarked ? 'Post bookmarked' : 'Post unbookmarked', { bookmarked, saveCount });
+
+    } catch (err) {
+        return handleServiceError(res, err, 'Failed to bookmark/unbookmark post');
     }
 });
 
@@ -348,7 +398,7 @@ router.post('/api/posts/:id/view', verifyToken, async (req, res) => {
         if (!post)
             return sendResponse(res, 404, false, 'Post not found');
 
-        const { trackActivity } = require('./services/interestTracker');
+        const { trackActivity } = require('./services/Feed_Engine/interestTracker');
         ['crypto', 'btc', 'eth'].forEach(tag => {
             if (post.hashtags?.includes(tag)) {
                 trackActivity({
@@ -377,7 +427,7 @@ router.post('/api/posts/:id/activity', verifyToken, async (req, res) => {
     try {
         const myUsername = req.user.username;
         const { activityType } = req.body;
-        const { trackActivity, TRACKABLE_ACTIVITY_TYPES } = require('./services/interestTracker');
+        const { trackActivity, TRACKABLE_ACTIVITY_TYPES } = require('./services/Feed_Engine/interestTracker');
 
         if (!TRACKABLE_ACTIVITY_TYPES.includes(activityType))
             return sendResponse(res, 400, false, 'Unsupported activity type');

@@ -11,11 +11,17 @@
  *    - posts.js wants  author.followersCount + `isFollowingAuthor`
  *    - insights.js wants no followersCount on author + `isFollowing`
  *  Rather than fork the function again, both differences are just options.
+ *
+ *  PHASE 12 — added bookmarkService.getBookmarkedSet() as a fourth parallel
+ *  lookup, attaching `isBookmarked` to every post. Unlike the follow-flag
+ *  field name, isBookmarked isn't parametrized — both callers want the same
+ *  name, so there's no reason to fork it the way followingFieldName is.
  * ==========================================================================*/
 
 const { getAuthors } = require('./authorService');
 const { getLikes } = require('./likeService');
 const { getFollows } = require('./followService');
+const { getBookmarkedSet } = require('./bookmarkService');
 
 /**
  * @param {Array} posts - plain post objects/lean docs to enrich
@@ -38,12 +44,13 @@ async function enrichPosts(posts, myUsername, options = {}) {
     const usernames = [...new Set(posts.map(p => p.username))];
     const postIds    = posts.map(p => p._id);
 
-    // Three independent lookups, fetched in parallel — none of them
-    // depends on another's result.
-    const [authorData, followData, likeData] = await Promise.all([
+    // Four independent lookups, fetched in parallel — none of them depends
+    // on another's result.
+    const [authorData, followData, likeData, bookmarkData] = await Promise.all([
         getAuthors(usernames, authorProjection),
         getFollows(myUsername),
         getLikes(myUsername, postIds),
+        getBookmarkedSet(myUsername, postIds),
     ]);
 
     return posts.map(p => {
@@ -63,6 +70,7 @@ async function enrichPosts(posts, myUsername, options = {}) {
             isSelf: p.username === myUsername,
             [followingFieldName]: followData.has(p.username),
             isLiked: likeData.has(String(p._id)),
+            isBookmarked: bookmarkData.has(String(p._id)),
         };
     });
 }

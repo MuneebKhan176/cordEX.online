@@ -1,5 +1,5 @@
 /* ============================================================================
- *  Social_Platform/services/trendingCreators.js
+ *  Social_Platform/services/Feed_Engine/trendingCreators.js
  * ----------------------------------------------------------------------------
  *  PHASE 5 — keeps the TrendingCreator collection (username, followersCount,
  *  score) in sync so /api/top-creators never has to pull every
@@ -27,7 +27,7 @@
  *  renaming anything top-creators.js or profile.js already depend on.
  * ==========================================================================*/
 
-const { SocialProfile, TrendingCreator } = require('../social_models');
+const { SocialProfile, TrendingCreator } = require('../../social_models');
 
 // Simple, tunable ranking formula — followers dominate (mirrors the old
 // "top creators by followersCount" behavior); postsCount is a small

@@ -8,8 +8,8 @@
  *  remember to patch the cache themselves.
  * ==========================================================================*/
 
-const { SocialProfile } = require('../social_models');
-const { patchCached } = require('../cache/profileCache');
+const { SocialProfile } = require('../../social_models');
+const { patchCached } = require('../../cache/profileCache');
 
 // Increments postsCount for `username` and returns the updated profile doc
 // (lean-ish plain object). Patches the profile cache with the new count so

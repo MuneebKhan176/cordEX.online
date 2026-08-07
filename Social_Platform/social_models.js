@@ -2,11 +2,18 @@
  *  Social_Platform/social_models.js
  * ----------------------------------------------------------------------------
  *   const {
- *     SocialProfile, Post, Comment, Reply, Follow, Like,
+ *     SocialProfile, Post, Comment, Reply, Follow, Like, Bookmark,
  *     Poll, Hashtag, Media, UserActivity, Notification
  *   } = require('./social_models');
  * ----------------------------------------------------------------------------
  *  CHANGELOG (this revision):
+ *   - PHASE 12 — added Bookmark schema. Deliberately a separate collection
+ *     rather than reusing Like (targetType enum stays Post/Comment/Reply
+ *     only) — a bookmark is a personal "saved" list, conceptually distinct
+ *     from a like, and querying "give me everything I've saved, newest
+ *     first" is a first-class access pattern (services/bookmarkService.js),
+ *     which a generic Like collection scoped by targetType would make
+ *     awkward to index/query cleanly.
  *   - PHASE 8 — MediaAttachmentSchema gained progressive-image fields
  *               (thumbnailUrl, compressedUrl, blurHash, aspectRatio) and
  *               adaptive-video fields (duration, quality, video480p,
@@ -14,6 +21,8 @@
  *               these get populated.
  *   - avatarVersion, sentiment, hashtags, viewsCount, sharesCount,
  *     saveCount, clickCount, watchSeconds — unchanged from prior revision.
+ *     saveCount is now actually written to — see PHASE 12 note above and
+ *     services/bookmarkService.js.
  * ==========================================================================*/
 
 const mongoose = require("mongoose");
@@ -113,6 +122,8 @@ const PostSchema = new Schema(
     viewsCount: { type: Number, default: 0 },
 
     // Engagement-ranking counters (see services/feedRanking.js).
+    // saveCount is incremented/decremented by services/bookmarkService.js
+    // (PHASE 12) — every bookmark toggle nudges engagementScore() directly.
     sharesCount: { type: Number, default: 0 },
     saveCount: { type: Number, default: 0 },
     clickCount: { type: Number, default: 0 },
@@ -184,6 +195,23 @@ const LikeSchema = new Schema(
   { timestamps: true }
 );
 LikeSchema.index({ username: 1, targetType: 1, targetId: 1 }, { unique: true });
+
+/* ============================================================================
+ * 6b. BOOKMARK  (PHASE 12)
+ * ----------------------------------------------------------------------------
+ * Deliberately its own collection rather than another Like targetType — see
+ * the file-header note above. One row per (username, post); toggling is a
+ * plain create/delete on this row, same shape as Follow's toggle pattern.
+ * ==========================================================================*/
+const BookmarkSchema = new Schema(
+  {
+    username: { type: String, required: true, index: true },
+    post: { type: Schema.Types.ObjectId, ref: "Post", required: true, index: true },
+  },
+  { timestamps: true }
+);
+BookmarkSchema.index({ username: 1, post: 1 }, { unique: true });
+BookmarkSchema.index({ username: 1, createdAt: -1 }); // powers "my bookmarks, newest first"
 
 /* ============================================================================
  * 7. POLL
@@ -322,6 +350,7 @@ module.exports = {
   Reply: mongoose.model("Reply", ReplySchema),
   Follow: mongoose.model("Follow", FollowSchema),
   Like: mongoose.model("Like", LikeSchema),
+  Bookmark: mongoose.model("Bookmark", BookmarkSchema),
   Poll: mongoose.model("Poll", PollSchema),
   Hashtag: mongoose.model("Hashtag", HashtagSchema),
   Media: mongoose.model("Media", MediaSchema),

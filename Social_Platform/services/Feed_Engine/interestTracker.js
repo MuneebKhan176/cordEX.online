@@ -1,5 +1,5 @@
 /* ============================================================================
- *  Social_Platform/services/interestTracker.js
+ *  Social_Platform/services/Feed_Engine/interestTracker.js
  * ----------------------------------------------------------------------------
  *  Turns raw UserActivity events into a personalized interest profile per
  *  user, stored as { username, hashtag, score } rows in UserInterest (e.g.
@@ -19,7 +19,7 @@
  *  commented on carries (see resolveHashtags() below).
  * ==========================================================================*/
 
-const { UserActivity, UserInterest } = require('../social_models');
+const { UserActivity, UserInterest } = require('../../social_models');
 
 // Activity types whose hashtag is implied by the type itself
 // ("view_crypto" always scores the "crypto" hashtag).

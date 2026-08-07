@@ -167,7 +167,7 @@
       background: var(--surface2);
       flex-shrink: 0;
     }
-    .image-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .image-thumb img { width: 100%; height: 100%; object-fit: cover; display:block; }
     .image-thumb .remove-btn {
       position: absolute; top: 2px; right: 2px;
       width: 17px; height: 17px; border-radius: 50%;
@@ -175,6 +175,7 @@
       color: #fff; font-size: .6rem; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       line-height: 1;
+      z-index: 2;
     }
     .image-thumb .remove-btn:hover { background: rgba(239,68,68,0.85); }
 
@@ -203,8 +204,30 @@
       color: #fff; font-size: .6rem; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       line-height: 1;
+      z-index: 2;
     }
     .video-thumb .remove-btn:hover { background: rgba(239,68,68,0.85); }
+
+    /* ── Upload status overlay — shown on a thumb while it's uploading,
+       processing (video transcode), or if it failed. Sits on top of the
+       preview image/video so the user always knows what's happening
+       before they hit Post. ── */
+    .thumb-status {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      padding: 3px 4px;
+      font-size: .58rem; font-weight: 700; letter-spacing: .01em;
+      text-align: center;
+      color: #fff;
+      background: rgba(0,0,0,0.65);
+      pointer-events: none;
+      z-index: 1;
+    }
+    .thumb-status.failed { background: rgba(239,68,68,0.85); }
+    .thumb-status.ready { display: none; } /* clean preview once done */
+    .image-thumb.is-busy img,
+    .video-thumb.is-busy video { filter: brightness(.55); }
+    .image-thumb.is-failed { border-color: var(--red); }
+    .video-thumb.is-failed { border-color: var(--red); }
 
     /* ── Emoji picker popover ── */
     .emoji-picker-wrap { position: relative; }
@@ -403,20 +426,34 @@
 /* ═══════════════════════════════════════════════════════
    STATE
    ═══════════════════════════════════════════════════════
-   Backend: Social_Platform/posts.js
-     POST /api/posts  (multipart/form-data)
-       fields: title (optional), content (required — emojis picked
-               below are inserted directly into this text),
-               sentiment (optional: "bullish" | "bearish"),
-               hashtags (optional: comma/space separated string)
-       files:  images[] — up to 2 used here (backend allows up to 4)
+   Backend: Social_Platform/posts.js  +  Social_Platform/routes/upload.js
+
+   PHASE 8 contract (posts.js no longer accepts multipart/files):
+     1) For every selected image/video, drive it through the chunked
+        upload endpoints BEFORE creating the post:
+          POST   /api/upload/init            -> { uploadId, chunkSize, totalChunks }
+          POST   /api/upload/chunk/:id       -> { received, totalChunks, progress }
+          POST   /api/upload/complete/:id    -> image: { status:'ready', media }
+                                                 video: 202 { status:'processing' }
+          GET    /api/upload/status/:id      -> { status, progress, media }
+          DELETE /api/upload/:id             -> cancel (frees the 1-video slot)
+     2) POST /api/posts as plain JSON:
+          { title?, content, sentiment?, hashtags?, media: [...] }
+        where each media item is whatever /complete or /status returned
+        (url, type, thumbUrl, thumbnailUrl, compressedUrl, blurHash,
+        aspectRatio, duration, quality, video480p, video720p) — posts.js
+        whitelists these fields itself via ALLOWED_MEDIA_FIELDS, so we can
+        just forward the objects as-is.
    ═══════════════════════════════════════════════════════ */
 const MAX_IMAGES = 2;
-const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB per photo
-const MAX_VIDEOS = 2;                    // backend allows up to 2 videos
-const MAX_VIDEO_BYTES = 20 * 1024 * 1024; // 20MB per video (matches multer limit)
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;   // 8MB per photo — matches upload.js MAX_IMAGE_BYTES
+const MAX_VIDEOS = 2;                       // composer-side cap; posts.js only allows 1 per post
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024;  // 50MB — matches upload.js MAX_VIDEO_BYTES hard cap
+const STATUS_POLL_MS = 1500;
 
-// slotFiles[0] / slotFiles[1] hold the File object for each slot, or null
+// Each slot holds either null or:
+//   { file, kind:'image'|'video', status:'pending'|'uploading'|'processing'|'ready'|'failed',
+//     progress, uploadId, media, previewUrl, errorMsg }
 let slotFiles = [null, null];
 let videoSlotFiles = [null, null];
 let selectedSentiment = null; // null | 'bullish' | 'bearish'
@@ -505,7 +542,9 @@ function renderHashtagPreview() {
 
 /* ═══════════════════════════════════════════════════════
    PHOTOS — icon button opens the file picker; thumbnails
-   render in their own row below the toolbar.
+   render in their own row below the toolbar. Selecting a
+   file immediately kicks off the chunked upload in the
+   background so it's ready by the time the user hits Post.
    ═══════════════════════════════════════════════════════ */
 function triggerFilePick() {
   const filledCount = slotFiles.filter(Boolean).length;
@@ -530,30 +569,31 @@ document.getElementById('hiddenFileInput').addEventListener('change', function (
     return;
   }
 
-  slotFiles[emptySlot] = file;
+  slotFiles[emptySlot] = {
+    file, kind: 'image', status: 'pending', progress: 0,
+    uploadId: null, media: null, previewUrl: URL.createObjectURL(file), errorMsg: null,
+  };
   renderThumbs();
   hideMsg();
+  startUpload(slotFiles[emptySlot], () => renderThumbs());
 });
 
 function renderThumbs() {
   const wrap = document.getElementById('imageThumbs');
-  const filled = slotFiles.map((file, idx) => ({ file, idx })).filter(x => x.file);
+  const filled = slotFiles.map((slot, idx) => ({ slot, idx })).filter(x => x.slot);
 
-  wrap.innerHTML = ''; // rebuilt below via FileReader (async), so clear first
-  wrap.classList.toggle('has-items', filled.length > 0); // only reserve spacing once a photo is attached
+  wrap.innerHTML = '';
+  wrap.classList.toggle('has-items', filled.length > 0);
 
-  filled.forEach(({ file, idx }) => {
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const div = document.createElement('div');
-      div.className = 'image-thumb';
-      div.innerHTML = `
-        <img src="${ev.target.result}" alt="preview"/>
-        <button type="button" class="remove-btn" onclick="removeSlot(${idx})" title="Remove">✕</button>
-      `;
-      wrap.appendChild(div);
-    };
-    reader.readAsDataURL(file);
+  filled.forEach(({ slot, idx }) => {
+    const div = document.createElement('div');
+    div.className = 'image-thumb' + (isBusy(slot) ? ' is-busy' : '') + (slot.status === 'failed' ? ' is-failed' : '');
+    div.innerHTML = `
+      <img src="${slot.previewUrl}" alt="preview"/>
+      ${statusOverlayHtml(slot)}
+      <button type="button" class="remove-btn" onclick="removeSlot(${idx})" title="Remove">✕</button>
+    `;
+    wrap.appendChild(div);
   });
 
   const count = filled.length;
@@ -562,13 +602,17 @@ function renderThumbs() {
 }
 
 function removeSlot(slotIndex) {
+  cancelUpload(slotFiles[slotIndex]);
   slotFiles[slotIndex] = null;
   renderThumbs();
 }
 
 /* ═══════════════════════════════════════════════════════
    VIDEOS — same pattern as photos, own file input + own
-   slot array, up to MAX_VIDEOS.
+   slot array, up to MAX_VIDEOS. Note: the backend only
+   allows 1 *active* video upload session per user at a
+   time (see upload.js) — attempting a 2nd concurrent video
+   upload will 409 until the first finishes or is removed.
    ═══════════════════════════════════════════════════════ */
 function triggerVideoPick() {
   const filledCount = videoSlotFiles.filter(Boolean).length;
@@ -589,29 +633,33 @@ document.getElementById('hiddenVideoInput').addEventListener('change', function 
     return;
   }
   if (file.size > MAX_VIDEO_BYTES) {
-    showMsg('⚠ That video is too large. Max size is 20MB.', 'error');
+    showMsg('⚠ That video is too large. Max size is 50MB.', 'error');
     return;
   }
 
-  videoSlotFiles[emptySlot] = file;
+  videoSlotFiles[emptySlot] = {
+    file, kind: 'video', status: 'pending', progress: 0,
+    uploadId: null, media: null, previewUrl: URL.createObjectURL(file), errorMsg: null,
+  };
   renderVideoThumbs();
   hideMsg();
+  startUpload(videoSlotFiles[emptySlot], () => renderVideoThumbs());
 });
 
 function renderVideoThumbs() {
   const wrap = document.getElementById('videoThumbs');
-  const filled = videoSlotFiles.map((file, idx) => ({ file, idx })).filter(x => x.file);
+  const filled = videoSlotFiles.map((slot, idx) => ({ slot, idx })).filter(x => x.slot);
 
   wrap.innerHTML = '';
   wrap.classList.toggle('has-items', filled.length > 0);
 
-  filled.forEach(({ file, idx }) => {
-    const url = URL.createObjectURL(file);
+  filled.forEach(({ slot, idx }) => {
     const div = document.createElement('div');
-    div.className = 'video-thumb';
+    div.className = 'video-thumb' + (isBusy(slot) ? ' is-busy' : '') + (slot.status === 'failed' ? ' is-failed' : '');
     div.innerHTML = `
-      <video src="${url}" muted playsinline preload="metadata"></video>
+      <video src="${slot.previewUrl}" muted playsinline preload="metadata"></video>
       <div class="play-badge"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+      ${statusOverlayHtml(slot)}
       <button type="button" class="remove-btn" onclick="removeVideoSlot(${idx})" title="Remove">✕</button>
     `;
     wrap.appendChild(div);
@@ -623,8 +671,164 @@ function renderVideoThumbs() {
 }
 
 function removeVideoSlot(slotIndex) {
+  cancelUpload(videoSlotFiles[slotIndex]);
   videoSlotFiles[slotIndex] = null;
   renderVideoThumbs();
+}
+
+/* ═══════════════════════════════════════════════════════
+   UPLOAD STATUS HELPERS
+   ═══════════════════════════════════════════════════════ */
+function isBusy(slot) {
+  return slot.status === 'uploading' || slot.status === 'processing' || slot.status === 'pending';
+}
+
+function anyUploadInProgress() {
+  return [...slotFiles, ...videoSlotFiles].some(s => s && isBusy(s));
+}
+
+function anyUploadFailed() {
+  return [...slotFiles, ...videoSlotFiles].some(s => s && s.status === 'failed');
+}
+
+function statusOverlayHtml(slot) {
+  if (slot.status === 'uploading') {
+    return `<div class="thumb-status">${Math.round((slot.progress || 0) * 100)}%</div>`;
+  }
+  if (slot.status === 'processing') {
+    return `<div class="thumb-status">Processing…</div>`;
+  }
+  if (slot.status === 'failed') {
+    return `<div class="thumb-status failed">Failed — tap ✕</div>`;
+  }
+  return `<div class="thumb-status ready"></div>`; // hidden once ready
+}
+
+/* ═══════════════════════════════════════════════════════
+   CHUNKED UPLOAD PIPELINE
+   ═══════════════════════════════════════════════════════ */
+async function startUpload(slot, onProgress) {
+  try {
+    slot.status = 'uploading';
+    slot.progress = 0;
+    onProgress();
+
+    // 1) INIT
+    const initRes = await fetch('/api/upload/init', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fileName: slot.file.name,
+        fileSize: slot.file.size,
+        mimeType: slot.file.type,
+        kind: slot.kind,
+      }),
+    });
+    const initData = await initRes.json();
+    if (!initRes.ok || !initData.success) {
+      throw new Error(initData.message || 'Failed to start upload');
+    }
+    const { uploadId, chunkSize, totalChunks } = initData.data;
+    slot.uploadId = uploadId;
+
+    // 2) CHUNKS — sequential, so progress + X-Chunk-Index stay simple and
+    // we never blow past upload.js's 2MB-per-request raw body limit.
+    for (let i = 0; i < totalChunks; i++) {
+      const start = i * chunkSize;
+      const chunkBlob = slot.file.slice(start, start + chunkSize);
+      const chunkBuf = await chunkBlob.arrayBuffer();
+
+      const chunkRes = await fetch(`/api/upload/chunk/${uploadId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'X-Chunk-Index': String(i),
+        },
+        body: chunkBuf,
+      });
+      const chunkData = await chunkRes.json();
+      if (!chunkRes.ok || !chunkData.success) {
+        throw new Error(chunkData.message || 'Chunk upload failed');
+      }
+      slot.progress = chunkData.data.progress ?? (i + 1) / totalChunks;
+      onProgress();
+    }
+
+    // 3) COMPLETE
+    const completeRes = await fetch(`/api/upload/complete/${uploadId}`, { method: 'POST' });
+    const completeData = await completeRes.json();
+    if (!completeRes.ok || !completeData.success) {
+      throw new Error(completeData.message || 'Failed to finalize upload');
+    }
+
+    if (completeData.data.status === 'ready') {
+      // Images resolve synchronously
+      slot.status = 'ready';
+      slot.progress = 1;
+      slot.media = completeData.data.media;
+      onProgress();
+      return;
+    }
+
+    // Video — 202 Accepted, poll /status until ready/failed
+    slot.status = 'processing';
+    onProgress();
+    await pollUploadStatus(slot, onProgress);
+
+  } catch (err) {
+    console.error('upload error:', err);
+    slot.status = 'failed';
+    slot.errorMsg = err.message || 'Upload failed';
+    onProgress();
+  }
+}
+
+function pollUploadStatus(slot, onProgress) {
+  return new Promise((resolve) => {
+    const timer = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/upload/status/${slot.uploadId}`);
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          clearInterval(timer);
+          slot.status = 'failed';
+          slot.errorMsg = data.message || 'Processing failed';
+          onProgress();
+          return resolve();
+        }
+
+        slot.progress = data.data.progress ?? slot.progress;
+
+        if (data.data.status === 'ready') {
+          clearInterval(timer);
+          slot.status = 'ready';
+          slot.media = data.data.media;
+          onProgress();
+          return resolve();
+        }
+        if (data.data.status === 'failed') {
+          clearInterval(timer);
+          slot.status = 'failed';
+          slot.errorMsg = 'Video processing failed';
+          onProgress();
+          return resolve();
+        }
+        onProgress(); // still processing — refresh progress %
+      } catch (err) {
+        clearInterval(timer);
+        slot.status = 'failed';
+        slot.errorMsg = 'Network error while processing video';
+        onProgress();
+        resolve();
+      }
+    }, STATUS_POLL_MS);
+  });
+}
+
+function cancelUpload(slot) {
+  if (!slot || !slot.uploadId) return;
+  // Best-effort — frees the "1 active video" slot server-side; ignore failures.
+  fetch(`/api/upload/${slot.uploadId}`, { method: 'DELETE' }).catch(() => {});
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -644,21 +848,38 @@ async function submitPost() {
     showMsg('⚠ Post is too long (max 2000 characters).', 'error');
     return;
   }
+  if (anyUploadFailed()) {
+    showMsg('⚠ Remove or retry the failed upload before posting.', 'error');
+    return;
+  }
+  if (anyUploadInProgress()) {
+    showMsg('⚠ Please wait for your photos/videos to finish uploading.', 'error');
+    return;
+  }
 
-  const formData = new FormData();
-  if (title) formData.append('title', title);
-  formData.append('content', content);
-  if (selectedSentiment) formData.append('sentiment', selectedSentiment);
-  if (hashtagsRaw) formData.append('hashtags', hashtagsRaw);
-  slotFiles.forEach(file => { if (file) formData.append('images', file); });
-  videoSlotFiles.forEach(file => { if (file) formData.append('videos', file); });
+  // Build the media array from whatever /complete or /status handed back,
+  // in slot order — posts.js re-numbers `order` itself, but we send them
+  // in display order anyway.
+  const media = [...slotFiles, ...videoSlotFiles]
+    .filter(s => s && s.status === 'ready' && s.media)
+    .map(s => s.media);
 
   btn.disabled = true;
   btn.textContent = 'Posting…';
   hideMsg();
 
   try {
-    const r = await fetch('/api/posts', { method: 'POST', body: formData });
+    const r = await fetch('/api/posts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: title || undefined,
+        content,
+        sentiment: selectedSentiment || undefined,
+        hashtags: hashtagsRaw || undefined,
+        media,
+      }),
+    });
     const d = await r.json();
 
     if (d.success) {

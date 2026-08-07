@@ -1,5 +1,5 @@
 /* ============================================================================
- *  Social_Platform/services/friendshipService.js
+ *  Social_Platform/services/Feed_Engine/friendshipService.js
  * ----------------------------------------------------------------------------
  *  PHASE 9 — "friendship" factor in the ranking formula. Cheap proxy off
  *  the existing Follow collection:
@@ -13,7 +13,7 @@
  *  no N+1.
  * ==========================================================================*/
 
-const { Follow } = require('../social_models');
+const { Follow } = require('../../social_models');
 
 // Returns Map<authorUsername, 0 | 0.5 | 1> for the given viewer against
 // each username in authorUsernames.

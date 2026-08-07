@@ -14,7 +14,7 @@
  *  bounded, clearly-intentional signal, so they're safe to do inline here.
  * ==========================================================================*/
 
-const { SocialProfile, Notification } = require('../social_models');
+const { SocialProfile, Notification } = require('../../social_models');
 
 const MENTION_REGEX = /@([a-zA-Z0-9_]{1,30})/g;
 

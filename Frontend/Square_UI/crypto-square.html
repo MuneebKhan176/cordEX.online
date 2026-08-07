@@ -82,11 +82,307 @@
     }
     .nav-pill:hover { color:#fff; border-color:#444; background: var(--surface2); }
 
+    /* ── App shell (nav rail + page + right widgets) ──
+       PHASE 15 fix: the old breakpoints (1360 / 1080) collapsed the
+       sidebar labels and hid the widget panel on completely
+       ordinary desktop windows (~1280-1366px), which is what made the
+       nav text and the widgets disappear even with the browser
+       maximized. Column widths are now tighter and the feed column is
+       allowed to flex/shrink, so all columns realistically fit
+       together well below typical laptop widths.
+       PHASE 16: left widget panel removed — Top 3 Cryptocurrencies and
+       Top Creators now live in the right panel alongside Search and
+       Fear & Greed. The icon nav rail (.sidebar) and the right widget
+       panel (.side-panel.right-panel) are sized/padded to match so the
+       two sides of the feed feel balanced again. ── */
+    .app-shell {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 16px;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+
+    /* ── Sidebar (icon nav rail) ── */
+    .sidebar {
+      width: 232px;
+      flex-shrink: 0;
+      padding: 28px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      position: sticky;
+      top: 60px;
+      height: calc(100vh - 60px);
+    }
+    .sidebar-item {
+      display: flex; align-items: center; gap: 13px;
+      padding: 11px 14px; border-radius: 10px;
+      font-size: .89rem; font-weight: 600;
+      color: var(--text-2);
+      background: none; border: none; text-decoration: none;
+      width: 100%; text-align: left; cursor: pointer;
+      transition: all .15s;
+    }
+    .sidebar-item svg { width: 20px; height: 20px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.8; }
+    .sidebar-item:hover { background: var(--surface2); color: #fff; transform: translateX(2px); }
+    .sidebar-item.active { background: var(--blue-dim); color: var(--blue); }
+    .sidebar-item .sb-label { white-space: nowrap; overflow: hidden; }
+
+    /* Icon-only rail only kicks in once the window is genuinely narrow
+       (tablet-ish), not on ordinary desktop widths. */
+    @media (max-width: 900px) {
+      .sidebar { width: 74px; padding: 28px 8px; }
+      .sidebar-item { justify-content: center; padding: 12px; }
+      .sidebar-item .sb-label { display: none; }
+    }
+
+    @media (max-width: 640px) {
+      .app-shell { padding-bottom: 66px; }
+      .sidebar {
+        position: fixed; top: auto; bottom: 0; left: 0; right: 0;
+        width: 100%; height: 60px;
+        flex-direction: row; justify-content: space-around;
+        padding: 6px 10px;
+        background: rgba(0,0,0,0.95);
+        border-top: 1px solid var(--border);
+        backdrop-filter: blur(12px);
+        z-index: 250;
+      }
+      .sidebar-item { flex: 1; padding: 8px 4px; border-radius: 8px; }
+    }
+
+    /* ── Right widget panel ── */
+    .side-panel {
+      width: 232px;
+      flex-shrink: 0;
+      padding: 28px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: sticky;
+      top: 60px;
+    }
+    /* Right panel now carries every widget, so it drops out a little
+       later than before (still comfortably visible on a normal
+       maximized laptop window). */
+    @media (max-width: 1180px) { .right-panel { display: none; } }
+
+    .widget-card {
+      background: linear-gradient(180deg, var(--surface2) 0%, var(--surface) 65%);
+      border: 1px solid var(--border);
+      border-radius: 14px; padding: 18px;
+      box-shadow: var(--shadow-card);
+      transition: border-color .22s var(--ease), transform .22s var(--ease), box-shadow .22s var(--ease);
+    }
+    .widget-card:hover {
+      border-color: rgba(59,130,246,.32);
+      transform: translateY(-2px);
+      box-shadow: 0 20px 44px -20px rgba(0,0,0,.75), 0 0 0 1px rgba(59,130,246,.06);
+    }
+    .widget-title {
+      font-size: .92rem; font-weight: 800; letter-spacing: -.2px;
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .widget-title .live-tag {
+      font-size: .62rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+      color: var(--green); display: inline-flex; align-items: center; gap: 4px;
+    }
+    .widget-title .live-tag .dot {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--green);
+      animation: pulseDot 1.5s infinite;
+    }
+    @keyframes pulseDot { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:.5;transform:scale(.7);} }
+
+    /* ── Search widget (REQ 7) ── */
+    .search-box-wrap { position: relative; }
+    .search-box-input {
+      width: 100%;
+      background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: 10px; color: var(--text); font-size: .84rem;
+      padding: 10px 34px 10px 34px; outline: none; transition: border-color .2s; font-family: inherit;
+    }
+    .search-box-input:focus { border-color: var(--blue); }
+    .search-box-icon {
+      position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+      width: 15px; height: 15px; color: var(--text-3); pointer-events: none;
+    }
+    .search-box-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2; }
+    .search-box-clear {
+      position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; color: var(--text-3); cursor: pointer;
+      font-size: .9rem; padding: 2px 4px; display: none;
+    }
+    .search-box-clear:hover { color: #fff; }
+    .search-box-hint { font-size: .68rem; color: var(--text-3); margin-top: 8px; line-height: 1.5; }
+    .search-active-banner {
+      display: none;
+      align-items: center; justify-content: space-between; gap: 8px;
+      margin-bottom: 14px; padding: 9px 14px;
+      border-radius: 10px; background: var(--blue-dim); border: 1px solid rgba(59,130,246,.3);
+      font-size: .8rem; color: var(--blue); font-weight: 600;
+    }
+    .search-active-banner.show { display: flex; }
+    .search-active-banner button {
+      background: none; border: none; color: var(--blue); font-weight: 700; cursor: pointer; font-size: .78rem;
+    }
+    .search-active-banner button:hover { text-decoration: underline; }
+
+    /* Top 3 Cryptocurrencies widget */
+    .crypto3-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 6px; border-radius: 8px;
+      transition: background .18s, transform .18s var(--ease);
+    }
+    .crypto3-row:hover { background: var(--surface3); transform: translateX(2px); }
+    .crypto3-icon {
+      width: 30px; height: 30px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .85rem; font-weight: 700; flex-shrink: 0;
+      transition: transform .25s var(--ease);
+    }
+    .crypto3-row:hover .crypto3-icon { transform: scale(1.1); }
+    .crypto3-icon.btc { background: rgba(247,147,26,0.15); color: #f7931a; }
+    .crypto3-icon.eth { background: rgba(98,126,234,0.15); color: #627eea; }
+    .crypto3-icon.sol { background: rgba(153,69,255,0.15); color: #9945ff; }
+    .crypto3-info { flex: 1; min-width: 0; }
+    .crypto3-symbol-row { display: flex; align-items: center; gap: 6px; }
+    .crypto3-symbol { font-size: .82rem; font-weight: 700; color: #fff; }
+    .crypto3-price { font-size: .72rem; color: var(--text-2); font-variant-numeric: tabular-nums; }
+    .crypto3-change { font-size: .78rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .crypto3-change.up { color: var(--green); }
+    .crypto3-change.down { color: var(--red); }
+    .crypto3-flash {
+      animation: crypto3Flash .5s ease;
+    }
+    @keyframes crypto3Flash {
+      0% { background: rgba(59,130,246,.14); }
+      100% { background: transparent; }
+    }
+    /* REQ 2 — small status tag next to each coin's symbol: transparent
+       background, blue text, compact and slightly rounded. */
+    .crypto3-tag {
+      display: inline-block;
+      font-size: .58rem; font-weight: 800; letter-spacing: .02em; text-transform: uppercase;
+      color: var(--blue); background: transparent;
+      border: 1px solid rgba(59,130,246,.4);
+      padding: 1.5px 6px; border-radius: 5px;
+      line-height: 1.5;
+    }
+    .widget-skeleton { font-size: .78rem; color: var(--text-3); padding: 8px 4px; }
+    .widget-error { font-size: .78rem; color: var(--red); padding: 8px 4px; }
+
+    /* Top Creators widget */
+    .creator-row {
+      display: flex; align-items: center; gap: 10px; padding: 9px 6px;
+      border-radius: 8px; transition: background .18s, transform .18s var(--ease);
+    }
+    .creator-row:hover { background: var(--surface3); transform: translateX(2px); }
+    .creator-rank { width: 22px; text-align: center; font-size: 1.05rem; flex-shrink: 0; }
+    .creator-avatar {
+      width: 34px; height: 34px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
+      background: linear-gradient(135deg,#3b82f6,#1d4ed8);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .72rem; font-weight: 700; color: #fff; cursor: pointer;
+      transition: transform .25s var(--ease);
+    }
+    .creator-row:hover .creator-avatar { transform: scale(1.08); }
+    .creator-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .creator-info { flex: 1; min-width: 0; cursor: pointer; }
+    .creator-name { font-size: .82rem; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .creator-handle { font-size: .7rem; color: var(--text-3); }
+    .creator-follow-btn {
+      flex-shrink: 0; padding: 5px 12px; border-radius: 999px;
+      font-size: .7rem; font-weight: 700; cursor: pointer;
+      background: linear-gradient(135deg, var(--blue), #2563eb); border: 1px solid var(--blue); color: #fff;
+      transition: all .15s;
+    }
+    .creator-follow-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px -6px rgba(59,130,246,.7); }
+    .creator-follow-btn.following { background: transparent; border-color: var(--border2); color: var(--text-2); }
+    .creator-follow-btn.following:hover { border-color: var(--red); color: var(--red); background: var(--red-dim); box-shadow: none; }
+    .creator-follow-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* REQ 3 — "View More" is now plain text, not a button */
+    .view-more-text {
+      display: block; width: 100%; margin-top: 12px;
+      padding: 4px 0; text-align: center;
+      background: none; border: none; color: var(--blue);
+      font-size: .78rem; font-weight: 700; text-decoration: none; cursor: pointer;
+      transition: color .18s var(--ease);
+    }
+    .view-more-text:hover { color: #93c5fd; text-decoration: underline; }
+
+    /* Fear & Greed widget */
+    .fg-gauge-wrap { display: flex; flex-direction: column; align-items: center; padding-top: 4px; }
+    .fg-gauge-svg { overflow: visible; filter: drop-shadow(0 4px 14px rgba(0,0,0,.4)); }
+    .fg-arc-bg { opacity: .25; }
+    .fg-arc-fg { stroke-linecap: round; transition: stroke-dasharray 1s var(--ease); }
+    .fg-needle-pivot { transition: transform 1.1s cubic-bezier(.34,1.4,.4,1); transform-origin: 100px 100px; }
+    .fg-needle-hub { filter: drop-shadow(0 0 4px rgba(59,130,246,.6)); }
+    .fg-tick { stroke: var(--text-3); stroke-width: 1.5; }
+    .fg-score {
+      font-size: 2.1rem; font-weight: 800; margin-top: 4px;
+      transition: color .4s;
+      font-variant-numeric: tabular-nums;
+    }
+    .fg-label {
+      font-size: .82rem; font-weight: 700; margin-top: 2px;
+      letter-spacing: .02em; text-transform: uppercase;
+      padding: 2px 12px; border-radius: 999px;
+      transition: color .4s, background .4s;
+    }
+    .fg-question { font-size: .78rem; color: var(--text-2); text-align: center; margin: 16px 0 10px; }
+    .fg-vote-row { display: flex; gap: 8px; }
+    .fg-vote-btn {
+      flex: 1; padding: 9px 0; border-radius: 8px; font-size: .8rem; font-weight: 700;
+      border: 1px solid transparent; cursor: pointer; transition: all .18s var(--ease);
+    }
+    .fg-vote-btn:hover:not(:disabled) { transform: translateY(-1px); }
+    .fg-vote-btn.bearish { background: var(--red-dim); color: var(--red); border-color: rgba(239,68,68,.3); }
+    .fg-vote-btn.bearish:hover:not(:disabled), .fg-vote-btn.bearish.selected { background: var(--red); color: #fff; box-shadow: 0 6px 18px -8px rgba(239,68,68,.7); }
+    .fg-vote-btn.bullish { background: var(--green-dim); color: var(--green); border-color: rgba(34,197,94,.3); }
+    .fg-vote-btn.bullish:hover:not(:disabled), .fg-vote-btn.bullish.selected { background: var(--green); color: #fff; box-shadow: 0 6px 18px -8px rgba(34,197,94,.7); }
+    .fg-vote-btn:disabled { opacity: .6; cursor: not-allowed; }
+    .fg-vote-split { font-size: .68rem; color: var(--text-3); text-align: center; margin-top: 8px; min-height: 14px; }
+    .fg-live-note { font-size: .66rem; color: var(--text-3); text-align: center; margin-top: 4px; }
+    /* REQ 4 — vote is purely visual: choosing a side applies a
+       persistent green/red tint + border to the widget card (not just a
+       brief pulse), and the vote buttons are then hidden — only the
+       selected effect remains. The card's normal hover styling (above)
+       still applies on top of these classes. */
+    .widget-card.fg-selected-bullish {
+      border-color: rgba(34,197,94,.55);
+      box-shadow: var(--shadow-card), 0 0 0 1px rgba(34,197,94,.25), 0 20px 44px -20px rgba(34,197,94,.25);
+      background: linear-gradient(180deg, rgba(34,197,94,0.08) 0%, var(--surface) 65%);
+    }
+    .widget-card.fg-selected-bearish {
+      border-color: rgba(239,68,68,.55);
+      box-shadow: var(--shadow-card), 0 0 0 1px rgba(239,68,68,.25), 0 20px 44px -20px rgba(239,68,68,.25);
+      background: linear-gradient(180deg, rgba(239,68,68,0.08) 0%, var(--surface) 65%);
+    }
+    .widget-card.fg-pulse-bullish { animation: fgPulseBullish .9s var(--ease); }
+    .widget-card.fg-pulse-bearish { animation: fgPulseBearish .9s var(--ease); }
+    @keyframes fgPulseBullish {
+      0% { box-shadow: var(--shadow-card), 0 0 0 0 rgba(34,197,94,0); border-color: var(--border); }
+      30% { box-shadow: var(--shadow-card), 0 0 0 3px rgba(34,197,94,.35); border-color: rgba(34,197,94,.5); }
+      100% { box-shadow: var(--shadow-card), 0 0 0 0 rgba(34,197,94,0); border-color: var(--border); }
+    }
+    @keyframes fgPulseBearish {
+      0% { box-shadow: var(--shadow-card), 0 0 0 0 rgba(239,68,68,0); border-color: var(--border); }
+      30% { box-shadow: var(--shadow-card), 0 0 0 3px rgba(239,68,68,.35); border-color: rgba(239,68,68,.5); }
+      100% { box-shadow: var(--shadow-card), 0 0 0 0 rgba(239,68,68,0); border-color: var(--border); }
+    }
+
     /* ── Page ── */
     .page {
-      max-width: 640px;
-      margin: 0 auto;
-      padding: 32px 24px 64px;
+      width: 100%;
+      flex: 1 1 480px;
+      min-width: 380px;
+      max-width: 620px;
+      padding: 28px 0 64px;
     }
     .page-title {
       font-size: 1.55rem; font-weight: 800; letter-spacing: -.6px; margin-bottom: 4px;
@@ -95,7 +391,11 @@
     }
     .page-sub { font-size: .83rem; color: var(--text-2); margin-bottom: 22px; }
 
-    /* ── New-posts banner (Phase 7 — GET /api/posts/new-count polling) ── */
+    @media (max-width: 640px) {
+      .page { padding: 18px 14px 80px; }
+    }
+
+    /* ── New-posts banner ── */
     .new-posts-banner {
       display: none;
       width: 100%;
@@ -115,35 +415,23 @@
     .new-posts-banner svg { width: 15px; height: 15px; }
     @keyframes bannerIn { from { opacity:0; transform: translateY(-6px); } to { opacity:1; transform: translateY(0); } }
 
-    /* ── Tabs ── */
-    .tabs {
-      display: flex; gap: 4px;
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 12px; padding: 4px; margin-bottom: 22px;
-      box-shadow: var(--shadow-card);
-    }
-    .tab-btn {
-      flex: 1; padding: 9px 14px; border-radius: 9px;
-      font-size: .85rem; font-weight: 600; text-align:center;
-      background: none; border: none; color: var(--text-2);
-      cursor: pointer; transition: all .18s var(--ease);
-    }
-    .tab-btn.active { background: linear-gradient(135deg, var(--blue), #2563eb); color: #fff; box-shadow: 0 6px 16px -6px rgba(59,130,246,.6); }
-    .tab-btn:not(.active):hover { color: #fff; background: var(--surface2); }
-
     /* ── Post card ── */
     .post-card {
       background: linear-gradient(180deg, var(--surface2) 0%, var(--surface) 65%);
       border: 1px solid var(--border);
-      border-radius: 14px; padding: 18px 20px; margin-bottom: 12px;
+      border-radius: 14px; padding: 18px 20px; margin-bottom: 14px;
       position: relative;
       box-shadow: var(--shadow-card);
-      transition: border-color .2s, transform .2s var(--ease);
+      transition: border-color .22s var(--ease), transform .22s var(--ease), box-shadow .22s var(--ease);
     }
-    .post-card:hover { border-color: var(--border2); }
+    .post-card:hover {
+      border-color: rgba(59,130,246,.35);
+      transform: translateY(-3px);
+      box-shadow: 0 26px 55px -24px rgba(0,0,0,.85), 0 0 0 1px rgba(59,130,246,.08);
+    }
     .post-header {
       display: flex; gap: 10px; align-items:flex-start;
-      padding-right: 96px; /* reserve room for the absolutely-positioned follow button */
+      padding-right: 96px;
       margin-bottom: 8px;
     }
     .post-header .mini-avatar {
@@ -151,7 +439,7 @@
       background: linear-gradient(135deg,#3b82f6,#1d4ed8);
       display:flex; align-items:center; justify-content:center;
       font-size:.76rem; font-weight:700; color:#fff; flex-shrink:0;
-      cursor: pointer; /* Phase 3: tappable — logs open_profile interest */
+      cursor: pointer;
     }
     .post-header .mini-avatar img { width:100%; height:100%; object-fit:cover; }
     .post-header-text { min-width:0; flex:1; }
@@ -160,7 +448,6 @@
     .post-header .who:hover { text-decoration: underline; }
     .post-header .meta-row { font-size:.75rem; color:var(--text-3); margin-top:2px; }
 
-    /* Bullish / Bearish sentiment pill */
     .sentiment-pill {
       display: inline-flex; align-items: center; gap: 3px; flex-shrink:0;
       padding: 2px 8px; border-radius: 999px;
@@ -171,7 +458,6 @@
     .sentiment-pill.bearish { color: var(--red);   background: var(--red-dim);   border: 1px solid rgba(239,68,68,.3); }
     .sentiment-pill svg { width: 10px; height: 10px; }
 
-    /* Follow / Following button — top-right corner of the card */
     .follow-btn {
       position: absolute; top: 16px; right: 18px;
       padding: 6px 14px; border-radius: 999px;
@@ -205,17 +491,26 @@
     }
     .read-more-btn:hover { text-decoration: underline; }
 
-    /* ── Full-picture media slider (same model as the profile page) ── */
-    .post-media-slider {
+    /* ── Media — REQ 1: preview media is now clean (no action-icon /
+       stat overlay). Full post interaction (like/comment/bookmark) lives
+       exclusively in .post-footer below, which stays fully functional.
+       REQ 3: media is clickable -> opens the lightbox gallery. ── */
+    .sq-media {
       margin-top: 12px; position: relative; border-radius: 14px; overflow: hidden;
-      border: 1px solid var(--border2); background: #000;
+      border: 1px solid var(--border2); background: #000; cursor: zoom-in;
     }
-    .slider-stage { height: 380px; display: flex; overflow: hidden; }
+    .slider-stage { position: relative; width: 100%; aspect-ratio: 16 / 10; display: flex; overflow: hidden; }
     .slider-track { display: flex; width: 100%; height: 100%; transition: transform .32s cubic-bezier(.4,0,.2,1); }
-    .slider-slide { flex: 0 0 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--surface2); }
-    .slider-slide img, .slider-slide video { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+    .slider-slide { flex: 0 0 100%; height: 100%; }
+    .slider-slide img, .slider-slide video {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+      transition: transform .5s cubic-bezier(.16,1,.3,1);
+    }
+    .sq-media:hover .slider-slide img,
+    .sq-media:hover .slider-slide video { transform: scale(1.07); }
+
     .slider-arrow {
-      position: absolute; top: 50%; transform: translateY(-50%);
+      position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
       width: 34px; height: 34px; border-radius: 50%;
       background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,.15);
       color: #fff; font-size: 1.1rem; line-height: 1;
@@ -226,10 +521,15 @@
     .slider-arrow.prev { left: 10px; }
     .slider-arrow.next { right: 10px; }
     .slider-arrow.disabled { opacity: .25; pointer-events: none; }
-    .slider-dots { position: absolute; bottom: 10px; left: 0; right: 0; display: flex; justify-content: center; gap: 6px; }
+    .slider-dots { position: absolute; bottom: 10px; left: 0; right: 0; z-index: 2; display: flex; justify-content: center; gap: 6px; }
     .slider-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.35); border: none; cursor: pointer; padding: 0; transition: background .15s, transform .15s; }
     .slider-dot.active { background: #fff; transform: scale(1.25); }
-    .slider-counter { position: absolute; top: 10px; right: 12px; background: rgba(0,0,0,0.55); color: #fff; font-size: .68rem; font-weight: 600; padding: 3px 8px; border-radius: 999px; }
+    .slider-counter { position: absolute; top: 10px; right: 12px; z-index: 2; background: rgba(0,0,0,0.55); color: #fff; font-size: .68rem; font-weight: 600; padding: 3px 8px; border-radius: 999px; }
+
+    @media (max-width: 640px) {
+      .slider-stage { aspect-ratio: 4 / 3; }
+      .post-header .who { max-width: 140px; }
+    }
 
     /* Hashtags */
     .post-hashtags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
@@ -237,43 +537,75 @@
       font-size: .76rem; font-weight: 600; color: var(--blue);
       background: var(--blue-dim); border: 1px solid rgba(59,130,246,.25);
       padding: 3px 10px; border-radius: 999px;
+      cursor: pointer;
     }
+    .hashtag-pill:hover { text-decoration: underline; }
 
-    /* Like button */
-    .post-footer { display:flex; align-items:center; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
-    .like-btn {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 7px 14px; border-radius: 8px;
-      background: var(--surface2); border: 1px solid var(--border2); color: var(--text-2);
-      font-size: .82rem; font-weight: 600; cursor: pointer; transition: all .15s;
+    /* ── Analytics row — REQ 6: spacing increased further (40px -> 56px)
+       so like / comment / views sit clearly apart and are easier to
+       tap/click individually. ── */
+    .post-footer {
+      display: flex; align-items: center; gap: 56px;
+      margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
     }
-    .like-btn:hover { border-color: #444; color: #fff; }
-    .like-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; transition: fill .15s, transform .25s var(--ease); }
-    .like-btn.liked { color: var(--red); border-color: rgba(239,68,68,.35); background: var(--red-dim); }
-    .like-btn.liked svg { fill: currentColor; animation: likePulse .35s var(--ease); }
+    .analytic-stat {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: none; border: none; padding: 0;
+      color: var(--text-2); font-size: .82rem; font-weight: 600;
+      cursor: default; transition: color .15s;
+    }
+    .analytic-stat svg {
+      width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8;
+      transition: fill .15s, transform .25s var(--ease);
+    }
+    button.analytic-stat { cursor: pointer; }
+    button.analytic-stat:hover { color: #fff; }
+
+    .analytic-stat.like-btn.liked { color: var(--red); }
+    .analytic-stat.like-btn.liked svg { fill: currentColor; animation: likePulse .35s var(--ease); }
     @keyframes likePulse { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
 
-    /* ── Comments (PHASE 11) ── */
-    .comment-btn {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 7px 14px; border-radius: 8px; margin-left: 8px;
-      background: var(--surface2); border: 1px solid var(--border2); color: var(--text-2);
-      font-size: .82rem; font-weight: 600; cursor: pointer; transition: all .15s;
-    }
-    .comment-btn:hover { border-color: #444; color: #fff; }
-    .comment-btn.open { border-color: var(--blue); color: var(--blue); }
-    .comment-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+    .analytic-stat.comment-btn.open { color: var(--blue); }
 
+    .analytic-stat.bookmark-btn { margin-left: auto; }
+    .analytic-stat.bookmark-btn.bookmarked { color: var(--blue); }
+    .analytic-stat.bookmark-btn.bookmarked svg { fill: currentColor; animation: likePulse .35s var(--ease); }
+
+    /* ── Comments ── */
     .comments-section { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
     .comments-section.open { display: block; }
 
     .comment-composer { display: flex; gap: 8px; margin-bottom: 14px; }
-    .comment-input {
-      flex: 1; background: var(--surface2); border: 1px solid var(--border2);
+    .comment-input-wrap { position: relative; flex: 1; }
+    .comment-input, .reply-input {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border2);
       border-radius: 8px; color: var(--text); font-size: .84rem;
-      padding: 9px 12px; outline: none; transition: border-color .2s; font-family: inherit;
+      padding: 9px 38px 9px 12px; outline: none; transition: border-color .2s; font-family: inherit;
     }
-    .comment-input:focus { border-color: #444; }
+    .reply-input { border-radius: 999px; padding: 6px 34px 6px 12px; font-size: .78rem; }
+    .comment-input:focus, .reply-input:focus { border-color: #444; }
+
+    .emoji-btn {
+      position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+      background: transparent; border: none; padding: 5px; cursor: pointer;
+      color: var(--text-3); display: flex; align-items: center; justify-content: center;
+      border-radius: 6px; transition: color .15s, background .15s;
+    }
+    .emoji-btn:hover { color: #fff; background: var(--surface3); }
+    .emoji-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+
+    .emoji-picker {
+      position: absolute; bottom: calc(100% + 6px); right: 0; z-index: 60;
+      background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px;
+      padding: 8px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px;
+      box-shadow: 0 14px 34px rgba(0,0,0,.55);
+    }
+    .emoji-picker button {
+      background: none; border: none; font-size: 1.05rem; padding: 6px;
+      border-radius: 6px; cursor: pointer; line-height: 1;
+    }
+    .emoji-picker button:hover { background: var(--surface3); }
+
     .comment-post-btn {
       padding: 9px 16px; border-radius: 8px; font-size: .82rem; font-weight: 700;
       background: linear-gradient(135deg, var(--blue), #2563eb); color: #fff; border: none;
@@ -288,7 +620,7 @@
       width: 30px; height: 30px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
       background: linear-gradient(135deg,#3b82f6,#1d4ed8);
       display: flex; align-items: center; justify-content: center;
-      font-size: .68rem; font-weight: 700; color: #fff;
+      font-size: .68rem; font-weight: 700; color: #fff; cursor: pointer;
     }
     .comment-avatar img { width: 100%; height: 100%; object-fit: cover; }
     .comment-body { flex: 1; min-width: 0; }
@@ -296,12 +628,12 @@
       background: var(--surface2); border: 1px solid var(--border2);
       border-radius: 12px; padding: 8px 12px; display: inline-block; max-width: 100%;
     }
-    .comment-who { font-size: .8rem; font-weight: 700; color: #fff; display: block; margin-bottom: 2px; }
+    .comment-who { font-size: .8rem; font-weight: 700; color: #fff; display: block; margin-bottom: 2px; cursor: pointer; }
+    .comment-who:hover { text-decoration: underline; }
     .comment-text { font-size: .83rem; color: var(--text-2); line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
     .comment-meta-row { display: flex; align-items: center; gap: 14px; margin-top: 5px; padding-left: 4px; flex-wrap: wrap; }
     .comment-time { font-size: .7rem; color: var(--text-3); }
 
-    /* Like-only controls (no dislike button anywhere in this UI) */
     .comment-like-btn, .comment-reply-toggle, .comment-delete-btn, .view-replies-btn, .load-more-replies-btn {
       background: none; border: none; padding: 0; cursor: pointer;
       font-size: .72rem; font-weight: 700; color: var(--text-3);
@@ -320,11 +652,7 @@
     .replies-loading { font-size: .72rem; color: var(--text-3); margin-left: 4px; margin-top: 4px; }
 
     .reply-composer { display: flex; gap: 6px; margin-top: 8px; margin-left: 4px; }
-    .reply-input {
-      flex: 1; background: var(--surface2); border: 1px solid var(--border2);
-      border-radius: 999px; color: var(--text); font-size: .78rem;
-      padding: 6px 12px; outline: none; font-family: inherit;
-    }
+    .reply-input-wrap { position: relative; flex: 1; }
     .reply-post-btn {
       padding: 6px 12px; border-radius: 999px; font-size: .74rem; font-weight: 700;
       background: var(--surface3); border: 1px solid var(--border2); color: var(--text-2);
@@ -359,6 +687,10 @@
     }
     @keyframes spin { to { transform:rotate(360deg); } }
 
+    /* REQ 7 — infinite scroll sentinel replaces the manual "Load more"
+       button as the primary loading trigger; the button is kept in the
+       DOM as a silent fallback (e.g. for browsers without
+       IntersectionObserver) but stays visually hidden. */
     .load-more-wrap { text-align:center; margin-top: 8px; }
     .load-more-btn {
       padding: 9px 22px; border-radius: 8px; font-size: .82rem; font-weight: 600;
@@ -367,15 +699,51 @@
     }
     .load-more-btn:hover { color:#fff; border-color:#444; }
     .load-more-btn:disabled { opacity:.5; cursor:not-allowed; }
+    .infinite-sentinel { height: 1px; }
+    .feed-end-note { text-align: center; padding: 18px 0; color: var(--text-3); font-size: .8rem; }
+
+    /* ── Lightbox ── */
+    .lightbox-overlay {
+      position: fixed; inset: 0; z-index: 1000;
+      background: rgba(0,0,0,0.92);
+      display: none; align-items: center; justify-content: center;
+      backdrop-filter: blur(6px);
+      animation: lbFade .18s ease;
+    }
+    .lightbox-overlay.open { display: flex; }
+    @keyframes lbFade { from { opacity: 0; } to { opacity: 1; } }
+    .lightbox-stage { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+    .lightbox-media-wrap { max-width: 90vw; max-height: 86vh; display: flex; align-items: center; justify-content: center; }
+    .lightbox-media-wrap img, .lightbox-media-wrap video {
+      max-width: 90vw; max-height: 86vh; object-fit: contain; border-radius: 6px;
+      box-shadow: 0 30px 80px rgba(0,0,0,.6);
+    }
+    .lightbox-close {
+      position: absolute; top: 18px; right: 22px; z-index: 5;
+      width: 40px; height: 40px; border-radius: 50%;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,.15);
+      color: #fff; font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .lightbox-close:hover { background: rgba(255,255,255,0.16); }
+    .lightbox-arrow {
+      position: absolute; top: 50%; transform: translateY(-50%); z-index: 5;
+      width: 48px; height: 48px; border-radius: 50%;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,.15);
+      color: #fff; font-size: 1.6rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .lightbox-arrow:hover { background: rgba(255,255,255,0.16); }
+    .lightbox-arrow.prev { left: 18px; }
+    .lightbox-arrow.next { right: 18px; }
+    .lightbox-arrow.disabled { opacity: .25; pointer-events: none; }
+    .lightbox-counter {
+      position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 5;
+      background: rgba(0,0,0,0.5); color: #fff; font-size: .78rem; font-weight: 600;
+      padding: 5px 14px; border-radius: 999px;
+    }
 
     ::-webkit-scrollbar { width:5px; }
     ::-webkit-scrollbar-track { background:transparent; }
     ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:99px; }
-
-    @media(max-width:640px){
-      .slider-stage { height: 280px; }
-      .post-header .who { max-width: 140px; }
-    }
   </style>
 </head>
 <body>
@@ -390,26 +758,150 @@
   </div>
 </header>
 
-<div class="page">
-  <div class="page-title">Crypto Square</div>
-  <div class="page-sub">See what the community is trading and thinking.</div>
+<div class="app-shell">
+  <!-- ── Sidebar (icon nav) ── -->
+  <aside class="sidebar" id="sidebar">
+    <button type="button" class="sidebar-item active" id="side-discover" onclick="switchTab('discover')" title="Discover">
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>
+      <span class="sb-label">Discover</span>
+    </button>
+    <button type="button" class="sidebar-item" id="side-following" onclick="switchTab('following')" title="Following">
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span class="sb-label">Following</span>
+    </button>
+    <a href="/profile" class="sidebar-item" title="Profile">
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span class="sb-label">Profile</span>
+    </a>
+    <button type="button" class="sidebar-item" id="side-bookmarks" onclick="switchTab('bookmarks')" title="Bookmarks">
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+      <span class="sb-label">Bookmarks</span>
+    </button>
+    <a href="/settings" class="sidebar-item" title="Settings">
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span class="sb-label">Settings</span>
+    </a>
+  </aside>
 
-  <button type="button" class="new-posts-banner" id="newPostsBanner" onclick="refreshWithNewPosts()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
-    <span id="newPostsBannerText">New posts</span>
-  </button>
+  <!-- ── Main feed ── -->
+  <main class="page">
+    <div class="page-title">Crypto Square</div>
+    <div class="page-sub">See what the community is trading and thinking.</div>
 
-  <div class="tabs">
-    <button class="tab-btn active" id="tab-discover" onclick="switchTab('discover')">Discover</button>
-    <button class="tab-btn" id="tab-following" onclick="switchTab('following')">Following</button>
-  </div>
+    <button type="button" class="new-posts-banner" id="newPostsBanner" onclick="refreshWithNewPosts()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
+      <span id="newPostsBannerText">New posts</span>
+    </button>
 
-  <div id="feedContainer">
-    <div class="loading-state"><span class="spinner-inline"></span>Loading posts…</div>
-  </div>
+    <div id="feedContainer">
+      <div class="loading-state"><span class="spinner-inline"></span>Loading posts…</div>
+    </div>
 
-  <div class="load-more-wrap" id="loadMoreWrap" style="display:none;">
-    <button class="load-more-btn" id="loadMoreBtn" onclick="loadMore()">Load more</button>
+    <!-- REQ 7 (infinite scroll): sentinel that fires the next page fetch
+         while the user is still ~6-7 posts away from the bottom, so the
+         next batch is ready before they scroll into it. -->
+    <div class="infinite-sentinel" id="infiniteSentinel"></div>
+
+    <div class="load-more-wrap" id="loadMoreWrap" style="display:none;">
+      <button class="load-more-btn" id="loadMoreBtn" onclick="loadMore()">Load more</button>
+    </div>
+  </main>
+
+  <!-- ── Right widget panel: Search, Fear & Greed, Top 3
+       Cryptocurrencies, Top Creators — all moved here for a balanced
+       single-column widget rail opposite the icon nav. ── -->
+  <aside class="side-panel right-panel">
+
+    <!-- REQ 7 — Search box: search posts by hashtag or display name -->
+    <div class="widget-card">
+      <div class="widget-title"><span>Search</span></div>
+      <div class="search-box-wrap">
+        <span class="search-box-icon">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </span>
+        <input type="text" id="postSearchInput" class="search-box-input"
+               placeholder="Search #hashtag or name…"
+               onkeydown="handleSearchKeydown(event)"
+               oninput="handleSearchInput(event)"/>
+        <button type="button" class="search-box-clear" id="searchClearBtn" onclick="clearPostSearch()" title="Clear">&times;</button>
+      </div>
+      <div class="search-box-hint">Search by hashtag (e.g. #btc) or a creator's display name.</div>
+    </div>
+
+    <div class="widget-card" id="fgWidgetCard">
+      <div class="widget-title"><span>Fear &amp; Greed Index</span></div>
+      <div class="fg-gauge-wrap">
+        <svg id="fgGaugeSvg" class="fg-gauge-svg" viewBox="0 0 200 118" width="200" height="118">
+          <defs>
+            <linearGradient id="fgGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#ef4444"/>
+              <stop offset="25%" stop-color="#f59e0b"/>
+              <stop offset="50%" stop-color="#eab308"/>
+              <stop offset="75%" stop-color="#84cc16"/>
+              <stop offset="100%" stop-color="#22c55e"/>
+            </linearGradient>
+          </defs>
+          <!-- track -->
+          <path class="fg-arc-bg" d="M 15 100 A 85 85 0 0 1 185 100" fill="none" stroke="#333" stroke-width="14" stroke-linecap="round"/>
+          <!-- colored arc -->
+          <path class="fg-arc-fg" d="M 15 100 A 85 85 0 0 1 185 100" fill="none" stroke="url(#fgGrad)" stroke-width="14" stroke-linecap="round"/>
+          <!-- tick marks at 0/25/50/75/100 -->
+          <g class="fg-ticks">
+            <line class="fg-tick" x1="15" y1="100" x2="15" y2="92"/>
+            <line class="fg-tick" x1="49" y1="35" x2="55" y2="41"/>
+            <line class="fg-tick" x1="100" y1="15" x2="100" y2="23"/>
+            <line class="fg-tick" x1="151" y1="35" x2="145" y2="41"/>
+            <line class="fg-tick" x1="185" y1="100" x2="185" y2="92"/>
+          </g>
+          <!-- needle: a tapered pointer, shortened and lifted so it
+               floats above the score readout below the gauge instead of
+               touching/overlapping it. -->
+          <g id="fgNeedle" class="fg-needle-pivot">
+            <polygon points="100,40 97,101 103,101" fill="#fff"/>
+          </g>
+          <circle class="fg-needle-hub" cx="100" cy="100" r="7" fill="#fff"/>
+          <circle cx="100" cy="100" r="3" fill="#0a0a0a"/>
+        </svg>
+        <div class="fg-score" id="fgScore">--</div>
+        <div class="fg-label" id="fgLabel">Loading…</div>
+      </div>
+      <div class="fg-question">How do you feel about BTC today?</div>
+      <div class="fg-vote-row" id="fgVoteRow">
+        <button type="button" class="fg-vote-btn bearish" id="fgBearishBtn" onclick="castSentimentVote('bearish')">Bearish</button>
+        <button type="button" class="fg-vote-btn bullish" id="fgBullishBtn" onclick="castSentimentVote('bullish')">Bullish</button>
+      </div>
+      <div class="fg-vote-split" id="fgVoteSplit"></div>
+      <div class="fg-live-note" id="fgLiveNote">Connecting to Binance…</div>
+    </div>
+
+    <div class="widget-card">
+      <div class="widget-title">
+        <span>Top 3 Cryptos</span>
+        <span class="live-tag"><span class="dot"></span>Live</span>
+      </div>
+      <div id="crypto3List">
+        <div class="widget-skeleton"><span class="spinner-inline"></span>Connecting…</div>
+      </div>
+    </div>
+
+    <div class="widget-card">
+      <div class="widget-title"><span>Top Creators</span></div>
+      <div id="topCreatorsList">
+        <div class="widget-skeleton"><span class="spinner-inline"></span>Loading creators…</div>
+      </div>
+      <a href="/top-creators" class="view-more-text">View More</a>
+    </div>
+  </aside>
+</div>
+
+<!-- ── Lightbox gallery ── -->
+<div class="lightbox-overlay" id="lightboxOverlay">
+  <div class="lightbox-stage">
+    <button type="button" class="lightbox-close" id="lightboxClose" title="Close (Esc)">&times;</button>
+    <button type="button" class="lightbox-arrow prev" id="lightboxPrev" title="Previous (←)">‹</button>
+    <div class="lightbox-media-wrap" id="lightboxMediaWrap"></div>
+    <button type="button" class="lightbox-arrow next" id="lightboxNext" title="Next (→)">›</button>
+    <div class="lightbox-counter" id="lightboxCounter"></div>
   </div>
 </div>
 
@@ -417,41 +909,45 @@
 /* ═══════════════════════════════════════════════════════
    STATE
    ═══════════════════════════════════════════════════════
-   Backend: Social_Platform/insights.js
-     GET  /api/insights/discover?page=N   -> { posts, page, hasMore }
-                                              (personalized — Phase 3)
-     GET  /api/insights/following?page=N  -> { posts, page, hasMore }
+   Backend endpoints in play:
+     GET  /api/insights/discover?page=N&limit=8   -> personalized ranked feed
+     GET  /api/insights/following?page=N&limit=8  -> chronological, people you follow
+     GET  /api/posts/bookmarks?page=N&limit=8     -> your saved posts, newest saved first
      POST /api/insights/posts/:id/like    -> { liked, likesCount }
-   Follow/unfollow reuses the existing endpoints:
-     POST /api/follow    { username }
-     POST /api/unfollow  { username }
-   Engagement tracking reuses the shared endpoints from posts.js — same
-   Post collection, so they work regardless of which router registered
-   them (Phase 3 personalization):
-     POST /api/posts/:id/view              -> viewsCount + auto-tracks
-                                               view_crypto/view_btc/view_eth
-                                               when the post carries that tag
-     POST /api/posts/:id/activity          -> { activityType: 'watch_video' | 'open_profile' }
-   Comments (PHASE 11): Social_Platform/routes/comments.js
-     GET    /api/posts/:postId/comments
-     POST   /api/posts/:postId/comments
-     DELETE /api/comments/:commentId
-     POST   /api/comments/:commentId/like        (like-only, toggles)
-     GET    /api/comments/:commentId/replies
-     POST   /api/comments/:commentId/replies
-     DELETE /api/replies/:replyId
-     POST   /api/replies/:replyId/like           (like-only, toggles)
+     POST /api/posts/:id/bookmark         -> { bookmarked, saveCount }
+     POST /api/follow / POST /api/unfollow  { username }
+     POST /api/posts/:id/view             -> viewsCount + interest tracking
+     POST /api/posts/:id/activity         -> { activityType: 'watch_video' | 'open_profile' }
+     GET  /api/top-creators                -> Social_Platform/routes (PHASE 5 leaderboard, provided)
+     WS   /ws/market-data                  -> shared live price snapshot (reused from landing page)
+   Fear & Greed (REQ 5): fetched directly from Binance's public REST API
+   (no first-party backend route involved) — see fetchFearGreedFromBinance().
+   Comments: Social_Platform/routes/comments.js
+     GET/POST   /api/posts/:postId/comments
+     PUT/DELETE /api/comments/:commentId
+     POST       /api/comments/:commentId/like
+     GET/POST   /api/comments/:commentId/replies
+     PUT/DELETE /api/replies/:replyId
+     POST       /api/replies/:replyId/like
    ═══════════════════════════════════════════════════════ */
+const FEED_ENDPOINTS = {
+  discover:  '/api/insights/discover',
+  following: '/api/insights/following',
+  bookmarks: '/api/posts/bookmarks',
+};
+const ALL_TABS = ['discover', 'following', 'bookmarks'];
+const PAGE_SIZE = 8; // initial load 8 posts, same size per subsequent batch
+
 let currentTab = 'discover';
 
 const tabState = {
-  discover:  { posts: [], page: 0, hasMore: true, loaded: false, sinceTimestamp: null },
-  following: { posts: [], page: 0, hasMore: true, loaded: false, sinceTimestamp: null },
+  discover:  { posts: [], page: 0, hasMore: true, loaded: false, sinceTimestamp: null, fetching: false },
+  following: { posts: [], page: 0, hasMore: true, loaded: false, sinceTimestamp: null, fetching: false },
+  bookmarks: { posts: [], page: 0, hasMore: true, loaded: false, sinceTimestamp: null, fetching: false },
 };
 
 let newPostsPollTimer = null;
 
-// Dedupe so we only fire each tracking call once per post per page load.
 const viewedPostIds = new Set();
 const watchedVideoIds = new Set();
 
@@ -461,17 +957,28 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+function cssEscape(str) {
+  return window.CSS && CSS.escape ? CSS.escape(str) : String(str).replace(/["\\]/g, '\\$&');
+}
+
 /* ═══════════════════════════════════════════════════════
-   TAB SWITCHING
+   TAB SWITCHING (Discover / Following / Bookmarks)
    ═══════════════════════════════════════════════════════ */
 function switchTab(tab) {
-  if (tab === currentTab && tabState[tab].loaded) return;
+  if (tab === currentTab && tabState[tab].loaded && !activeSearchQuery) return;
   currentTab = tab;
 
-  document.getElementById('tab-discover').classList.toggle('active', tab === 'discover');
-  document.getElementById('tab-following').classList.toggle('active', tab === 'following');
+  document.getElementById('side-discover').classList.toggle('active', tab === 'discover');
+  document.getElementById('side-following').classList.toggle('active', tab === 'following');
+  document.getElementById('side-bookmarks').classList.toggle('active', tab === 'bookmarks');
 
   hideNewPostsBanner();
+
+  if (activeSearchQuery) {
+    if (tabState[tab].loaded) { runPostSearch(activeSearchQuery); }
+    else { fetchFeed(tab).then(() => runPostSearch(activeSearchQuery)); }
+    return;
+  }
 
   if (tabState[tab].loaded) {
     renderFeed(tab);
@@ -481,10 +988,13 @@ function switchTab(tab) {
 }
 
 /* ═══════════════════════════════════════════════════════
-   FETCH FEED (Discover / Following)
+   FETCH FEED (Discover / Following / Bookmarks)
    ═══════════════════════════════════════════════════════ */
 async function fetchFeed(tab) {
   const state = tabState[tab];
+  if (state.fetching || !state.hasMore) return;
+  state.fetching = true;
+
   const container = document.getElementById('feedContainer');
 
   if (state.page === 0) {
@@ -494,7 +1004,7 @@ async function fetchFeed(tab) {
 
   try {
     const nextPage = state.page + 1;
-    const r = await fetch(`/api/insights/${tab}?page=${nextPage}`);
+    const r = await fetch(`${FEED_ENDPOINTS[tab]}?page=${nextPage}&limit=${PAGE_SIZE}`);
     const d = await r.json();
 
     if (!d.success) {
@@ -507,15 +1017,17 @@ async function fetchFeed(tab) {
     state.page = d.data.page || nextPage;
     state.hasMore = !!d.data.hasMore;
     state.loaded = true;
-    if (nextPage === 1) state.sinceTimestamp = new Date().toISOString();
+    if (nextPage === 1 && tab !== 'bookmarks') state.sinceTimestamp = new Date().toISOString();
 
-    if (tab === currentTab) renderFeed(tab);
+    if (tab === currentTab && !activeSearchQuery) renderFeed(tab);
 
   } catch (e) {
     console.error(`fetchFeed(${tab}) error:`, e);
-    if (tab === currentTab) {
+    if (tab === currentTab && !state.posts.length) {
       container.innerHTML = `<div class="empty-state">Network error while loading posts.</div>`;
     }
+  } finally {
+    state.fetching = false;
   }
 }
 
@@ -530,7 +1042,127 @@ function loadMore() {
 }
 
 /* ═══════════════════════════════════════════════════════
-   POST RENDER HELPERS (same model as the profile page)
+   REQ 7 — INFINITE SCROLL / PROGRESSIVE LOADING
+   ═══════════════════════════════════════════════════════
+   Rather than waiting for the very bottom of the page, we watch the post
+   card sitting ~6th/7th-from-the-end of the currently loaded batch. Once
+   that card scrolls into view the next batch is already being requested
+   in the background, so by the time the user reaches the true end of the
+   list, new posts are already rendered — no visible loading gap.
+   ═══════════════════════════════════════════════════════ */
+const LOOKAHEAD_FROM_END = 3; // trigger when ~6th/7th of an 8-post batch is visible
+let infiniteObserver = null;
+
+function setupInfiniteScroll() {
+  if (activeSearchQuery) return; // search results are a static filtered list
+  const sentinel = document.getElementById('infiniteSentinel');
+  if (!sentinel) return;
+
+  if (!infiniteObserver && 'IntersectionObserver' in window) {
+    infiniteObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) fetchFeed(currentTab);
+      });
+    }, { rootMargin: '600px 0px 600px 0px', threshold: 0 });
+  }
+
+  const state = tabState[currentTab];
+  const cards = document.querySelectorAll('#feedContainer .post-card');
+  if (infiniteObserver) {
+    infiniteObserver.disconnect();
+    const triggerIndex = Math.max(0, cards.length - LOOKAHEAD_FROM_END);
+    const triggerCard = cards[triggerIndex];
+    if (triggerCard && state.hasMore) {
+      infiniteObserver.observe(triggerCard);
+    } else if (state.hasMore) {
+      infiniteObserver.observe(sentinel);
+    }
+  }
+
+  document.getElementById('loadMoreWrap').style.display = 'none'; // sentinel handles it now
+}
+
+/* ═══════════════════════════════════════════════════════
+   REQ 7 — SEARCH POSTS BY HASHTAG OR DISPLAY NAME
+   ═══════════════════════════════════════════════════════
+   Filters the posts already loaded for the current tab, matching either
+   a hashtag (with or without the leading #) or a creator's display
+   name / username. Debounced on typing, and Enter runs it immediately.
+   ═══════════════════════════════════════════════════════ */
+let activeSearchQuery = '';
+let searchDebounceTimer = null;
+
+function handleSearchInput(e) {
+  clearTimeout(searchDebounceTimer);
+  const value = e.target.value;
+  document.getElementById('searchClearBtn').style.display = value ? 'block' : 'none';
+  searchDebounceTimer = setTimeout(() => runPostSearch(value.trim()), 300);
+}
+
+function handleSearchKeydown(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    clearTimeout(searchDebounceTimer);
+    runPostSearch(e.target.value.trim());
+  } else if (e.key === 'Escape') {
+    clearPostSearch();
+  }
+}
+
+async function runPostSearch(query) {
+  activeSearchQuery = query;
+  if (!query) { clearPostSearch(); return; }
+
+  const state = tabState[currentTab];
+  if (!state.loaded && !state.fetching) { await fetchFeed(currentTab); }
+
+  const isHashtagSearch = query.startsWith('#');
+  const term = (isHashtagSearch ? query.slice(1) : query).toLowerCase();
+
+  const matches = tabState[currentTab].posts.filter(post => {
+    const hashtagHit = (post.hashtags || []).some(h => h.toLowerCase().includes(term));
+    const nameHit = (post.author?.displayName || '').toLowerCase().includes(term)
+      || (post.username || '').toLowerCase().includes(term);
+    return isHashtagSearch ? hashtagHit : (hashtagHit || nameHit);
+  });
+
+  renderSearchResults(query, matches);
+}
+
+function renderSearchResults(query, matches) {
+  document.getElementById('infiniteSentinel').style.display = 'none';
+  document.getElementById('loadMoreWrap').style.display = 'none';
+  if (infiniteObserver) infiniteObserver.disconnect();
+
+  const container = document.getElementById('feedContainer');
+  const banner = `<div class="search-active-banner show">
+      <span>${matches.length} result${matches.length === 1 ? '' : 's'} for "${escapeHtml(query)}"</span>
+      <button type="button" onclick="clearPostSearch()">Clear</button>
+    </div>`;
+
+  if (!matches.length) {
+    container.innerHTML = banner + `<div class="empty-state">No posts match that search yet.</div>`;
+    return;
+  }
+
+  container.innerHTML = banner + matches.map((post, idx) => renderPostCardHtml(post, `search-${idx}`)).join('');
+
+  requestAnimationFrame(attachClampReadMore);
+  setupViewTracking();
+  setupVideoWatchTracking();
+}
+
+function clearPostSearch() {
+  activeSearchQuery = '';
+  const input = document.getElementById('postSearchInput');
+  if (input) input.value = '';
+  document.getElementById('searchClearBtn').style.display = 'none';
+  document.getElementById('infiniteSentinel').style.display = '';
+  renderFeed(currentTab);
+}
+
+/* ═══════════════════════════════════════════════════════
+   POST RENDER HELPERS
    ═══════════════════════════════════════════════════════ */
 function parsePostContent(raw) {
   const text = raw || '';
@@ -557,10 +1189,13 @@ function formatPostDate(dateInput) {
   return { short, full };
 }
 
-const ICON_LIKE = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.6z"/></svg>';
-const ICON_UP   = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l8 10h-5v6h-6v-6H4z"/></svg>';
-const ICON_DOWN = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 20l-8-10h5V4h6v6h5z"/></svg>';
-const ICON_COMMENT = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.4 8.4 8.3 8.3 0 0 1-3.8-.9L3 21l1.9-5.7a8.3 8.3 0 0 1-.9-3.8A8.4 8.4 0 0 1 12.5 3h.1A8.4 8.4 0 0 1 21 11.4v.1z"/></svg>';
+const ICON_LIKE     = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.6z"/></svg>';
+const ICON_UP        = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l8 10h-5v6h-6v-6H4z"/></svg>';
+const ICON_DOWN      = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 20l-8-10h5V4h6v6h5z"/></svg>';
+const ICON_COMMENT   = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.4 8.4 8.3 8.3 0 0 1-3.8-.9L3 21l1.9-5.7a8.3 8.3 0 0 1-.9-3.8A8.4 8.4 0 0 1 12.5 3h.1A8.4 8.4 0 0 1 21 11.4v.1z"/></svg>';
+const ICON_VIEWS     = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+const ICON_BOOKMARK  = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
+const ICON_EMOJI     = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>';
 
 function sentimentPillHtml(sentiment) {
   if (sentiment === 'bullish') return `<span class="sentiment-pill bullish">${ICON_UP}Bullish</span>`;
@@ -570,7 +1205,15 @@ function sentimentPillHtml(sentiment) {
 
 function hashtagsHtml(hashtags) {
   if (!hashtags || !hashtags.length) return '';
-  return `<div class="post-hashtags">${hashtags.map(h => `<span class="hashtag-pill">#${escapeHtml(h)}</span>`).join('')}</div>`;
+  return `<div class="post-hashtags">${hashtags.map(h => `<span class="hashtag-pill" onclick="event.stopPropagation(); searchByHashtagClick('${escapeHtml(h)}')">#${escapeHtml(h)}</span>`).join('')}</div>`;
+}
+
+function searchByHashtagClick(hashtag) {
+  const input = document.getElementById('postSearchInput');
+  const q = '#' + hashtag;
+  if (input) input.value = q;
+  document.getElementById('searchClearBtn').style.display = 'block';
+  runPostSearch(q);
 }
 
 function mediaTag(m) {
@@ -579,20 +1222,21 @@ function mediaTag(m) {
     : `<img src="${m.url}" alt="post media" loading="lazy"/>`;
 }
 
-// Full-picture slider — object-fit:contain so images are never cropped.
-// Single image: no controls. 2+ images: prev/next arrows, dots, counter.
-function mediaSliderHtml(media, uid) {
+// Media preview stays clean: no hover stat overlay / action icons sit on
+// top of images or videos. Engagement stats/actions live only in
+// .post-footer, which remains fully interactive.
+function mediaSliderHtml(media, uid, post) {
   if (!media || !media.length) return '';
   const slides = media.map(m => `<div class="slider-slide">${mediaTag(m)}</div>`).join('');
 
   if (media.length === 1) {
-    return `<div class="post-media-slider" id="slider-${uid}">
+    return `<div class="sq-media" id="slider-${uid}" data-post-id="${post._id || ''}" data-index="0" data-count="1">
       <div class="slider-stage"><div class="slider-track">${slides}</div></div>
     </div>`;
   }
 
   const dots = media.map((_, i) => `<button class="slider-dot${i === 0 ? ' active' : ''}" data-idx="${i}"></button>`).join('');
-  return `<div class="post-media-slider" id="slider-${uid}" data-index="0" data-count="${media.length}">
+  return `<div class="sq-media" id="slider-${uid}" data-post-id="${post._id || ''}" data-index="0" data-count="${media.length}">
     <div class="slider-stage"><div class="slider-track">${slides}</div></div>
     <button class="slider-arrow prev disabled" data-dir="-1" title="Previous photo">‹</button>
     <button class="slider-arrow next" data-dir="1" title="Next photo">›</button>
@@ -604,103 +1248,135 @@ function mediaSliderHtml(media, uid) {
 /* ═══════════════════════════════════════════════════════
    RENDER FEED
    ═══════════════════════════════════════════════════════ */
+const EMPTY_STATE_HTML = {
+  discover:  `<div class="empty-state">No posts yet. Once people start posting, they'll show up here.</div>`,
+  following: `<div class="empty-state">You're not following anyone yet, or the creators you follow haven't posted.<br/><a href="/top-creators">Discover top creators →</a></div>`,
+  bookmarks: `<div class="empty-state">No bookmarks yet. Tap the bookmark icon on any post to save it here.</div>`,
+};
+
+// REQ 4 — post cards no longer show the @handle; that lives only in the
+// Top Creators widget now. The meta row just shows the post date.
+function renderPostCardHtml(post, idxKey) {
+  const avatarHtml = post.author?.avatarUrl
+    ? `<img src="${post.author.avatarUrl}" alt="avatar"/>`
+    : (post.author?.displayName || post.username || '?').slice(0, 2).toUpperCase();
+
+  const { title, body } = parsePostContent(post.content);
+  const { short: whenShort, full: whenFull } = formatPostDate(post.createdAt);
+  const contentId = `sq-content-${idxKey}`;
+  const sliderUid = `${idxKey}-${post._id || ''}`;
+
+  const followBtnHtml = post.isSelf ? '' : `
+    <button type="button"
+            class="follow-btn${post.isFollowing ? ' following' : ''}"
+            data-username="${escapeHtml(post.username)}"
+            data-following="${post.isFollowing ? '1' : '0'}"
+            onclick="toggleFollow(this)">
+      ${post.isFollowing ? 'Following' : 'Follow'}
+    </button>`;
+
+  const commentsOpen = !!commentsState[post._id]?.open;
+
+  return `
+    <div class="post-card" data-post-id="${post._id || ''}" data-author="${escapeHtml(post.username)}" data-self="${post.isSelf ? '1' : '0'}">
+      <div class="post-header">
+        <div class="mini-avatar" data-open-profile="1">${avatarHtml}</div>
+        <div class="post-header-text">
+          <div class="who-row">
+            <span class="who" data-open-profile="1">${escapeHtml(post.author?.displayName || post.username)}</span>
+            ${sentimentPillHtml(post.sentiment)}
+          </div>
+          <div class="meta-row" title="${escapeHtml(whenFull)}">${escapeHtml(whenShort)}</div>
+        </div>
+      </div>
+      ${followBtnHtml}
+      ${title ? `<div class="post-title">${escapeHtml(title)}</div>` : ''}
+      <div class="post-content clamped" id="${contentId}">${escapeHtml(body)}</div>
+      <button class="read-more-btn" data-target="${contentId}" style="display:none;">Read more</button>
+      ${mediaSliderHtml(post.media, sliderUid, post)}
+      ${hashtagsHtml(post.hashtags)}
+      <div class="post-footer">
+        <button type="button"
+                class="analytic-stat comment-btn${commentsOpen ? ' open' : ''}"
+                data-post-id="${post._id}"
+                onclick="toggleComments(this)"
+                title="Comments">
+          ${ICON_COMMENT}<span class="comment-count">${formatCount(post.commentsCount || 0)}</span>
+        </button>
+        <button type="button"
+                class="analytic-stat like-btn${post.isLiked ? ' liked' : ''}"
+                data-post-id="${post._id}"
+                onclick="toggleLike(this)"
+                title="Likes">
+          ${ICON_LIKE}<span class="like-count">${formatCount(post.likesCount || 0)}</span>
+        </button>
+        <span class="analytic-stat" title="Views">
+          ${ICON_VIEWS}<span class="views-count">${formatCount(post.viewsCount || 0)}</span>
+        </span>
+        <button type="button"
+                class="analytic-stat bookmark-btn${post.isBookmarked ? ' bookmarked' : ''}"
+                data-post-id="${post._id}"
+                onclick="toggleBookmark(this)"
+                title="Bookmarks">
+          ${ICON_BOOKMARK}<span class="bookmark-count">${formatCount(post.bookmarksCount || 0)}</span>
+        </button>
+      </div>
+      <div class="comments-section${commentsOpen ? ' open' : ''}" id="comments-${post._id}">
+        ${commentsOpen ? renderCommentsInner(post._id) : ''}
+      </div>
+    </div>`;
+}
+
+function attachClampReadMore() {
+  const container = document.getElementById('feedContainer');
+  container.querySelectorAll('.post-content.clamped').forEach(contentEl => {
+    if (contentEl.scrollHeight > contentEl.clientHeight + 1) {
+      const btn = container.querySelector(`.read-more-btn[data-target="${contentEl.id}"]`);
+      if (btn) btn.style.display = 'inline-block';
+    }
+  });
+}
+
 function renderFeed(tab) {
   const state = tabState[tab];
   const container = document.getElementById('feedContainer');
   const loadMoreWrap = document.getElementById('loadMoreWrap');
 
   if (!state.posts.length) {
-    container.innerHTML = tab === 'following'
-      ? `<div class="empty-state">You're not following anyone yet, or the creators you follow haven't posted.<br/><a href="/top-creators">Discover top creators →</a></div>`
-      : `<div class="empty-state">No posts yet. Once people start posting, they'll show up here.</div>`;
+    container.innerHTML = EMPTY_STATE_HTML[tab];
     loadMoreWrap.style.display = 'none';
     return;
   }
 
-  container.innerHTML = state.posts.map((post, idx) => {
-    const avatarHtml = post.author?.avatarUrl
-      ? `<img src="${post.author.avatarUrl}" alt="avatar"/>`
-      : (post.author?.displayName || post.username || '?').slice(0, 2).toUpperCase();
+  container.innerHTML = state.posts.map((post, idx) => renderPostCardHtml(post, `${tab}-${idx}`)).join('');
 
-    const { title, body } = parsePostContent(post.content);
-    const { short: whenShort, full: whenFull } = formatPostDate(post.createdAt);
-    const contentId = `sq-content-${tab}-${idx}`;
-    const sliderUid = `${tab}-${post._id || idx}`;
+  requestAnimationFrame(attachClampReadMore);
 
-    const followBtnHtml = post.isSelf ? '' : `
-      <button type="button"
-              class="follow-btn${post.isFollowing ? ' following' : ''}"
-              data-username="${escapeHtml(post.username)}"
-              data-following="${post.isFollowing ? '1' : '0'}"
-              onclick="toggleFollow(this)">
-        ${post.isFollowing ? 'Following' : 'Follow'}
-      </button>`;
-
-    const commentsOpen = !!commentsState[post._id]?.open;
-
-    return `
-      <div class="post-card" data-post-id="${post._id || ''}" data-author="${escapeHtml(post.username)}" data-self="${post.isSelf ? '1' : '0'}">
-        <div class="post-header">
-          <div class="mini-avatar" data-open-profile="1">${avatarHtml}</div>
-          <div class="post-header-text">
-            <div class="who-row">
-              <span class="who" data-open-profile="1">${escapeHtml(post.author?.displayName || post.username)}</span>
-              ${sentimentPillHtml(post.sentiment)}
-            </div>
-            <div class="meta-row" title="${escapeHtml(whenFull)}">@${escapeHtml(post.username)} · ${escapeHtml(whenShort)}</div>
-          </div>
-        </div>
-        ${followBtnHtml}
-        ${title ? `<div class="post-title">${escapeHtml(title)}</div>` : ''}
-        <div class="post-content clamped" id="${contentId}">${escapeHtml(body)}</div>
-        <button class="read-more-btn" data-target="${contentId}" style="display:none;">Read more</button>
-        ${mediaSliderHtml(post.media, sliderUid)}
-        ${hashtagsHtml(post.hashtags)}
-        <div class="post-footer">
-          <button type="button"
-                  class="like-btn${post.isLiked ? ' liked' : ''}"
-                  data-post-id="${post._id}"
-                  onclick="toggleLike(this)">
-            ${ICON_LIKE}<span class="like-count">${formatCount(post.likesCount || 0)}</span>
-          </button>
-          <button type="button"
-                  class="comment-btn${commentsOpen ? ' open' : ''}"
-                  data-post-id="${post._id}"
-                  onclick="toggleComments(this)">
-            ${ICON_COMMENT}<span class="comment-count">${formatCount(post.commentsCount || 0)}</span>
-          </button>
-        </div>
-        <div class="comments-section${commentsOpen ? ' open' : ''}" id="comments-${post._id}">
-          ${commentsOpen ? renderCommentsInner(post._id) : ''}
-        </div>
-      </div>`;
-  }).join('');
-
-  requestAnimationFrame(() => {
-    container.querySelectorAll('.post-content.clamped').forEach(contentEl => {
-      if (contentEl.scrollHeight > contentEl.clientHeight + 1) {
-        const btn = container.querySelector(`.read-more-btn[data-target="${contentEl.id}"]`);
-        if (btn) btn.style.display = 'inline-block';
-      }
-    });
-  });
-
-  loadMoreWrap.style.display = state.hasMore ? 'block' : 'none';
+  loadMoreWrap.style.display = 'none'; // infinite scroll drives loading now
 
   setupViewTracking();
   setupVideoWatchTracking();
+  setupInfiniteScroll();
+
+  const feedEndNoteId = 'feedEndNote';
+  document.getElementById(feedEndNoteId)?.remove();
+  if (!state.hasMore) {
+    container.insertAdjacentHTML('beforeend', `<div class="feed-end-note" id="${feedEndNoteId}">You're all caught up.</div>`);
+  }
 }
 
 /* ═══════════════════════════════════════════════════════
-   EVENT DELEGATION — read more + media slider controls +
-   open-profile tracking (Phase 3)
+   EVENT DELEGATION — read more + media slider + lightbox + profile nav
    ═══════════════════════════════════════════════════════ */
 document.getElementById('feedContainer').addEventListener('click', (e) => {
   const openProfileEl = e.target.closest('[data-open-profile]');
   if (openProfileEl) {
     const card = openProfileEl.closest('.post-card');
-    if (card && card.dataset.self !== '1') {
-      trackOpenProfile(card.dataset.postId);
+    if (card) {
+      const username = card.dataset.author;
+      const isSelf = card.dataset.self === '1';
+      if (!isSelf) trackOpenProfile(card.dataset.postId);
+      goToProfile(username, isSelf);
     }
     return;
   }
@@ -717,17 +1393,32 @@ document.getElementById('feedContainer').addEventListener('click', (e) => {
 
   const arrowBtn = e.target.closest('.slider-arrow');
   if (arrowBtn) {
-    const wrap = arrowBtn.closest('.post-media-slider');
+    e.stopPropagation();
+    const wrap = arrowBtn.closest('.sq-media');
     moveSlider(wrap, parseInt(arrowBtn.dataset.dir, 10));
     return;
   }
 
   const dotBtn = e.target.closest('.slider-dot');
   if (dotBtn) {
-    const wrap = dotBtn.closest('.post-media-slider');
+    e.stopPropagation();
+    const wrap = dotBtn.closest('.sq-media');
     goToSlide(wrap, parseInt(dotBtn.dataset.idx, 10));
+    return;
+  }
+
+  // Clicking media (but not a video's native controls) opens the lightbox
+  const mediaWrap = e.target.closest('.sq-media');
+  if (mediaWrap && e.target.tagName !== 'VIDEO') {
+    const postId = mediaWrap.dataset.postId;
+    const currentIdx = parseInt(mediaWrap.dataset.index, 10) || 0;
+    openLightboxForPost(postId, currentIdx);
   }
 });
+
+function goToProfile(username, isSelf) {
+  window.location.href = isSelf ? '/profile' : `/profile/${encodeURIComponent(username)}`;
+}
 
 function moveSlider(wrap, dir) {
   const count = parseInt(wrap.dataset.count, 10) || 1;
@@ -754,19 +1445,83 @@ function goToSlide(wrap, idx) {
 }
 
 /* ═══════════════════════════════════════════════════════
-   PHASE 3 — PERSONALIZATION TRACKING
-   ───────────────────────────────────────────────────────
-   Three signals feed the discover feed's ranking:
-     1. Viewing a post   -> POST /api/posts/:id/view
-        (server derives view_crypto/view_btc/view_eth from the post's
-        own hashtags, so no hashtag needs to be sent from here)
-     2. Playing a video  -> POST /api/posts/:id/activity {watch_video}
-     3. Tapping an author -> POST /api/posts/:id/activity {open_profile}
-   A fourth signal — commenting — is tracked server-side automatically
-   inside commentService.js the moment a comment/reply is created, so
-   there's no separate client-side call for it (see PHASE 11 comment
-   block below).
-   All fire-and-forget: tracking failures never interrupt the UI.
+   LIGHTBOX GALLERY (full-screen, in-page, arrow-key nav)
+   ═══════════════════════════════════════════════════════ */
+let lightboxMedia = [];
+let lightboxIndex = 0;
+
+function findPostById(postId) {
+  for (const tab of ALL_TABS) {
+    const p = tabState[tab].posts.find(p => String(p._id) === String(postId));
+    if (p) return p;
+  }
+  return null;
+}
+
+function openLightboxForPost(postId, startIndex) {
+  const post = findPostById(postId);
+  if (!post || !post.media || !post.media.length) return;
+
+  lightboxMedia = post.media;
+  lightboxIndex = Math.max(0, Math.min(lightboxMedia.length - 1, startIndex || 0));
+  renderLightbox();
+
+  document.getElementById('lightboxOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeLightbox() {
+  document.getElementById('lightboxOverlay').classList.remove('open');
+  document.getElementById('lightboxMediaWrap').innerHTML = '';
+  document.body.style.overflow = '';
+  lightboxMedia = [];
+}
+
+function renderLightbox() {
+  const m = lightboxMedia[lightboxIndex];
+  const wrap = document.getElementById('lightboxMediaWrap');
+  wrap.innerHTML = m.type === 'video'
+    ? `<video src="${m.url}" controls autoplay playsinline></video>`
+    : `<img src="${m.url}" alt="post media full view"/>`;
+
+  document.getElementById('lightboxCounter').textContent = `${lightboxIndex + 1} / ${lightboxMedia.length}`;
+  document.getElementById('lightboxCounter').style.display = lightboxMedia.length > 1 ? 'block' : 'none';
+
+  const prevBtn = document.getElementById('lightboxPrev');
+  const nextBtn = document.getElementById('lightboxNext');
+  const multi = lightboxMedia.length > 1;
+  prevBtn.style.display = multi ? 'flex' : 'none';
+  nextBtn.style.display = multi ? 'flex' : 'none';
+  prevBtn.classList.toggle('disabled', lightboxIndex === 0);
+  nextBtn.classList.toggle('disabled', lightboxIndex === lightboxMedia.length - 1);
+}
+
+function lightboxStep(dir) {
+  if (!lightboxMedia.length) return;
+  const next = lightboxIndex + dir;
+  if (next < 0 || next >= lightboxMedia.length) return;
+  lightboxIndex = next;
+  renderLightbox();
+}
+
+document.getElementById('lightboxClose').addEventListener('click', closeLightbox);
+document.getElementById('lightboxPrev').addEventListener('click', () => lightboxStep(-1));
+document.getElementById('lightboxNext').addEventListener('click', () => lightboxStep(1));
+document.getElementById('lightboxOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'lightboxOverlay') closeLightbox();
+});
+
+// left/right arrow key navigation between images in the gallery
+document.addEventListener('keydown', (e) => {
+  const overlay = document.getElementById('lightboxOverlay');
+  if (!overlay.classList.contains('open')) return;
+  if (e.key === 'ArrowLeft') { e.preventDefault(); lightboxStep(-1); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); lightboxStep(1); }
+  else if (e.key === 'Escape') { e.preventDefault(); closeLightbox(); }
+});
+
+/* ═══════════════════════════════════════════════════════
+   PERSONALIZATION TRACKING
    ═══════════════════════════════════════════════════════ */
 function setupViewTracking() {
   if (!('IntersectionObserver' in window)) return;
@@ -815,12 +1570,7 @@ function trackActivity(postId, activityType) {
 }
 
 /* ═══════════════════════════════════════════════════════
-   FOLLOW / UNFOLLOW — reuses the existing /api/follow and
-   /api/unfollow endpoints. Updates every card by that same
-   author across BOTH cached tabs so state stays consistent
-   if the user switches tabs. Unfollowing while on the
-   Following tab removes that author's posts from the feed
-   immediately, since they no longer belong there.
+   FOLLOW / UNFOLLOW (post cards + Top Creators widget share this)
    ═══════════════════════════════════════════════════════ */
 async function toggleFollow(btn) {
   const username = btn.dataset.username;
@@ -844,7 +1594,6 @@ async function toggleFollow(btn) {
 
     const nowFollowing = !isFollowing;
 
-    // Update every follow button for this author on the currently rendered tab.
     document.querySelectorAll(`.follow-btn[data-username="${cssEscape(username)}"]`).forEach(b => {
       b.dataset.following = nowFollowing ? '1' : '0';
       b.classList.toggle('following', nowFollowing);
@@ -852,16 +1601,19 @@ async function toggleFollow(btn) {
       b.disabled = false;
     });
 
-    // Keep the in-memory cache for both tabs in sync so switching tabs
-    // shows correct Follow/Following state without a refetch.
-    ['discover', 'following'].forEach(tab => {
+    document.querySelectorAll(`.creator-follow-btn[data-username="${cssEscape(username)}"]`).forEach(b => {
+      b.dataset.following = nowFollowing ? '1' : '0';
+      b.classList.toggle('following', nowFollowing);
+      b.textContent = nowFollowing ? 'Following' : 'Follow';
+      b.disabled = false;
+    });
+
+    ALL_TABS.forEach(tab => {
       tabState[tab].posts.forEach(p => {
         if (p.username === username) p.isFollowing = nowFollowing;
       });
     });
 
-    // If we just unfollowed someone while viewing the Following tab, their
-    // posts no longer belong here — drop them from view right away.
     if (currentTab === 'following' && !nowFollowing) {
       tabState.following.posts = tabState.following.posts.filter(p => p.username !== username);
       renderFeed('following');
@@ -871,12 +1623,6 @@ async function toggleFollow(btn) {
     console.error('toggleFollow error:', e);
     btn.disabled = false;
   }
-}
-
-// Minimal CSS.escape fallback (usernames are alphanumeric/underscore in
-// this app, but escaping defensively costs nothing).
-function cssEscape(str) {
-  return window.CSS && CSS.escape ? CSS.escape(str) : String(str).replace(/["\\]/g, '\\$&');
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -900,7 +1646,7 @@ async function toggleLike(btn) {
     btn.classList.toggle('liked', liked);
     btn.querySelector('.like-count').textContent = formatCount(likesCount);
 
-    ['discover', 'following'].forEach(tab => {
+    ALL_TABS.forEach(tab => {
       const p = tabState[tab].posts.find(p => String(p._id) === String(postId));
       if (p) { p.isLiked = liked; p.likesCount = likesCount; }
     });
@@ -913,29 +1659,54 @@ async function toggleLike(btn) {
 }
 
 /* ═══════════════════════════════════════════════════════
-   PHASE 11 — COMMENTS + REPLIES
-   ───────────────────────────────────────────────────────
-   Backend: Social_Platform/routes/comments.js
-     GET    /api/posts/:postId/comments          -> { comments, page, hasMore }
-     POST   /api/posts/:postId/comments             { content }
-     DELETE /api/comments/:commentId
-     POST   /api/comments/:commentId/like         -> { liked, likesCount } (like-only, toggles)
-     GET    /api/comments/:commentId/replies      -> { replies, page, hasMore }
-     POST   /api/comments/:commentId/replies         { content }
-     DELETE /api/replies/:replyId
-     POST   /api/replies/:replyId/like            -> { liked, likesCount } (like-only, toggles)
+   BOOKMARK
+   ═══════════════════════════════════════════════════════ */
+async function toggleBookmark(btn) {
+  const postId = btn.dataset.postId;
+  if (!postId) return;
 
-   State lives outside renderFeed() so opening a comment thread survives a
-   feed re-render (renderFeed() rebuilds #feedContainer's innerHTML wholesale
-   on every load-more/tab switch, same as the rest of this page).
-     commentsState[postId]    = { open, comments, page, hasMore, loading }
-     repliesState[commentId]  = { open, composerOpen, replies, page, hasMore, loading }
+  btn.disabled = true;
 
-   There is no dislike/downvote anywhere in this block — comment-like-btn
-   toggles a single Like row on/off, matching the backend's like-only design.
+  try {
+    const r = await fetch(`/api/posts/${postId}/bookmark`, { method: 'POST' });
+    const d = await r.json();
+    if (!d.success) return;
+
+    const bookmarked = !!d.data.bookmarked;
+    const saveCount = d.data.saveCount ?? null;
+
+    btn.classList.toggle('bookmarked', bookmarked);
+    if (saveCount !== null) {
+      const countEl = btn.querySelector('.bookmark-count');
+      if (countEl) countEl.textContent = formatCount(saveCount);
+    }
+
+    ALL_TABS.forEach(tab => {
+      const p = tabState[tab].posts.find(p => String(p._id) === String(postId));
+      if (p) {
+        p.isBookmarked = bookmarked;
+        if (saveCount !== null) p.bookmarksCount = saveCount;
+      }
+    });
+
+    if (currentTab === 'bookmarks' && !bookmarked) {
+      tabState.bookmarks.posts = tabState.bookmarks.posts.filter(p => String(p._id) !== String(postId));
+      renderFeed('bookmarks');
+    }
+  } catch (e) {
+    console.error('toggleBookmark error:', e);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   COMMENTS + REPLIES
    ═══════════════════════════════════════════════════════ */
 const commentsState = {};
 const repliesState  = {};
+const EMOJI_SET = ['😀','😂','😍','🔥','👍','🎉','😮','😢','🙏','💯','🚀','💰','😎','🤔','👀','❤️','🐂','🐻'];
+let openEmojiPicker = null;
 
 function ensureCommentsState(postId) {
   if (!commentsState[postId]) {
@@ -956,12 +1727,10 @@ function refreshCommentsSection(postId) {
   if (section) section.innerHTML = renderCommentsInner(postId);
 }
 
-// Updates commentsCount in the in-memory tab caches (so it survives a tab
-// switch / re-render) and refreshes the visible badge on the comment button.
 function bumpCommentCountBadge(postId, delta) {
   let updatedCount = null;
 
-  ['discover', 'following'].forEach(tab => {
+  ALL_TABS.forEach(tab => {
     const p = tabState[tab].posts.find(p => String(p._id) === String(postId));
     if (p) {
       p.commentsCount = Math.max(0, (p.commentsCount || 0) + delta);
@@ -973,7 +1742,6 @@ function bumpCommentCountBadge(postId, delta) {
   if (badge && updatedCount !== null) badge.textContent = formatCount(updatedCount);
 }
 
-/* ── OPEN / CLOSE the panel ── */
 async function toggleComments(btn) {
   const postId = btn.dataset.postId;
   const st = ensureCommentsState(postId);
@@ -997,7 +1765,6 @@ async function toggleComments(btn) {
   }
 }
 
-/* ── FETCH ── */
 async function loadComments(postId) {
   const st = ensureCommentsState(postId);
   st.loading = true;
@@ -1024,7 +1791,24 @@ function loadMoreComments(btn) {
   loadComments(btn.dataset.postId);
 }
 
-/* ── POST a new top-level comment ── */
+function handleCommentKeydown(e, postId) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    if (!e.target.value.trim()) return;
+    const btn = document.querySelector(`.comment-post-btn[data-post-id="${cssEscape(postId)}"]`);
+    if (btn) submitComment(btn);
+  }
+}
+
+function handleReplyKeydown(e, commentId) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    if (!e.target.value.trim()) return;
+    const btn = document.querySelector(`.reply-post-btn[data-comment-id="${cssEscape(commentId)}"]`);
+    if (btn) submitReply(btn);
+  }
+}
+
 async function submitComment(btn) {
   const postId = btn.dataset.postId;
   const input = document.getElementById(`commentInput-${postId}`);
@@ -1045,8 +1829,8 @@ async function submitComment(btn) {
     st.comments.unshift(d.data.comment);
 
     bumpCommentCountBadge(postId, 1);
+    closeEmojiPicker();
     refreshCommentsSection(postId);
-    if (input) input.value = '';
   } catch (e) {
     console.error('submitComment error:', e);
     alert('Network error while posting your comment.');
@@ -1055,7 +1839,6 @@ async function submitComment(btn) {
   }
 }
 
-/* ── DELETE a comment ── */
 async function deleteComment(btn) {
   const postId = btn.dataset.postId;
   const commentId = btn.dataset.commentId;
@@ -1078,7 +1861,6 @@ async function deleteComment(btn) {
   }
 }
 
-/* ── LIKE / UNLIKE a comment (like-only toggle) ── */
 async function toggleCommentLike(btn) {
   const postId = btn.dataset.postId;
   const commentId = btn.dataset.commentId;
@@ -1106,7 +1888,6 @@ async function toggleCommentLike(btn) {
   }
 }
 
-/* ── Reply composer toggle ── */
 function toggleReplyComposer(btn) {
   const postId = btn.dataset.postId;
   const commentId = btn.dataset.commentId;
@@ -1115,7 +1896,6 @@ function toggleReplyComposer(btn) {
   refreshCommentsSection(postId);
 }
 
-/* ── View / hide replies ── */
 async function toggleRepliesList(btn) {
   const postId = btn.dataset.postId;
   const commentId = btn.dataset.commentId;
@@ -1155,7 +1935,6 @@ function loadMoreReplies(btn) {
   loadReplies(btn.dataset.commentId, btn.dataset.postId);
 }
 
-/* ── POST a reply ── */
 async function submitReply(btn) {
   const postId = btn.dataset.postId;
   const commentId = btn.dataset.commentId;
@@ -1182,6 +1961,7 @@ async function submitReply(btn) {
     rst.open = true;
     rst.composerOpen = false;
 
+    closeEmojiPicker();
     refreshCommentsSection(postId);
   } catch (e) {
     console.error('submitReply error:', e);
@@ -1191,7 +1971,6 @@ async function submitReply(btn) {
   }
 }
 
-/* ── DELETE a reply ── */
 async function deleteReply(btn) {
   const postId = btn.dataset.postId;
   const commentId = btn.dataset.commentId;
@@ -1217,7 +1996,6 @@ async function deleteReply(btn) {
   }
 }
 
-/* ── LIKE / UNLIKE a reply (like-only toggle) ── */
 async function toggleReplyLike(btn) {
   const commentId = btn.dataset.commentId;
   const replyId = btn.dataset.replyId;
@@ -1245,7 +2023,37 @@ async function toggleReplyLike(btn) {
   }
 }
 
-/* ── RENDER HELPERS ── */
+function toggleEmojiPicker(e, btn) {
+  e.stopPropagation();
+  const wrap = btn.closest('.comment-input-wrap, .reply-input-wrap');
+  const alreadyOpenHere = openEmojiPicker && openEmojiPicker.parentElement === wrap;
+  closeEmojiPicker();
+  if (alreadyOpenHere) return;
+
+  const targetId = btn.dataset.target;
+  const panel = document.createElement('div');
+  panel.className = 'emoji-picker';
+  panel.innerHTML = EMOJI_SET.map(em => `<button type="button" data-emoji="${em}">${em}</button>`).join('');
+  panel.addEventListener('click', (ev) => {
+    const emBtn = ev.target.closest('button[data-emoji]');
+    if (!emBtn) return;
+    const input = document.getElementById(targetId);
+    if (input) { input.value += emBtn.dataset.emoji; input.focus(); }
+  });
+  wrap.appendChild(panel);
+  openEmojiPicker = panel;
+}
+
+function closeEmojiPicker() {
+  if (openEmojiPicker) { openEmojiPicker.remove(); openEmojiPicker = null; }
+}
+
+document.addEventListener('click', (e) => {
+  if (openEmojiPicker && !e.target.closest('.emoji-picker') && !e.target.closest('.emoji-btn')) {
+    closeEmojiPicker();
+  }
+});
+
 function commentAvatarHtml(author, username) {
   return author?.avatarUrl
     ? `<img src="${author.avatarUrl}" alt="avatar"/>`
@@ -1256,10 +2064,10 @@ function replyItemHtml(reply, commentId, postId) {
   const { short: whenShort, full: whenFull } = formatPostDate(reply.createdAt);
   return `
     <div class="comment-item">
-      <div class="comment-avatar">${commentAvatarHtml(reply.author, reply.username)}</div>
+      <div class="comment-avatar" onclick="goToProfile('${escapeHtml(reply.username)}', ${reply.isSelf ? 'true' : 'false'})">${commentAvatarHtml(reply.author, reply.username)}</div>
       <div class="comment-body">
         <div class="comment-bubble">
-          <span class="comment-who">${escapeHtml(reply.author?.displayName || reply.username)}</span>
+          <span class="comment-who" onclick="goToProfile('${escapeHtml(reply.username)}', ${reply.isSelf ? 'true' : 'false'})">${escapeHtml(reply.author?.displayName || reply.username)}</span>
           <div class="comment-text">${escapeHtml(reply.content)}</div>
         </div>
         <div class="comment-meta-row" title="${escapeHtml(whenFull)}">
@@ -1304,7 +2112,11 @@ function repliesBlockHtml(comment, postId) {
 
   if (rst.composerOpen) {
     html += `<div class="reply-composer">
-      <input type="text" class="reply-input" id="replyInput-${commentId}" placeholder="Write a reply…" maxlength="1000"/>
+      <div class="reply-input-wrap">
+        <input type="text" class="reply-input" id="replyInput-${commentId}" placeholder="Write a reply…" maxlength="1000"
+               onkeydown="handleReplyKeydown(event,'${commentId}')"/>
+        <button type="button" class="emoji-btn" data-target="replyInput-${commentId}" onclick="toggleEmojiPicker(event, this)" title="Add emoji">${ICON_EMOJI}</button>
+      </div>
       <button type="button" class="reply-post-btn" data-post-id="${postId}" data-comment-id="${commentId}" onclick="submitReply(this)">Reply</button>
     </div>`;
   }
@@ -1316,10 +2128,10 @@ function commentItemHtml(comment, postId) {
   const { short: whenShort, full: whenFull } = formatPostDate(comment.createdAt);
   return `
     <div class="comment-item">
-      <div class="comment-avatar">${commentAvatarHtml(comment.author, comment.username)}</div>
+      <div class="comment-avatar" onclick="goToProfile('${escapeHtml(comment.username)}', ${comment.isSelf ? 'true' : 'false'})">${commentAvatarHtml(comment.author, comment.username)}</div>
       <div class="comment-body">
         <div class="comment-bubble">
-          <span class="comment-who">${escapeHtml(comment.author?.displayName || comment.username)}</span>
+          <span class="comment-who" onclick="goToProfile('${escapeHtml(comment.username)}', ${comment.isSelf ? 'true' : 'false'})">${escapeHtml(comment.author?.displayName || comment.username)}</span>
           <div class="comment-text">${escapeHtml(comment.content)}</div>
         </div>
         <div class="comment-meta-row" title="${escapeHtml(whenFull)}">
@@ -1355,28 +2167,23 @@ function renderCommentsInner(postId) {
 
   return `
     <div class="comment-composer">
-      <input type="text" class="comment-input" id="commentInput-${postId}" placeholder="Write a comment…" maxlength="1000"/>
+      <div class="comment-input-wrap">
+        <input type="text" class="comment-input" id="commentInput-${postId}" placeholder="Write a comment…" maxlength="1000"
+               onkeydown="handleCommentKeydown(event,'${postId}')"/>
+        <button type="button" class="emoji-btn" data-target="commentInput-${postId}" onclick="toggleEmojiPicker(event, this)" title="Add emoji">${ICON_EMOJI}</button>
+      </div>
       <button type="button" class="comment-post-btn" data-post-id="${postId}" onclick="submitComment(this)">Post</button>
     </div>
     ${listHtml}`;
 }
 
 /* ═══════════════════════════════════════════════════════
-   NEW-POSTS BANNER
-   ───────────────────────────────────────────────────────
-   Backend: Social_Platform/posts.js
-     GET /api/posts/new-count?feed=discover|following&since=<ISO>
-       -> { count } — posts created after `since`. Same Post
-          collection insights.js reads from, so it works
-          regardless of which router served the feed itself.
-   Polled every 20s for whichever tab is currently open. Tapping
-   the banner does a full reload of that tab so the personalized
-   ranking (feedRanking.js) is recomputed with the new posts in play,
-   rather than just prepending raw unranked rows.
+   NEW-POSTS BANNER — Discover/Following only
    ═══════════════════════════════════════════════════════ */
 const NEW_POSTS_POLL_MS = 20000;
 
 async function pollNewPostsCount() {
+  if (currentTab === 'bookmarks' || activeSearchQuery) return;
   const state = tabState[currentTab];
   if (!state.sinceTimestamp) return;
 
@@ -1407,9 +2214,275 @@ function hideNewPostsBanner() {
 function refreshWithNewPosts() {
   hideNewPostsBanner();
   const tab = currentTab;
-  tabState[tab] = { posts: [], page: 0, hasMore: true, loaded: false, sinceTimestamp: null };
+  tabState[tab] = { posts: [], page: 0, hasMore: true, loaded: false, sinceTimestamp: null, fetching: false };
   window.scrollTo({ top: 0, behavior: 'smooth' });
   fetchFeed(tab);
+}
+
+/* ═══════════════════════════════════════════════════════
+   RIGHT-PANEL WIDGETS: Top 3 Cryptocurrencies + Top Creators
+   ═══════════════════════════════════════════════════════
+   Top 3 Cryptocurrencies reuses the exact shared-server WebSocket the
+   landing page uses (Market_Stream/market_data.js @ /ws/market-data) —
+   one upstream Binance connection on the server, rebroadcast to every
+   connected browser. We render BTC, ETH and SOL by rank.
+   REQ 2 — each coin's "status tag" badge is now fixed per coin (not
+   derived from its live % change): BTC = Trending, ETH = Rapid Riser,
+   SOL = Hot. Styling is a transparent, blue-text, compact pill.
+   ═══════════════════════════════════════════════════════ */
+const TOP3_COINS = [
+  { id: 'bitcoin',  symbol: 'BTC', name: 'Bitcoin',  cls: 'btc', icon: '₿', tag: 'Trending' },
+  { id: 'ethereum', symbol: 'ETH', name: 'Ethereum', cls: 'eth', icon: 'Ξ', tag: 'Riser' },
+  { id: 'solana',   symbol: 'SOL', name: 'Solana',   cls: 'sol', icon: 'S', tag: 'Hot' },
+];
+
+let marketSocket = null;
+let marketReconnectTimer = null;
+let marketConnectTimeoutTimer = null;
+let marketLiveData = {};
+let marketSocketEverConnected = false;
+
+function connectMarketSocket() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const url = `${proto}://${location.host}/ws/market-data`;
+  marketSocket = new WebSocket(url);
+
+  // If nothing arrives within 6s (server not reachable, wrong path,
+  // upgrade handler not wired up, etc.) surface that in the widget
+  // instead of leaving it stuck on a silent skeleton forever.
+  clearTimeout(marketConnectTimeoutTimer);
+  marketConnectTimeoutTimer = setTimeout(() => {
+    if (!marketSocketEverConnected) {
+      document.getElementById('crypto3List').innerHTML =
+        `<div class="widget-error">Couldn't reach the live price feed (ws://…${WS_MARKET_PATH}). Retrying…</div>`;
+    }
+  }, 6000);
+
+  marketSocket.onopen = () => {
+    marketSocketEverConnected = true;
+    clearTimeout(marketConnectTimeoutTimer);
+  };
+
+  marketSocket.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+      if (msg.type === 'snapshot' && msg.data) {
+        marketLiveData = msg.data;
+        renderTop3Crypto();
+      }
+    } catch (e) { /* ignore malformed frame */ }
+  };
+
+  marketSocket.onclose = () => {
+    clearTimeout(marketReconnectTimer);
+    marketReconnectTimer = setTimeout(connectMarketSocket, 3000);
+  };
+
+  marketSocket.onerror = () => { /* onclose will handle reconnect */ };
+}
+const WS_MARKET_PATH = '/ws/market-data'; // must match Web_Sockets/ws_manager.js's "case" and marketData_ws.js's WS_PATH
+
+function formatWidgetPrice(n) {
+  if (n === undefined || n === null || isNaN(n)) return '—';
+  if (n >= 1000) return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (n >= 1)    return '$' + n.toFixed(2);
+  return '$' + n.toFixed(4);
+}
+
+function renderTop3Crypto() {
+  const list = document.getElementById('crypto3List');
+  const rows = TOP3_COINS.map(coin => {
+    const data = marketLiveData[coin.id];
+    if (!data) return null;
+    const pct = data.changePct || 0;
+    const sign = pct >= 0 ? '+' : '';
+    const cls = pct >= 0 ? 'up' : 'down';
+    return `
+      <div class="crypto3-row">
+        <div class="crypto3-icon ${coin.cls}">${coin.icon}</div>
+        <div class="crypto3-info">
+          <div class="crypto3-symbol-row">
+            <span class="crypto3-symbol">${coin.symbol}</span>
+            <span class="crypto3-tag">${coin.tag}</span>
+          </div>
+          <div class="crypto3-price">${formatWidgetPrice(data.price)}</div>
+        </div>
+        <div class="crypto3-change ${cls}">${sign}${pct.toFixed(2)}%</div>
+      </div>`;
+  }).filter(Boolean);
+
+  list.innerHTML = rows.length
+    ? rows.join('')
+    : `<div class="widget-skeleton"><span class="spinner-inline"></span>Waiting for live prices…</div>`;
+}
+
+/* ── Top Creators (GET /api/top-creators — Social_Platform PHASE 5 leaderboard) ── */
+async function loadTopCreatorsWidget() {
+  const list = document.getElementById('topCreatorsList');
+  const MEDALS = ['🥇', '🥈', '🥉'];
+
+  try {
+    const r = await fetch('/api/top-creators');
+    const d = await r.json();
+    if (!d.success) throw new Error(d.message || 'Failed to load');
+
+    const top3 = (d.data.creators || []).slice(0, 3);
+    if (!top3.length) {
+      list.innerHTML = `<div class="widget-skeleton">No creators to show yet.</div>`;
+      return;
+    }
+
+    list.innerHTML = top3.map((c, i) => {
+      const avatarHtml = c.avatarUrl
+        ? `<img src="${c.avatarUrl}" alt="avatar"/>`
+        : (c.displayName || c.username || '?').slice(0, 2).toUpperCase();
+
+      const followBtnHtml = c.isSelf ? '' : `
+        <button type="button"
+                class="creator-follow-btn${c.isFollowing ? ' following' : ''}"
+                data-username="${escapeHtml(c.username)}"
+                data-following="${c.isFollowing ? '1' : '0'}"
+                onclick="toggleFollow(this)">
+          ${c.isFollowing ? 'Following' : 'Follow'}
+        </button>`;
+
+      // Handles (@username) are kept here — this is the one place in the
+      // UI that still shows them; post cards no longer do (REQ 4).
+      return `
+        <div class="creator-row">
+          <div class="creator-rank">${MEDALS[i] || (i + 1)}</div>
+          <div class="creator-avatar" onclick="goToProfile('${escapeHtml(c.username)}', ${c.isSelf ? 'true' : 'false'})">${avatarHtml}</div>
+          <div class="creator-info" onclick="goToProfile('${escapeHtml(c.username)}', ${c.isSelf ? 'true' : 'false'})">
+            <div class="creator-name">${escapeHtml(c.displayName || c.username)}</div>
+            <div class="creator-handle">@${escapeHtml(c.username)}</div>
+          </div>
+          ${followBtnHtml}
+        </div>`;
+    }).join('');
+  } catch (e) {
+    console.error('loadTopCreatorsWidget error:', e);
+    list.innerHTML = `<div class="widget-skeleton">Couldn't load top creators.</div>`;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   FEAR & GREED INDEX WIDGET (REQ 3, REQ 4)
+   ═══════════════════════════════════════════════════════
+   The gauge is always fetched directly from Binance's public REST API
+   (no first-party backend route involved) — 24hr ticker stats for
+   BTC/ETH/BNB, blended into a 0-100 mood score. Polled every 30s.
+
+   REQ 4 — Bullish/Bearish voting is purely a visual affordance: it
+   applies a persistent green/red tint + border to the widget card and
+   then hides both vote buttons, leaving only that visual effect (and
+   the card's normal hover behavior) in place. It never touches the
+   gauge score, and no vote is sent anywhere — the gauge value is 100%
+   owned by the live Binance fetch.
+   ═══════════════════════════════════════════════════════ */
+const FG_LABELS = [
+  { max: 20,  label: 'Extreme Fear',  color: '#ef4444' },
+  { max: 40,  label: 'Fear',          color: '#f59e0b' },
+  { max: 60,  label: 'Neutral',       color: '#eab308' },
+  { max: 80,  label: 'Greed',         color: '#84cc16' },
+  { max: 100, label: 'Extreme Greed', color: '#22c55e' },
+];
+const FG_ARC_LENGTH = Math.PI * 85; // path length of the "M 15 100 A 85 85 0 0 1 185 100" semicircle
+const BINANCE_24HR_URL = 'https://api.binance.com/api/v3/ticker/24hr';
+const FG_POLL_MS = 30000;
+
+function labelForScore(score) {
+  return FG_LABELS.find(b => score <= b.max) || FG_LABELS[FG_LABELS.length - 1];
+}
+
+function renderFearGreedGauge(score) {
+  const clamped = Math.max(0, Math.min(100, score));
+
+  document.getElementById('fgScore').textContent = Math.round(clamped);
+  const bucket = labelForScore(clamped);
+  const labelEl = document.getElementById('fgLabel');
+  labelEl.textContent = bucket.label;
+  labelEl.style.color = bucket.color;
+  labelEl.style.background = bucket.color + '22';
+
+  // Needle sweeps from -90deg (0 / extreme fear) to +90deg (100 / extreme
+  // greed) via a real CSS transform so the spring transition applies.
+  const angle = (clamped / 100) * 180 - 90;
+  document.getElementById('fgNeedle').style.transform = `rotate(${angle}deg)`;
+
+  const filled = (clamped / 100) * FG_ARC_LENGTH;
+  const arcFg = document.querySelector('.fg-arc-fg');
+  if (arcFg) arcFg.style.strokeDasharray = `${filled} ${FG_ARC_LENGTH}`;
+}
+
+// Weighted blend of each coin's 24h % price change (from Binance) into a
+// single 0-100 "market mood" figure, 50 = neutral. Weighted toward
+// BTC/ETH since they dominate overall sentiment.
+function computeMoodFromBinanceTickers(tickers) {
+  const WEIGHTS = { BTCUSDT: 3, ETHUSDT: 2, BNBUSDT: 1 };
+  let weightedSum = 0, totalWeight = 0;
+
+  tickers.forEach(t => {
+    const w = WEIGHTS[t.symbol];
+    if (!w) return;
+    const pct = parseFloat(t.priceChangePercent);
+    if (isNaN(pct)) return;
+    weightedSum += pct * w;
+    totalWeight += w;
+  });
+
+  if (!totalWeight) return null;
+  const avgChange = weightedSum / totalWeight; // roughly -10..+10 in a normal day
+  return Math.max(0, Math.min(100, 50 + avgChange * 6));
+}
+
+let fgPollTimer = null;
+
+async function fetchFearGreedFromBinance() {
+  try {
+    const symbols = encodeURIComponent(JSON.stringify(['BTCUSDT', 'ETHUSDT', 'BNBUSDT']));
+    const r = await fetch(`${BINANCE_24HR_URL}?symbols=${symbols}`);
+    if (!r.ok) throw new Error(`Binance responded ${r.status}`);
+    const tickers = await r.json();
+
+    const score = computeMoodFromBinanceTickers(Array.isArray(tickers) ? tickers : []);
+    if (score === null) throw new Error('No usable ticker data');
+
+    renderFearGreedGauge(score);
+    const note = document.getElementById('fgLiveNote');
+    if (note) note.textContent = 'Live · sourced directly from Binance';
+  } catch (e) {
+    console.error('fetchFearGreedFromBinance error:', e);
+    const note = document.getElementById('fgLiveNote');
+    if (note) note.textContent = "Couldn't reach Binance. Retrying…";
+  }
+}
+
+function startFearGreedPolling() {
+  fetchFearGreedFromBinance();
+  clearInterval(fgPollTimer);
+  fgPollTimer = setInterval(fetchFearGreedFromBinance, FG_POLL_MS);
+}
+
+let userVotedSentiment = null;
+
+// REQ 4 — voting is purely visual: it applies a persistent tint to the
+// widget card (green for bullish, red for bearish) plus a one-off pulse
+// for feedback, then hides the vote row entirely so only the selected
+// effect remains visible. It does NOT touch the gauge score, and does
+// NOT call any backend — the Fear & Greed number keeps coming
+// exclusively from fetchFearGreedFromBinance().
+function castSentimentVote(vote) {
+  userVotedSentiment = vote;
+
+  const card = document.getElementById('fgWidgetCard');
+  card.classList.remove('fg-pulse-bullish', 'fg-pulse-bearish', 'fg-selected-bullish', 'fg-selected-bearish');
+  // force reflow so the pulse animation can re-trigger
+  void card.offsetWidth;
+  card.classList.add(vote === 'bullish' ? 'fg-pulse-bullish' : 'fg-pulse-bearish');
+  card.classList.add(vote === 'bullish' ? 'fg-selected-bullish' : 'fg-selected-bearish');
+
+  const voteRow = document.getElementById('fgVoteRow');
+  if (voteRow) voteRow.style.display = 'none';
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -1418,6 +2491,12 @@ function refreshWithNewPosts() {
 document.addEventListener('DOMContentLoaded', () => {
   fetchFeed('discover');
   newPostsPollTimer = setInterval(pollNewPostsCount, NEW_POSTS_POLL_MS);
+
+  connectMarketSocket();
+  loadTopCreatorsWidget();
+
+  renderFearGreedGauge(50); // neutral rest position until the first Binance fetch lands
+  startFearGreedPolling();
 });
 </script>
 </body>

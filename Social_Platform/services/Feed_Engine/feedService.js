@@ -1,5 +1,5 @@
 /* ============================================================================
- *  Social_Platform/services/feedService.js
+ *  Social_Platform/services/Feed_Engine/feedService.js
  * ----------------------------------------------------------------------------
  *  PHASE 10.1 — Feed Service Layer
  *
@@ -52,12 +52,12 @@
  *  just decides *when* enrichment runs in the pipeline, not *how*.
  * ==========================================================================*/
 
-const { SocialProfile, Post, Follow } = require('../social_models');
+const { SocialProfile, Post, Follow } = require('../../social_models');
 const { rankPosts } = require('./feedRanking'); // PHASE 10.2
 const { applyRecommendationBoost } = require('./recommendationService'); // PHASE 10.3
 const { getInterestMap } = require('./interestTracker');
 const { getFriendshipMap } = require('./friendshipService');
-const { getManyProfiles } = require('../cache/profileCache');
+const { getManyProfiles } = require('../../cache/profileCache');
 
 const DEFAULT_PAGE_SIZE = 10;
 

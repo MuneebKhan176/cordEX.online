@@ -1,5 +1,5 @@
 /* ============================================================================
- *  Social_Platform/services/recommendationService.js
+ *  Social_Platform/services/Feed_Engine/recommendationService.js
  * ----------------------------------------------------------------------------
  *  PHASE 7 — owns "what tends to appear alongside what". Every time a post
  *  goes up, we bump a co-occurrence count for every pair of hashtags on it
