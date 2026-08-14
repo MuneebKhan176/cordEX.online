@@ -1,5 +1,5 @@
 /* ============================================================================
- *  Social_Platform/services/commentService.js
+ *  Social_Platform/services/Post_Services/commentService.js
  * ----------------------------------------------------------------------------
  *  PHASE 11 — Comments, one level of replies, and likes on both.
  *  ----------------------------------------------------------------------------
@@ -33,6 +33,20 @@
  *       feedRanking.js's interestScore() term. Fire-and-forget: a
  *       tracking failure must never fail the comment/reply itself.
  *
+ *  PHASE 11 (PART 1) — REAL-TIME WIRING:
+ *
+ *    3. createComment() now also calls commentHandler.emitNewComment()
+ *       right after the DB write, so the post's author sees the comment
+ *       land instantly if they're connected (socket/handlers/commentHandler.js).
+ *    4. createReply() similarly calls commentHandler.emitNewReply(),
+ *       notifying both the post's author and the parent comment's author.
+ *    5. toggleCommentLike()/toggleReplyLike() call
+ *       commentHandler.emitCommentLiked()/emitReplyLiked() so the
+ *       comment/reply owner sees the like count update live.
+ *    All four are fire-and-forget from the caller's perspective — a
+ *    delivery failure (e.g. recipient offline) never affects the HTTP
+ *    response, matching the flow: DB update -> WS server -> target user.
+ *
  *  Soft-delete only (isDeleted, matches Comment/Reply schema + Post
  *  convention in profile.js). Deleting a comment does NOT cascade-delete
  *  its replies — they just become unreachable once the parent comment is
@@ -45,6 +59,7 @@ const { Post, Comment, Reply, Like } = require('../../social_models');
 const { getAuthors } = require('./authorService');
 const { getLikes } = require('./likeService');
 const { trackActivity } = require('../Feed_Engine/interestTracker'); // PHASE 11 — ranking-engine wiring
+const commentHandler = require('../../socket/handlers/commentHandler'); // PHASE 11 Part 1 — real-time comments/replies
 
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_CONTENT_LENGTH = 1000; // matches Comment/Reply schema maxlength
@@ -143,6 +158,16 @@ async function createComment(postId, username, content) {
         targetId: comment._id,
     }).catch(() => {});
 
+    // REAL-TIME SIGNAL (PHASE 11 Part 1) — post owner sees the comment
+    // land immediately if they're currently connected.
+    commentHandler.emitNewComment({
+        postId: post._id,
+        postOwnerUsername: post.username,
+        comment,
+        commentsCount: post.commentsCount,
+        actorUsername: username,
+    });
+
     const [enriched] = await enrichWithAuthorAndLike([comment.toObject()], username, 'Comment');
     return { comment: enriched, commentsCount: post.commentsCount };
 }
@@ -198,6 +223,13 @@ async function toggleCommentLike(commentId, myUsername) {
         await Like.deleteOne({ _id: existing._id });
         comment.likesCount = Math.max(0, comment.likesCount - 1);
         await comment.save();
+        commentHandler.emitCommentLiked({ // PHASE 11 Part 1
+            commentId: comment._id,
+            commentOwnerUsername: comment.username,
+            actorUsername: myUsername,
+            liked: false,
+            likesCount: comment.likesCount,
+        });
         return { liked: false, likesCount: comment.likesCount };
     }
 
@@ -210,6 +242,13 @@ async function toggleCommentLike(commentId, myUsername) {
 
     comment.likesCount += 1;
     await comment.save();
+    commentHandler.emitCommentLiked({ // PHASE 11 Part 1
+        commentId: comment._id,
+        commentOwnerUsername: comment.username,
+        actorUsername: myUsername,
+        liked: true,
+        likesCount: comment.likesCount,
+    });
     return { liked: true, likesCount: comment.likesCount };
 }
 
@@ -256,17 +295,30 @@ async function createReply(commentId, username, content) {
     comment.repliesCount += 1;
     await comment.save();
 
-    // RANKING SIGNAL #2 (replies) — needs the parent post's hashtags, which
-    // Reply itself doesn't carry, so it's a small lean fetch rather than
-    // reusing `comment` directly.
-    Post.findById(comment.post).select('hashtags').lean()
-        .then(parentPost => trackActivity({
-            username,
-            activityType: 'comment',
-            post: parentPost,
-            targetType: 'Reply',
-            targetId: reply._id,
-        }))
+    // RANKING SIGNAL #2 (replies) + REAL-TIME SIGNAL (PHASE 11 Part 1) —
+    // needs the parent post's hashtags/username, which Reply itself
+    // doesn't carry, so it's a small lean fetch rather than reusing
+    // `comment` directly.
+    Post.findById(comment.post).select('hashtags username').lean()
+        .then(parentPost => {
+            trackActivity({
+                username,
+                activityType: 'comment',
+                post: parentPost,
+                targetType: 'Reply',
+                targetId: reply._id,
+            }).catch(() => {});
+
+            commentHandler.emitNewReply({
+                postId: comment.post,
+                postOwnerUsername: parentPost?.username,
+                commentId: comment._id,
+                commentOwnerUsername: comment.username,
+                reply,
+                repliesCount: comment.repliesCount,
+                actorUsername: username,
+            });
+        })
         .catch(() => {});
 
     const [enriched] = await enrichWithAuthorAndLike([reply.toObject()], username, 'Reply');
@@ -321,6 +373,13 @@ async function toggleReplyLike(replyId, myUsername) {
         await Like.deleteOne({ _id: existing._id });
         reply.likesCount = Math.max(0, reply.likesCount - 1);
         await reply.save();
+        commentHandler.emitReplyLiked({ // PHASE 11 Part 1
+            replyId: reply._id,
+            replyOwnerUsername: reply.username,
+            actorUsername: myUsername,
+            liked: false,
+            likesCount: reply.likesCount,
+        });
         return { liked: false, likesCount: reply.likesCount };
     }
 
@@ -333,6 +392,13 @@ async function toggleReplyLike(replyId, myUsername) {
 
     reply.likesCount += 1;
     await reply.save();
+    commentHandler.emitReplyLiked({ // PHASE 11 Part 1
+        replyId: reply._id,
+        replyOwnerUsername: reply.username,
+        actorUsername: myUsername,
+        liked: true,
+        likesCount: reply.likesCount,
+    });
     return { liked: true, likesCount: reply.likesCount };
 }
 

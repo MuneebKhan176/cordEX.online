@@ -6,6 +6,7 @@ const verifyToken = require('../middle/middleware');
 const { Post, Like } = require('./social_models');
 const feedService = require('./services/Feed_Engine/feedService'); // PHASE 10.1 — was direct Post/ranking queries
 const { enrichPosts } = require('./services/Post_Services/enrichService'); // PHASE 6
+const likeHandler = require('./socket/handlers/likeHandler'); // PHASE 11 Part 1 — real-time likes
 
 /* ============================================================================
  *  Social_Platform/insights.js  —  "Crypto Square" backend
@@ -39,6 +40,11 @@ const { enrichPosts } = require('./services/Post_Services/enrichService'); // PH
  *  `enrich` callback rather than being called here after the fact, so
  *  feedService owns the full pipeline order (rank -> recommend ->
  *  paginate -> enrich).
+ *
+ *  PHASE 11 (Part 1) — the like toggle below now also emits a real-time
+ *  `post_liked` WebSocket event to the post's author (see
+ *  socket/handlers/likeHandler.js), right after the DB write, matching
+ *  the flow: Express API -> DB update -> WebSocket server -> target user.
  * ==========================================================================*/
 
 const PAGE_SIZE = 10;
@@ -129,7 +135,11 @@ router.get('/api/insights/following', verifyToken, async (req, res) => {
 });
 
 /* ============================================================================
- * LIKE / UNLIKE (toggle) — unchanged
+ * LIKE / UNLIKE (toggle)
+ * ----------------------------------------------------------------------------
+ * PHASE 11 (Part 1) — added likeHandler.emitPostLiked() right after each
+ * DB write commits, so the post's author gets a real-time `post_liked`
+ * event if they're currently connected. No-op (silently) if they're not.
  * ==========================================================================*/
 router.post('/api/insights/posts/:id/like', verifyToken, async (req, res) => {
 
@@ -147,6 +157,7 @@ router.post('/api/insights/posts/:id/like', verifyToken, async (req, res) => {
             await Like.deleteOne({ _id: existingLike._id });
             post.likesCount = Math.max(0, post.likesCount - 1);
             await post.save();
+            likeHandler.emitPostLiked({ post, actorUsername: myUsername, liked: false, likesCount: post.likesCount }); // PHASE 11 Part 1
             return sendResponse(res, 200, true, 'Post unliked', { liked: false, likesCount: post.likesCount });
         }
 
@@ -160,6 +171,7 @@ router.post('/api/insights/posts/:id/like', verifyToken, async (req, res) => {
 
         post.likesCount += 1;
         await post.save();
+        likeHandler.emitPostLiked({ post, actorUsername: myUsername, liked: true, likesCount: post.likesCount }); // PHASE 11 Part 1
         return sendResponse(res, 200, true, 'Post liked', { liked: true, likesCount: post.likesCount });
 
     } catch (err) {

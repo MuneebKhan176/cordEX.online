@@ -1,7 +1,7 @@
 const WebSocket = require('ws');
 const jwt = require('jsonwebtoken');
 const { sendPriceUpdate } = require('../Spot_Engine/engineClient');
-const { conn } = require('../db_connection');
+const { conn, jwtSecret } = require('../db_connection'); // added jwtSecret
 
 // Path browsers connect to on YOUR server (not Binance directly).
 const WS_PATH = '/ws/market-data';
@@ -19,12 +19,12 @@ const COINS = [
   { id: 'ripple',      stream: 'xrpusdt',  symbol: 'XRP',  name: 'XRP',      rank: 7 },
 ];
 
-// Timeframes the Spot Trading chart offers. These map 1:1 onto Binance's
-// own kline interval strings, so no translation layer is needed.
 const KLINE_INTERVALS = ['15m', '1h', '4h', '12h', '1d', '1w', '1M'];
 
-// Coins that actually have a tradable USDT pair on Binance (i.e. have a
-// `stream`). Kline subscriptions only make sense for these.
+let started = false;
+let snapshotInterval = null;
+let portfolioInterval = null;
+
 const STREAMED_COINS = COINS.filter(c => c.stream);
 
 const tickerStreams = STREAMED_COINS.map(c => c.stream + '@ticker');
@@ -37,7 +37,6 @@ const BINANCE_URL =
   'wss://stream.binance.com:9443/stream?streams=' +
   [...tickerStreams, ...klineStreams].join('/');
 
-// In-memory snapshot of the latest price for every coin.
 const liveData = {};
 COINS.filter(c => c.staticPrice != null).forEach(c => {
   liveData[c.id] = {
@@ -46,17 +45,12 @@ COINS.filter(c => c.staticPrice != null).forEach(c => {
   };
 });
 
-// In-memory snapshot of the latest (in-progress or just-closed) candle for
-// every coin/interval combination: klines[coinId][interval] = {
-//   t: openTime (ms), o, h, l, c, v, x: isFinal(boolean)
-// }
 const klines = {};
 
 let binanceSocket = null;
 let binanceReconnectTimer = null;
-const clients = new Set(); // every locally-connected browser WebSocket
+const clients = new Set();
 
-/* ── Upstream: single connection to Binance ─────────────────────────── */
 function connectToBinance() {
   binanceSocket = new WebSocket(BINANCE_URL);
 
@@ -89,26 +83,17 @@ function handleTickerPayload(t) {
   const coin = STREAMED_COINS.find(c => c.stream === t.s.toLowerCase());
   if (!coin) return;
 
-  const price = parseFloat(t.c); // last traded price
+  const price = parseFloat(t.c);
 
   liveData[coin.id] = {
     id: coin.id, symbol: coin.symbol, name: coin.name, rank: coin.rank,
     price,
-    changePct: parseFloat(t.P), // 24h change %
+    changePct: parseFloat(t.P),
     high:      parseFloat(t.h),
     low:       parseFloat(t.l),
-    quoteVol:  parseFloat(t.q), // 24h volume in USDT
+    quoteVol:  parseFloat(t.q),
   };
 
-  // Feed this tick to the trade engine as its reference price for the
-  // symbol. This is what flips the engine's has_price_ flag to true and
-  // lets MARKET orders / resting LIMIT orders / TP/SL actually execute —
-  // without this call the engine never learns any price and every
-  // MARKET order is rejected with "No reference price available yet".
-  // Fire-and-forget: we don't need to await the ack here, and we
-  // deliberately swallow rejections (e.g. engine mid-reconnect) so one
-  // dropped tick never becomes an unhandled promise rejection — the next
-  // tick, ~1s later, just tries again.
   sendPriceUpdate(coin.symbol + 'USDT', price).catch(() => {});
 }
 
@@ -121,13 +106,13 @@ function handleKlinePayload(payload) {
 
   if (!klines[coin.id]) klines[coin.id] = {};
   klines[coin.id][k.i] = {
-    t: k.t,                 // candle open time (ms)
+    t: k.t,
     o: parseFloat(k.o),
     h: parseFloat(k.h),
     l: parseFloat(k.l),
     c: parseFloat(k.c),
     v: parseFloat(k.v),
-    x: !!k.x,                // true once this candle has closed
+    x: !!k.x,
   };
 }
 
@@ -136,11 +121,6 @@ function scheduleBinanceReconnect() {
   binanceReconnectTimer = setTimeout(connectToBinance, 3000);
 }
 
-/* ── Shared price lookup, usable from anywhere (routes, order engine) ──
-   Falls back to a coin's staticPrice (e.g. USDT/USDC pegged at 1.0) if
-   the Binance feed hasn't produced a tick for it yet — those coins have
-   no stream to begin with. Returns null only for a totally unknown
-   symbol. */
 function getLivePrice(symbol) {
   const coin = COINS.find(c => c.symbol === symbol);
   if (!coin) return null;
@@ -149,13 +129,12 @@ function getLivePrice(symbol) {
   return coin.staticPrice != null ? coin.staticPrice : null;
 }
 
-/* ── Public snapshot broadcast — goes to every connected browser ─────── */
 function broadcastSnapshot() {
   if (clients.size === 0) return;
   const payload = JSON.stringify({
     type: 'snapshot',
-    data: liveData,   // unchanged shape — existing Homepage/Dashboard code keeps working
-    klines,            // latest candle per coin/interval, used by Spot Trading page
+    data: liveData,
+    klines,
     ts: Date.now(),
   });
   for (const ws of clients) {
@@ -163,8 +142,6 @@ function broadcastSnapshot() {
   }
 }
 
-/* ── Per-user portfolio broadcast — no extra Binance calls, just a DB
-   read for quantities priced against the in-memory liveData cache. ──── */
 function priceHoldings(holdingRows) {
   let totalValue = 0;
   const holdings = holdingRows.map(h => {
@@ -214,7 +191,7 @@ function pushPortfolioForUser(userId, socketsForUser) {
 function broadcastPortfolios() {
   const byUser = new Map();
   for (const ws of clients) {
-    if (!ws.userId) continue; // anonymous viewers only get the public snapshot
+    if (!ws.userId) continue;
     if (!byUser.has(ws.userId)) byUser.set(ws.userId, []);
     byUser.get(ws.userId).push(ws);
   }
@@ -223,18 +200,6 @@ function broadcastPortfolios() {
   }
 }
 
-/* ── Targeted push: "one of your orders just did something, go refresh"
-   ───────────────────────────────────────────────────────────────────────
-   Called by spotPanel_Route.js's handleExecution() right after a fill is
-   committed to MySQL. Sends a small 'trade_update' event ONLY to sockets
-   tagged with this userId (there can be more than one — multiple tabs/
-   devices) — everyone else's connection is untouched. The frontend
-   treats this purely as a "go refetch" signal; it does not carry enough
-   to fully re-render on its own, by design, so the client always ends up
-   consistent with the DB rather than trusting a push payload blindly.
-   Silently a no-op if the user has no open socket right now — the next
-   time they load the panel, loadWallet()/loadOrders() will already
-   reflect the fill anyway. ─────────────────────────────────────────── */
 function notifyUserTradeUpdate(userId, payload) {
   if (!userId) return;
   let delivered = 0;
@@ -247,12 +212,10 @@ function notifyUserTradeUpdate(userId, payload) {
   return delivered;
 }
 
-/* ── Resolve userId from the same auth cookie your middleware uses.
-   ⚠ CONFIRM the cookie name, JWT_SECRET, and payload field name against
-   middle/middleware.js before relying on this — these are best-effort
-   guesses based on common patterns. If your middleware differs, update
-   the `cookies.token` key and `decoded.id || decoded.userId` fallback
-   below to match exactly. ─────────────────────────────────────────── */
+// Resolve userId from the same auth cookie middle/middleware.js uses.
+// Now uses jwtSecret from db_connection.js — same secret the login flow
+// and /api/ws-token both use, so this no longer silently disagrees with
+// the rest of the auth system.
 function getUserIdFromRequest(req) {
   try {
     const raw = req.headers.cookie || '';
@@ -262,49 +225,106 @@ function getUserIdFromRequest(req) {
         return [c.slice(0, idx).trim(), decodeURIComponent(c.slice(idx + 1).trim())];
       })
     );
-    const token = cookies.token; // ⚠ confirm cookie name
+    const token = cookies.token;
     if (!token) return null;
-    const decoded = jwt.verify(token, process.env.JWT_SECRET); // ⚠ confirm secret + field name
+    const decoded = jwt.verify(token, jwtSecret);
     return decoded.id || decoded.userId || null;
   } catch (e) {
-    return null; // anonymous — not a crash
+    return null;
   }
 }
 
-/**
- * Call this once from your server.js, passing the same `http.Server`
- * instance you pass to attachChatWebSocketServer / your other wss setup.
- * Uses `req` from the 'connection' event to tag each socket with a
- * userId (if the visitor is logged in), so broadcastPortfolios() and
- * notifyUserTradeUpdate() know which sockets to push per-user data to.
- */
 function initialize(wss) {
+
+    if (started) {
+
+      return;
+
+    }
+
+    started = true;
+
 
     wss.on("connection", (ws, req) => {
 
-        ws.userId = getUserIdFromRequest(req); // tags this socket to a user, if any
+
+        ws.userId = getUserIdFromRequest(req);
+
+        ws.isAlive = true;
+
         clients.add(ws);
 
         ws.send(JSON.stringify({
+
             type: "snapshot",
+
             data: liveData,
+
             klines,
+
             ts: Date.now()
+
         }));
 
-        ws.on("close", () => clients.delete(ws));
+        ws.on("pong", () => {
 
-        ws.on("error", () => clients.delete(ws));
+            ws.isAlive = true;
+
+        });
+
+        ws.on("close", () => {
+
+            clients.delete(ws);
+
+        });
+
+        ws.on("error", (err) => {
+
+            console.error("[market_data] Socket error:", err);
+
+            clients.delete(ws);
+
+        });
 
     });
 
     connectToBinance();
 
-    setInterval(broadcastSnapshot, 1000);     // public prices, all clients
-    setInterval(broadcastPortfolios, 2500);   // per-user, only to their own sockets
+    snapshotInterval = setInterval(() => {
+
+        broadcastSnapshot();
+
+    }, 1000);
+
+    portfolioInterval = setInterval(() => {
+
+        broadcastPortfolios();
+
+    }, 2500);
+
+    setInterval(() => {
+
+        for (const ws of clients) {
+
+            if (ws.isAlive === false) {
+
+                ws.terminate();
+
+                clients.delete(ws);
+
+                continue;
+
+            }
+
+            ws.isAlive = false;
+
+            ws.ping();
+
+        }
+
+    }, 30000);
 
 }
-
 module.exports = {
 
     initialize,
@@ -315,8 +335,8 @@ module.exports = {
 
     KLINE_INTERVALS,
 
-    getLivePrice, // exported so wallet routes & the order engine can reuse the same cache
+    getLivePrice,
 
-    notifyUserTradeUpdate, // exported so spotPanel_Route.js can push fill events to the user
+    notifyUserTradeUpdate,
 
 };

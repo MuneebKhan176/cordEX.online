@@ -3,13 +3,11 @@ const path = require('path');
 const http = require('http');
 
 const mongoConnection = require('./Social_Platform/mongo_connection');
-
 const verifyToken = require('./middle/middleware');
 
 // ---------------- MongoDB ----------------
 
 mongoConnection();
-
 
 // ---------------- Routes ----------------
 
@@ -29,6 +27,10 @@ const uploadRoutes = require('./routes/uploadRoutes');
 const commentRoutes = require('./Social_Platform/Social_Routes_Utils/comments');
 const mediaUploadRoutes = require('./Social_Platform/Social_Routes_Utils/upload');
 const mediaRoutes = require('./Social_Platform/Social_Routes_Utils/media');
+const postView= require('./Social_Platform/postView');
+const notificationRoutes = require('./Social_Platform/notifications');
+
+const wsAuthRoutes = require("./routes/ws_auth");
 
 // ---------------- Managers ----------------
 
@@ -71,7 +73,11 @@ app.use(create_Post);
 app.use(crypto_square);
 app.use(spotPanel);
 app.use(futuresPanel);
+app.use(postView);
+app.use(notificationRoutes);
 app.use('/api/chat', verifyToken, uploadRoutes);
+
+app.use(wsAuthRoutes);
 
 // FIX 1 — comments.js already defines its own full paths
 // (/api/posts/:postId/comments, /api/comments/:commentId/like, etc),

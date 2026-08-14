@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Post — cordEX</title>
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    :root {
+      --bg:#000000; --surface:#0a0a0a; --surface2:#111111; --surface3:#161616;
+      --border:#1a1a1a; --border2:#222222; --text:#ffffff; --text-2:#888888; --text-3:#444444;
+      --blue:#3b82f6; --blue-dim:rgba(59,130,246,0.12);
+      --green:#22c55e; --green-dim:rgba(34,197,94,0.12);
+      --red:#ef4444; --red-dim:rgba(239,68,68,0.12);
+      --ease: cubic-bezier(.16,1,.3,1);
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: radial-gradient(900px 500px at 15% -10%, rgba(59,130,246,0.07), transparent 60%), var(--bg);
+      color: var(--text); min-height: 100vh;
+    }
+    .topnav {
+      height: 60px; background: rgba(0,0,0,0.9); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; padding: 0 24px; gap: 16px;
+      position: sticky; top: 0; z-index: 200; backdrop-filter: blur(12px);
+    }
+    .topnav-logo {
+      font-size: 1.15rem; font-weight: 800; letter-spacing: -0.5px;
+      background: linear-gradient(90deg,#fff 0%,#93c5fd 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      text-decoration: none; display: flex; align-items: center; gap: 7px;
+    }
+    .topnav-logo-dot { width:7px; height:7px; background: var(--blue); border-radius:50%; -webkit-text-fill-color: initial; }
+    .topnav-right { margin-left: auto; display:flex; align-items:center; gap:10px; }
+    .nav-pill {
+      display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 7px;
+      font-size: .82rem; font-weight: 600; text-decoration: none;
+      border: 1px solid var(--border2); color: var(--text-2); background: transparent; cursor: pointer; transition: all .18s;
+    }
+    .nav-pill:hover { color:#fff; border-color:#444; background: var(--surface2); }
+
+    .page { max-width: 640px; margin: 0 auto; padding: 28px 20px 64px; }
+
+    .post-card {
+      background: linear-gradient(180deg, var(--surface2) 0%, var(--surface) 65%);
+      border: 1px solid var(--border); border-radius: 16px; padding: 22px; margin-bottom: 18px;
+    }
+    .post-header { display: flex; gap: 12px; align-items:flex-start; margin-bottom: 12px; }
+    .post-header .mini-avatar {
+      width:44px; height:44px; border-radius:50%; overflow:hidden;
+      background: linear-gradient(135deg,#3b82f6,#1d4ed8);
+      display:flex; align-items:center; justify-content:center; font-size:.88rem; font-weight:700; color:#fff;
+      flex-shrink:0; cursor:pointer;
+    }
+    .post-header .mini-avatar img { width:100%; height:100%; object-fit:cover; }
+    .post-header-text { min-width:0; flex:1; }
+    .who-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .who { font-size:1rem; font-weight:700; cursor:pointer; }
+    .who:hover { text-decoration: underline; }
+    .meta-row { font-size:.78rem; color:var(--text-3); margin-top:2px; }
+
+    .sentiment-pill {
+      display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 999px;
+      font-size: .66rem; font-weight: 700; letter-spacing: .02em; text-transform: uppercase;
+    }
+    .sentiment-pill.bullish { color: var(--green); background: var(--green-dim); border: 1px solid rgba(34,197,94,.3); }
+    .sentiment-pill.bearish { color: var(--red);   background: var(--red-dim);   border: 1px solid rgba(239,68,68,.3); }
+    .sentiment-pill svg { width: 10px; height: 10px; }
+
+    .follow-btn {
+      padding: 6px 14px; border-radius: 999px; font-size: .78rem; font-weight: 700; cursor: pointer;
+      background: linear-gradient(135deg, var(--blue), #2563eb); border: 1px solid var(--blue); color: #fff; flex-shrink:0;
+    }
+    .follow-btn.following { background: transparent; border-color: var(--border2); color: var(--text-2); }
+    .follow-btn:disabled { opacity: .5; cursor:not-allowed; }
+
+    .post-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 8px; line-height:1.35; }
+    .post-content { font-size:.94rem; color:var(--text-2); line-height:1.7; white-space:pre-wrap; word-break:break-word; }
+
+    .sq-media { margin-top: 14px; border-radius: 14px; overflow:hidden; border:1px solid var(--border2); background:#000; position:relative; }
+    .slider-stage { position:relative; width:100%; aspect-ratio: 16/10; display:flex; overflow:hidden; }
+    .slider-track { display:flex; width:100%; height:100%; transition: transform .32s cubic-bezier(.4,0,.2,1); }
+    .slider-slide { flex:0 0 100%; height:100%; }
+    .slider-slide img, .slider-slide video { width:100%; height:100%; object-fit:cover; display:block; }
+    .slider-arrow {
+      position:absolute; top:50%; transform:translateY(-50%); width:34px; height:34px; border-radius:50%;
+      background: rgba(0,0,0,0.55); border:1px solid rgba(255,255,255,.15); color:#fff; font-size:1.1rem;
+      display:flex; align-items:center; justify-content:center; cursor:pointer;
+    }
+    .slider-arrow.prev { left:10px; } .slider-arrow.next { right:10px; }
+    .slider-arrow.disabled { opacity:.25; pointer-events:none; }
+    .slider-dots { position:absolute; bottom:10px; left:0; right:0; display:flex; justify-content:center; gap:6px; }
+    .slider-dot { width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,.35); border:none; cursor:pointer; }
+    .slider-dot.active { background:#fff; transform:scale(1.25); }
+
+    .post-hashtags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+    .hashtag-pill {
+      font-size: .78rem; font-weight: 600; color: var(--blue); background: var(--blue-dim);
+      border: 1px solid rgba(59,130,246,.25); padding: 3px 10px; border-radius: 999px;
+    }
+
+    .post-footer { display:flex; align-items:center; gap:44px; margin-top:16px; padding-top:14px; border-top:1px solid var(--border); }
+    .analytic-stat {
+      display:inline-flex; align-items:center; gap:6px; background:none; border:none; padding:0;
+      color: var(--text-2); font-size:.86rem; font-weight:600; cursor:pointer;
+    }
+    .analytic-stat svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:1.8; }
+    .analytic-stat.like-btn.liked { color: var(--red); }
+    .analytic-stat.like-btn.liked svg { fill: currentColor; }
+    .analytic-stat.bookmark-btn { margin-left:auto; }
+    .analytic-stat.bookmark-btn.bookmarked { color: var(--blue); }
+    .analytic-stat.bookmark-btn.bookmarked svg { fill: currentColor; }
+
+    /* comments */
+    .comments-card {
+      background: linear-gradient(180deg, var(--surface2) 0%, var(--surface) 65%);
+      border: 1px solid var(--border); border-radius: 16px; padding: 20px;
+    }
+    .comments-title { font-size:.95rem; font-weight:700; margin-bottom:14px; }
+
+    .comment-composer { display: flex; gap: 8px; margin-bottom: 18px; }
+    .comment-input-wrap { position: relative; flex: 1; }
+    .comment-input {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px;
+      color: var(--text); font-size: .86rem; padding: 10px 40px 10px 13px; outline: none; font-family: inherit;
+    }
+    .comment-input:focus { border-color: #444; }
+    .emoji-btn {
+      position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+      background: transparent; border: none; padding: 6px; cursor: pointer; color: var(--text-3);
+      display:flex; align-items:center; justify-content:center; border-radius: 6px;
+    }
+    .emoji-btn:hover { color:#fff; background: var(--surface3); }
+    .emoji-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+    .emoji-picker {
+      position: absolute; bottom: calc(100% + 6px); right: 0; z-index: 60;
+      background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; padding: 8px;
+      display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; box-shadow: 0 14px 34px rgba(0,0,0,.55);
+    }
+    .emoji-picker button { background: none; border: none; font-size: 1.05rem; padding: 6px; border-radius: 6px; cursor: pointer; }
+    .emoji-picker button:hover { background: var(--surface3); }
+    .comment-post-btn {
+      padding: 10px 18px; border-radius: 8px; font-size: .84rem; font-weight: 700;
+      background: linear-gradient(135deg, var(--blue), #2563eb); color: #fff; border: none; cursor: pointer; flex-shrink:0;
+    }
+    .comment-post-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    .comment-list { display: flex; flex-direction: column; gap: 16px; }
+    .comment-item { display: flex; gap: 10px; }
+    .comment-avatar {
+      width: 32px; height: 32px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
+      background: linear-gradient(135deg,#3b82f6,#1d4ed8); display: flex; align-items: center; justify-content: center;
+      font-size: .7rem; font-weight: 700; color: #fff; cursor: pointer;
+    }
+    .comment-avatar img { width:100%; height:100%; object-fit:cover; }
+    .comment-body { flex: 1; min-width: 0; }
+    .comment-bubble { background: var(--surface2); border: 1px solid var(--border2); border-radius: 12px; padding: 9px 13px; display: inline-block; max-width: 100%; }
+    .comment-who { font-size: .82rem; font-weight: 700; color: #fff; display: block; margin-bottom: 2px; cursor: pointer; }
+    .comment-who:hover { text-decoration: underline; }
+    .comment-text { font-size: .85rem; color: var(--text-2); line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+    .comment-meta-row { display: flex; align-items: center; gap: 14px; margin-top: 5px; padding-left: 4px; flex-wrap:wrap; }
+    .comment-time { font-size: .72rem; color: var(--text-3); }
+    .comment-like-btn, .comment-reply-toggle, .comment-delete-btn, .view-replies-btn, .load-more-replies-btn {
+      background: none; border: none; padding: 0; cursor: pointer; font-size: .74rem; font-weight: 700;
+      color: var(--text-3); display: inline-flex; align-items: center; gap: 4px;
+    }
+    .comment-like-btn:hover, .comment-reply-toggle:hover, .view-replies-btn:hover, .load-more-replies-btn:hover { color: #fff; }
+    .comment-delete-btn:hover { color: var(--red); }
+    .comment-like-btn svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; }
+    .comment-like-btn.liked { color: var(--red); }
+    .comment-like-btn.liked svg { fill: currentColor; }
+    .view-replies-btn { margin-top: 6px; margin-left: 4px; color: var(--blue); }
+    .load-more-replies-btn { margin-top: 4px; margin-left: 42px; }
+    .replies-list { margin-top: 8px; margin-left: 32px; display: flex; flex-direction: column; gap: 10px; }
+    .reply-composer { display: flex; gap: 6px; margin-top: 8px; margin-left: 4px; }
+    .reply-input-wrap { position: relative; flex: 1; }
+    .reply-input { width:100%; background: var(--surface2); border: 1px solid var(--border2); border-radius:999px; color: var(--text); font-size:.8rem; padding:7px 34px 7px 13px; outline:none; font-family:inherit; }
+    .reply-post-btn { padding: 6px 12px; border-radius: 999px; font-size: .74rem; font-weight: 700; background: var(--surface3); border: 1px solid var(--border2); color: var(--text-2); cursor: pointer; flex-shrink:0; }
+    .reply-post-btn:hover { color:#fff; border-color:#444; }
+
+    .comments-empty, .comments-loading { font-size: .84rem; color: var(--text-3); padding: 10px 4px; }
+    .load-more-comments-btn {
+      display: block; margin: 10px auto 0; padding: 8px 18px; border-radius: 8px;
+      background: var(--surface2); border: 1px solid var(--border2); color: var(--text-2); font-size: .8rem; font-weight: 600; cursor: pointer;
+    }
+    .load-more-comments-btn:hover { color:#fff; border-color:#444; }
+
+    .loading-state { text-align:center; padding:40px; color:var(--text-3); font-size:.85rem; }
+    .spinner-inline { display:inline-block; width:14px; height:14px; border:2px solid var(--border2); border-top-color: var(--blue); border-radius:50%; animation: spin .7s linear infinite; vertical-align:middle; margin-right:6px; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    ::-webkit-scrollbar { width:5px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:99px; }
+  </style>
+</head>
+<body>
+
+<header class="topnav">
+  <a href="/crypto-square" class="topnav-logo"><span class="topnav-logo-dot"></span>cordEX</a>
+  <div class="topnav-right">
+    <a href="/crypto-square" class="nav-pill">← Back to Crypto Square</a>
+  </div>
+</header>
+
+<div class="page">
+  <div id="postContainer">
+    <div class="loading-state"><span class="spinner-inline"></span>Loading post…</div>
+  </div>
+
+  <div class="comments-card" id="commentsCard" style="display:none;">
+    <div class="comments-title">Comments</div>
+    <div id="commentsInner"></div>
+  </div>
+</div>
+
+<script>
+const POST_ID = window.location.pathname.split('/').pop();
+let currentPost = null;
+let commentsData = { comments: [], page: 0, hasMore: true, loading: false };
+const repliesState = {};
+const EMOJI_SET = ['😀','😂','😍','🔥','👍','🎉','😮','😢','🙏','💯','🚀','💰','😎','🤔','👀','❤️','🐂','🐻'];
+let openEmojiPicker = null;
+
+function escapeHtml(str) { const div = document.createElement('div'); div.textContent = str ?? ''; return div.innerHTML; }
+function cssEscape(str) { return window.CSS && CSS.escape ? CSS.escape(str) : String(str).replace(/["\\]/g, '\\$&'); }
+function formatCount(n) { n = Number(n) || 0; if (n >= 1e6) return (n/1e6).toFixed(1).replace(/\.0$/, '') + 'M'; if (n >= 1e3) return (n/1e3).toFixed(1).replace(/\.0$/, '') + 'k'; return String(n); }
+function formatPostDate(dateInput) {
+  if (!dateInput) return { short: '', full: '' };
+  const d = new Date(dateInput);
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  const short = d.toLocaleDateString('en-US', sameYear ? { month:'short', day:'numeric' } : { month:'short', day:'numeric', year:'numeric' });
+  return { short, full: d.toLocaleString() };
+}
+function parsePostContent(raw) {
+  const text = raw || '';
+  const match = text.match(/^##[ \t]+(.+?)(?:\r?\n)([\s\S]*)$/);
+  if (match) return { title: match[1].trim(), body: match[2].replace(/^\r?\n+/, '') };
+  return { title: null, body: text };
+}
+
+const ICON_LIKE = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.6z"/></svg>';
+const ICON_UP   = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l8 10h-5v6h-6v-6H4z"/></svg>';
+const ICON_DOWN = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 20l-8-10h5V4h6v6h5z"/></svg>';
+const ICON_VIEWS = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+const ICON_BOOKMARK = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
+const ICON_EMOJI = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>';
+
+function sentimentPillHtml(s) {
+  if (s === 'bullish') return `<span class="sentiment-pill bullish">${ICON_UP}Bullish</span>`;
+  if (s === 'bearish') return `<span class="sentiment-pill bearish">${ICON_DOWN}Bearish</span>`;
+  return '';
+}
+function mediaTag(m) { return m.type === 'video' ? `<video src="${m.url}" controls playsinline></video>` : `<img src="${m.url}" alt="post media" loading="lazy"/>`; }
+function mediaSliderHtml(media) {
+  if (!media || !media.length) return '';
+  const slides = media.map(m => `<div class="slider-slide">${mediaTag(m)}</div>`).join('');
+  if (media.length === 1) return `<div class="sq-media" id="postSlider"><div class="slider-stage"><div class="slider-track">${slides}</div></div></div>`;
+  const dots = media.map((_, i) => `<button class="slider-dot${i===0?' active':''}" data-idx="${i}"></button>`).join('');
+  return `<div class="sq-media" id="postSlider" data-index="0" data-count="${media.length}">
+    <div class="slider-stage"><div class="slider-track">${slides}</div></div>
+    <button class="slider-arrow prev disabled" data-dir="-1">‹</button>
+    <button class="slider-arrow next" data-dir="1">›</button>
+    <div class="slider-dots">${dots}</div>
+  </div>`;
+}
+
+/* ── LOAD POST ── */
+async function loadPost() {
+  try {
+    const r = await fetch(`/api/posts/${POST_ID}/single`);
+    const d = await r.json();
+    if (!d.success) {
+      document.getElementById('postContainer').innerHTML = `<div class="loading-state">${escapeHtml(d.message || 'Post not found.')}</div>`;
+      return;
+    }
+    currentPost = d.data.post;
+    renderPost();
+    document.getElementById('commentsCard').style.display = 'block';
+    loadComments();
+  } catch (e) {
+    console.error('loadPost error:', e);
+    document.getElementById('postContainer').innerHTML = `<div class="loading-state">Network error while loading the post.</div>`;
+  }
+}
+
+function renderPost() {
+  const post = currentPost;
+  const avatarHtml = post.author?.avatarUrl ? `<img src="${post.author.avatarUrl}" alt="avatar"/>` : (post.author?.displayName || post.username || '?').slice(0,2).toUpperCase();
+  const { title, body } = parsePostContent(post.content);
+  const { short, full } = formatPostDate(post.createdAt);
+
+  const followBtnHtml = post.isSelf ? '' : `
+    <button type="button" class="follow-btn${post.isFollowingAuthor ? ' following' : ''}" data-username="${escapeHtml(post.username)}" data-following="${post.isFollowingAuthor ? '1':'0'}" onclick="toggleFollow(this)">
+      ${post.isFollowingAuthor ? 'Following' : 'Follow'}
+    </button>`;
+
+  document.getElementById('postContainer').innerHTML = `
+    <div class="post-card" data-post-id="${post._id}">
+      <div class="post-header">
+        <div class="mini-avatar" onclick="goToProfile('${escapeHtml(post.username)}', ${post.isSelf})">${avatarHtml}</div>
+        <div class="post-header-text">
+          <div class="who-row">
+            <span class="who" onclick="goToProfile('${escapeHtml(post.username)}', ${post.isSelf})">${escapeHtml(post.author?.displayName || post.username)}</span>
+            ${sentimentPillHtml(post.sentiment)}
+          </div>
+          <div class="meta-row" title="${escapeHtml(full)}">${escapeHtml(short)}</div>
+        </div>
+        ${followBtnHtml}
+      </div>
+      ${title ? `<div class="post-title">${escapeHtml(title)}</div>` : ''}
+      <div class="post-content">${escapeHtml(body)}</div>
+      ${mediaSliderHtml(post.media)}
+      ${post.hashtags?.length ? `<div class="post-hashtags">${post.hashtags.map(h => `<span class="hashtag-pill">#${escapeHtml(h)}</span>`).join('')}</div>` : ''}
+      <div class="post-footer">
+        <span class="analytic-stat" title="Comments">${ICON_UP === '' ? '' : ''}<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.4 8.4 8.3 8.3 0 0 1-3.8-.9L3 21l1.9-5.7a8.3 8.3 0 0 1-.9-3.8A8.4 8.4 0 0 1 12.5 3h.1A8.4 8.4 0 0 1 21 11.4v.1z"/></svg><span id="commentCountDisplay">${formatCount(post.commentsCount || 0)}</span></span>
+        <button type="button" class="analytic-stat like-btn${post.isLiked ? ' liked' : ''}" onclick="toggleLike(this)">${ICON_LIKE}<span class="like-count">${formatCount(post.likesCount || 0)}</span></button>
+        <span class="analytic-stat" title="Views">${ICON_VIEWS}<span>${formatCount(post.viewsCount || 0)}</span></span>
+        <button type="button" class="analytic-stat bookmark-btn${post.isBookmarked ? ' bookmarked' : ''}" onclick="toggleBookmark(this)">${ICON_BOOKMARK}<span class="bookmark-count">${formatCount(post.bookmarksCount || post.saveCount || 0)}</span></button>
+      </div>
+    </div>`;
+
+  document.querySelectorAll('.slider-arrow').forEach(btn => btn.addEventListener('click', () => moveSlider(parseInt(btn.dataset.dir,10))));
+  document.querySelectorAll('.slider-dot').forEach((dot,i) => dot.addEventListener('click', () => goToSlide(i)));
+
+  fetch(`/api/posts/${post._id}/view`, { method: 'POST' }).catch(() => {});
+}
+
+function goToProfile(username, isSelf) { window.location.href = isSelf ? '/profile' : `/square-profile/${encodeURIComponent(username)}`; }
+
+function moveSlider(dir) {
+  const wrap = document.getElementById('postSlider');
+  const count = parseInt(wrap.dataset.count, 10) || 1;
+  const current = parseInt(wrap.dataset.index, 10) || 0;
+  goToSlide(Math.max(0, Math.min(count - 1, current + dir)));
+}
+function goToSlide(idx) {
+  const wrap = document.getElementById('postSlider');
+  const track = wrap.querySelector('.slider-track');
+  const count = parseInt(wrap.dataset.count, 10) || 1;
+  idx = Math.max(0, Math.min(count - 1, idx));
+  wrap.dataset.index = idx;
+  track.style.transform = `translateX(-${idx * 100}%)`;
+  wrap.querySelectorAll('.slider-dot').forEach((d,i) => d.classList.toggle('active', i === idx));
+  wrap.querySelector('.slider-arrow.prev')?.classList.toggle('disabled', idx === 0);
+  wrap.querySelector('.slider-arrow.next')?.classList.toggle('disabled', idx === count - 1);
+}
+
+async function toggleFollow(btn) {
+  const username = btn.dataset.username;
+  const isFollowing = btn.dataset.following === '1';
+  btn.disabled = true;
+  try {
+    const r = await fetch(isFollowing ? '/api/unfollow' : '/api/follow', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username }),
+    });
+    const d = await r.json();
+    if (!d.success) { btn.disabled = false; return; }
+    const nowFollowing = !isFollowing;
+    btn.dataset.following = nowFollowing ? '1' : '0';
+    btn.classList.toggle('following', nowFollowing);
+    btn.textContent = nowFollowing ? 'Following' : 'Follow';
+  } finally { btn.disabled = false; }
+}
+
+async function toggleLike(btn) {
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/api/posts/${currentPost._id}/like`, { method: 'POST' });
+    const d = await r.json();
+    if (!d.success) return;
+    btn.classList.toggle('liked', !!d.data.liked);
+    btn.querySelector('.like-count').textContent = formatCount(d.data.likesCount);
+  } finally { btn.disabled = false; }
+}
+
+async function toggleBookmark(btn) {
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/api/posts/${currentPost._id}/bookmark`, { method: 'POST' });
+    const d = await r.json();
+    if (!d.success) return;
+    btn.classList.toggle('bookmarked', !!d.data.bookmarked);
+    if (d.data.saveCount !== null) btn.querySelector('.bookmark-count').textContent = formatCount(d.data.saveCount);
+  } finally { btn.disabled = false; }
+}
+
+/* ── COMMENTS (moved here from crypto-square.html) ── */
+function commentAvatarHtml(author, username) {
+  return author?.avatarUrl ? `<img src="${author.avatarUrl}" alt="avatar"/>` : (author?.displayName || username || '?').slice(0,2).toUpperCase();
+}
+
+async function loadComments() {
+  commentsData.loading = true;
+  renderComments();
+  try {
+    const r = await fetch(`/api/posts/${POST_ID}/comments?page=${commentsData.page + 1}`);
+    const d = await r.json();
+    if (d.success) {
+      commentsData.comments = commentsData.comments.concat(d.data.comments || []);
+      commentsData.page = d.data.page;
+      commentsData.hasMore = !!d.data.hasMore;
+    }
+  } catch (e) { console.error('loadComments error:', e); }
+  finally { commentsData.loading = false; renderComments(); }
+}
+function loadMoreComments() { loadComments(); }
+
+function handleCommentKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (e.target.value.trim()) submitComment(); }
+}
+async function submitComment() {
+  const input = document.getElementById('commentInput');
+  const content = (input?.value || '').trim();
+  if (!content) return;
+  const btn = document.getElementById('commentPostBtn');
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/api/posts/${POST_ID}/comments`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content }),
+    });
+    const d = await r.json();
+    if (!d.success) { alert(d.message || 'Failed to post comment.'); return; }
+    commentsData.comments.unshift(d.data.comment);
+    document.getElementById('commentCountDisplay').textContent = formatCount(d.data.commentsCount);
+    closeEmojiPicker();
+    renderComments();
+  } catch (e) { alert('Network error while posting your comment.'); }
+  finally { btn.disabled = false; }
+}
+
+async function deleteComment(commentId) {
+  if (!confirm('Delete this comment?')) return;
+  try {
+    const r = await fetch(`/api/comments/${commentId}`, { method: 'DELETE' });
+    const d = await r.json();
+    if (!d.success) { alert(d.message || 'Failed to delete comment.'); return; }
+    commentsData.comments = commentsData.comments.filter(c => String(c._id) !== String(commentId));
+    delete repliesState[commentId];
+    document.getElementById('commentCountDisplay').textContent = formatCount(d.data.commentsCount);
+    renderComments();
+  } catch (e) { alert('Network error while deleting the comment.'); }
+}
+
+async function toggleCommentLike(btn, commentId) {
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/api/comments/${commentId}/like`, { method: 'POST' });
+    const d = await r.json();
+    if (!d.success) return;
+    const c = commentsData.comments.find(c => String(c._id) === String(commentId));
+    if (c) { c.isLiked = d.data.liked; c.likesCount = d.data.likesCount; }
+    renderComments();
+  } finally { btn.disabled = false; }
+}
+
+function ensureRepliesState(commentId) {
+  if (!repliesState[commentId]) repliesState[commentId] = { open: false, composerOpen: false, replies: [], page: 0, hasMore: true, loading: false };
+  return repliesState[commentId];
+}
+function toggleReplyComposer(commentId) { ensureRepliesState(commentId).composerOpen = !ensureRepliesState(commentId).composerOpen; renderComments(); }
+async function toggleRepliesList(commentId) {
+  const rst = ensureRepliesState(commentId);
+  rst.open = !rst.open;
+  if (rst.open && !rst.replies.length && rst.hasMore) await loadReplies(commentId);
+  else renderComments();
+}
+async function loadReplies(commentId) {
+  const rst = ensureRepliesState(commentId);
+  rst.loading = true; renderComments();
+  try {
+    const r = await fetch(`/api/comments/${commentId}/replies?page=${rst.page + 1}`);
+    const d = await r.json();
+    if (d.success) { rst.replies = rst.replies.concat(d.data.replies || []); rst.page = d.data.page; rst.hasMore = !!d.data.hasMore; }
+  } catch (e) { console.error(e); }
+  finally { rst.loading = false; renderComments(); }
+}
+function loadMoreReplies(commentId) { loadReplies(commentId); }
+
+function handleReplyKeydown(e, commentId) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (e.target.value.trim()) submitReply(commentId); }
+}
+async function submitReply(commentId) {
+  const input = document.getElementById(`replyInput-${commentId}`);
+  const content = (input?.value || '').trim();
+  if (!content) return;
+  try {
+    const r = await fetch(`/api/comments/${commentId}/replies`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content }),
+    });
+    const d = await r.json();
+    if (!d.success) { alert(d.message || 'Failed to post reply.'); return; }
+    const comment = commentsData.comments.find(c => String(c._id) === String(commentId));
+    if (comment) comment.repliesCount = d.data.repliesCount;
+    const rst = ensureRepliesState(commentId);
+    rst.replies.push(d.data.reply);
+    rst.open = true; rst.composerOpen = false;
+    closeEmojiPicker();
+    renderComments();
+  } catch (e) { alert('Network error while posting your reply.'); }
+}
+async function deleteReply(commentId, replyId) {
+  if (!confirm('Delete this reply?')) return;
+  try {
+    const r = await fetch(`/api/replies/${replyId}`, { method: 'DELETE' });
+    const d = await r.json();
+    if (!d.success) { alert(d.message || 'Failed to delete reply.'); return; }
+    const comment = commentsData.comments.find(c => String(c._id) === String(commentId));
+    if (comment) comment.repliesCount = d.data.repliesCount;
+    const rst = ensureRepliesState(commentId);
+    rst.replies = rst.replies.filter(rp => String(rp._id) !== String(replyId));
+    renderComments();
+  } catch (e) { alert('Network error while deleting the reply.'); }
+}
+async function toggleReplyLike(btn, commentId, replyId) {
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/api/replies/${replyId}/like`, { method: 'POST' });
+    const d = await r.json();
+    if (!d.success) return;
+    const rst = ensureRepliesState(commentId);
+    const rp = rst.replies.find(rp => String(rp._id) === String(replyId));
+    if (rp) { rp.isLiked = d.data.liked; rp.likesCount = d.data.likesCount; }
+    renderComments();
+  } finally { btn.disabled = false; }
+}
+
+function toggleEmojiPicker(e, btn, targetId) {
+  e.stopPropagation();
+  const wrap = btn.closest('.comment-input-wrap, .reply-input-wrap');
+  const alreadyOpenHere = openEmojiPicker && openEmojiPicker.parentElement === wrap;
+  closeEmojiPicker();
+  if (alreadyOpenHere) return;
+  const panel = document.createElement('div');
+  panel.className = 'emoji-picker';
+  panel.innerHTML = EMOJI_SET.map(em => `<button type="button" data-emoji="${em}">${em}</button>`).join('');
+  panel.addEventListener('click', (ev) => {
+    const emBtn = ev.target.closest('button[data-emoji]');
+    if (!emBtn) return;
+    const input = document.getElementById(targetId);
+    if (input) { input.value += emBtn.dataset.emoji; input.focus(); }
+  });
+  wrap.appendChild(panel);
+  openEmojiPicker = panel;
+}
+function closeEmojiPicker() { if (openEmojiPicker) { openEmojiPicker.remove(); openEmojiPicker = null; } }
+document.addEventListener('click', (e) => {
+  if (openEmojiPicker && !e.target.closest('.emoji-picker') && !e.target.closest('.emoji-btn')) closeEmojiPicker();
+});
+
+function replyItemHtml(reply, commentId) {
+  const { short, full } = formatPostDate(reply.createdAt);
+  return `
+    <div class="comment-item">
+      <div class="comment-avatar" onclick="goToProfile('${escapeHtml(reply.username)}', ${!!reply.isSelf})">${commentAvatarHtml(reply.author, reply.username)}</div>
+      <div class="comment-body">
+        <div class="comment-bubble">
+          <span class="comment-who" onclick="goToProfile('${escapeHtml(reply.username)}', ${!!reply.isSelf})">${escapeHtml(reply.author?.displayName || reply.username)}</span>
+          <div class="comment-text">${escapeHtml(reply.content)}</div>
+        </div>
+        <div class="comment-meta-row" title="${escapeHtml(full)}">
+          <span class="comment-time">${escapeHtml(short)}</span>
+          <button type="button" class="comment-like-btn${reply.isLiked ? ' liked' : ''}" onclick="toggleReplyLike(this,'${commentId}','${reply._id}')">${ICON_LIKE}<span>${reply.likesCount > 0 ? formatCount(reply.likesCount) : ''}</span></button>
+          ${reply.isSelf ? `<button type="button" class="comment-delete-btn" onclick="deleteReply('${commentId}','${reply._id}')">Delete</button>` : ''}
+        </div>
+      </div>
+    </div>`;
+}
+
+function repliesBlockHtml(comment) {
+  const commentId = comment._id;
+  const rst = ensureRepliesState(commentId);
+  const totalReplies = comment.repliesCount || 0;
+  let html = '';
+  if (totalReplies > 0 && !rst.open) html += `<button type="button" class="view-replies-btn" onclick="toggleRepliesList('${commentId}')">View ${totalReplies} repl${totalReplies === 1 ? 'y' : 'ies'}</button>`;
+  if (rst.open) {
+    html += `<div class="replies-list">`;
+    html += rst.replies.map(rp => replyItemHtml(rp, commentId)).join('');
+    if (rst.loading) html += `<div class="comments-loading"><span class="spinner-inline"></span>Loading…</div>`;
+    if (rst.hasMore && !rst.loading) html += `<button type="button" class="load-more-replies-btn" onclick="loadMoreReplies('${commentId}')">Load more replies</button>`;
+    if (totalReplies > 0) html += `<button type="button" class="view-replies-btn" onclick="toggleRepliesList('${commentId}')">Hide replies</button>`;
+    html += `</div>`;
+  }
+  if (rst.composerOpen) {
+    html += `<div class="reply-composer">
+      <div class="reply-input-wrap">
+        <input type="text" class="reply-input" id="replyInput-${commentId}" placeholder="Write a reply…" maxlength="1000" onkeydown="handleReplyKeydown(event,'${commentId}')"/>
+        <button type="button" class="emoji-btn" onclick="toggleEmojiPicker(event, this, 'replyInput-${commentId}')" title="Add emoji">${ICON_EMOJI}</button>
+      </div>
+      <button type="button" class="reply-post-btn" onclick="submitReply('${commentId}')">Reply</button>
+    </div>`;
+  }
+  return html;
+}
+
+function commentItemHtml(comment) {
+  const { short, full } = formatPostDate(comment.createdAt);
+  return `
+    <div class="comment-item">
+      <div class="comment-avatar" onclick="goToProfile('${escapeHtml(comment.username)}', ${!!comment.isSelf})">${commentAvatarHtml(comment.author, comment.username)}</div>
+      <div class="comment-body">
+        <div class="comment-bubble">
+          <span class="comment-who" onclick="goToProfile('${escapeHtml(comment.username)}', ${!!comment.isSelf})">${escapeHtml(comment.author?.displayName || comment.username)}</span>
+          <div class="comment-text">${escapeHtml(comment.content)}</div>
+        </div>
+        <div class="comment-meta-row" title="${escapeHtml(full)}">
+          <span class="comment-time">${escapeHtml(short)}</span>
+          <button type="button" class="comment-like-btn${comment.isLiked ? ' liked' : ''}" onclick="toggleCommentLike(this,'${comment._id}')">${ICON_LIKE}<span>${comment.likesCount > 0 ? formatCount(comment.likesCount) : ''}</span></button>
+          <button type="button" class="comment-reply-toggle" onclick="toggleReplyComposer('${comment._id}')">Reply</button>
+          ${comment.isSelf ? `<button type="button" class="comment-delete-btn" onclick="deleteComment('${comment._id}')">Delete</button>` : ''}
+        </div>
+        ${repliesBlockHtml(comment)}
+      </div>
+    </div>`;
+}
+
+function renderComments() {
+  const inner = document.getElementById('commentsInner');
+  let listHtml;
+  if (commentsData.loading && !commentsData.comments.length) {
+    listHtml = `<div class="comments-loading"><span class="spinner-inline"></span>Loading comments…</div>`;
+  } else if (!commentsData.comments.length) {
+    listHtml = `<div class="comments-empty">No comments yet. Be the first to say something.</div>`;
+  } else {
+    listHtml = `<div class="comment-list">${commentsData.comments.map(commentItemHtml).join('')}</div>`;
+    if (commentsData.hasMore) listHtml += `<button type="button" class="load-more-comments-btn" onclick="loadMoreComments()">Load more comments</button>`;
+  }
+
+  inner.innerHTML = `
+    <div class="comment-composer">
+      <div class="comment-input-wrap">
+        <input type="text" class="comment-input" id="commentInput" placeholder="Write a comment…" maxlength="1000" onkeydown="handleCommentKeydown(event)"/>
+        <button type="button" class="emoji-btn" onclick="toggleEmojiPicker(event, this, 'commentInput')" title="Add emoji">${ICON_EMOJI}</button>
+      </div>
+      <button type="button" class="comment-post-btn" id="commentPostBtn" onclick="submitComment()">Post</button>
+    </div>
+    ${listHtml}`;
+}
+
+/* live updates while viewing this post */
+async function connectSocialSocket() {
+  try {
+    const r = await fetch('/api/ws-token');
+    const d = await r.json();
+    if (!d.success) return;
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    const ws = new WebSocket(`${proto}://${location.host}/ws/social?token=${encodeURIComponent(d.data.token)}`);
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (!currentPost) return;
+        if (msg.event === 'post_liked' && msg.data.postId === currentPost._id) {
+          document.querySelector('.like-count').textContent = formatCount(msg.data.likesCount);
+        }
+        if (msg.event === 'new_comment' && msg.data.postId === currentPost._id) {
+          document.getElementById('commentCountDisplay').textContent = formatCount(msg.data.commentsCount);
+        }
+      } catch (e) { /* ignore */ }
+    };
+  } catch (e) { /* ignore */ }
+}
+
+document.addEventListener('DOMContentLoaded', () => { loadPost(); connectSocialSocket(); });
+</script>
+</body>
+</html>

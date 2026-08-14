@@ -4,13 +4,7 @@ const path = require('path');
 
 const verifyToken = require('../middle/middleware');
 const { SocialProfile, Follow } = require('./social_models');
-const { syncTrendingCreator } = require('./services/Feed_Engine/trendingCreators');
-const { getManyProfiles, patchCached, invalidate } = require('./cache/profileCache');
-
-// NOTE: SocialProfile is still required for both models AND the
-// TrendingCreator model, imported directly below since it's a separate
-// export from social_models.
-const { TrendingCreator } = require('./social_models');
+const followHandler = require('./socket/handlers/followHandler'); // PHASE 11 Part 1/2 — real-time + persisted follow notifications
 
 function sendResponse(res, statusCode, success, message, data = null) {
     return res.status(statusCode).json({ success, message, data });
@@ -19,72 +13,108 @@ function sendResponse(res, statusCode, success, message, data = null) {
 const TOP_CREATORS_LIMIT = 10;
 
 /* ============================================================================
- * PHASE 5 — REMOVED: quickselect over every SocialProfile in the database.
+ * QUICKSELECT — top-K largest elements by followersCount
  * ----------------------------------------------------------------------------
- * The old approach pulled `SocialProfile.find({})` on every request and ran
- * quickselect to get the top 10 by followersCount. That's fine at ~1,000
- * users but becomes an O(n) full-collection scan + partition pass per
- * request at 100,000+ users.
- *
- * Instead, a precomputed TrendingCreator leaderboard (username,
- * followersCount, score) is kept in sync by services/trendingCreators.js
- * every time someone follows, unfollows, or posts. This endpoint now just
- * does TrendingCreator.find().sort({score:-1}).limit(10) — an index scan
- * that costs the same whether there are 1,000 or 1,000,000 users.
+ * Classic divide & conquer selection algorithm (average O(n), worst case
+ * O(n^2) mitigated with a random pivot). We use it instead of a full sort
+ * (O(n log n)) because we only ever need the top K=10 profiles out of
+ * potentially many — quickselect partitions the array around a pivot so
+ * that after each pass, everything greater than the pivot is on its left,
+ * narrowing the search window each time until the first K elements are
+ * guaranteed to be the K largest by followersCount (order within that
+ * K-slice is arbitrary, so we do one cheap sort of just those 10 at the end
+ * purely for display order).
  * ==========================================================================*/
 
+function swap(arr, i, j) {
+    const tmp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = tmp;
+}
+
+// Lomuto-style partition, largest-first: after this call, everything with
+// followersCount > pivotValue sits to the left of the returned index.
+function partition(arr, low, high, pivotIndex) {
+    const pivotValue = arr[pivotIndex].followersCount;
+    swap(arr, pivotIndex, high);
+    let storeIndex = low;
+
+    for (let i = low; i < high; i++) {
+        if (arr[i].followersCount > pivotValue) {
+            swap(arr, i, storeIndex);
+            storeIndex++;
+        }
+    }
+    swap(arr, storeIndex, high);
+    return storeIndex;
+}
+
+// Rearranges `items` in place (on a copy) so the first `k` entries are the
+// k largest by followersCount, then returns that slice sorted descending.
+function quickSelectTopK(items, k) {
+    if (items.length <= k) {
+        return items.slice().sort((a, b) => b.followersCount - a.followersCount);
+    }
+
+    const arr = items.slice(); // work on a copy — don't mutate the caller's array
+    let low = 0;
+    let high = arr.length - 1;
+
+    while (low < high) {
+        // Random pivot avoids the O(n^2) worst case on already-sorted input.
+        const randomIndex = low + Math.floor(Math.random() * (high - low + 1));
+        const finalIndex = partition(arr, low, high, randomIndex);
+
+        if (finalIndex === k - 1) {
+            break; // first k elements are now exactly the k largest
+        } else if (finalIndex < k - 1) {
+            low = finalIndex + 1; // need more elements from the right side
+        } else {
+            high = finalIndex - 1; // too many — narrow to the left side
+        }
+    }
+
+    const topK = arr.slice(0, k);
+    topK.sort((a, b) => b.followersCount - a.followersCount); // presentation order only
+    return topK;
+}
+
 // ================= TOP CREATORS PAGE =================
-// Serves the standalone top-creators.html page (Frontend/Square_UI/top-creators.html).
 router.get('/top-creators', verifyToken, (req, res) => {
     res.sendFile(path.join(__dirname, '../Frontend/Square_UI/top-creators.html'));
 });
 
-// ================= GET TOP 10 CREATORS (from the TrendingCreator leaderboard) =================
+// ================= GET TOP 10 CREATORS (by followersCount, via Quickselect) =================
 router.get('/api/top-creators', verifyToken, async (req, res) => {
 
     try {
         const myUsername = req.user.username;
 
-        const leaders = await TrendingCreator.find({})
-            .sort({ score: -1 })
-            .limit(TOP_CREATORS_LIMIT)
+        const allProfiles = await SocialProfile.find(
+            {},
+            'userId username displayName avatarUrl bio followersCount followingCount postsCount'
+        ).lean();
+
+        const top10 = quickSelectTopK(allProfiles, TOP_CREATORS_LIMIT);
+
+        const myFollows = await Follow.find({ followerUsername: myUsername })
+            .select('followingUsername')
             .lean();
-
-        if (!leaders.length) {
-            return sendResponse(res, 200, true, 'Top creators fetched successfully', { creators: [] });
-        }
-
-        const usernames = leaders.map(l => l.username);
-
-        // PHASE 4 — profile display fields (displayName/avatarUrl/bio/etc)
-        // come from the shared in-memory cache instead of a fresh
-        // SocialProfile.find() on every request.
-        const [profileMap, myFollows] = await Promise.all([
-            getManyProfiles(usernames, SocialProfile),
-            Follow.find({ followerUsername: myUsername }).select('followingUsername').lean(),
-        ]);
-
         const followingSet = new Set(myFollows.map(f => f.followingUsername));
 
-        const creators = leaders.map((leader, index) => {
-            const p = profileMap.get(leader.username) || {};
-            return {
-                rank: index + 1,
-                userId: p.userId,
-                username: leader.username,
-                displayName: p.displayName || leader.username,
-                avatarUrl: p.avatarUrl || '',
-                bio: p.bio || '',
-                // followersCount comes off the leaderboard row first (it's
-                // the field that drives ranking) and falls back to the
-                // profile cache if for some reason it's missing there.
-                followersCount: leader.followersCount ?? p.followersCount ?? 0,
-                followingCount: p.followingCount || 0,
-                postsCount: p.postsCount || 0,
-                isFollowing: followingSet.has(leader.username),
-                isSelf: leader.username === myUsername,
-            };
-        });
+        const creators = top10.map((p, index) => ({
+            rank: index + 1,
+            userId: p.userId,
+            username: p.username,
+            displayName: p.displayName || p.username,
+            avatarUrl: p.avatarUrl || '',
+            bio: p.bio || '',
+            followersCount: p.followersCount || 0,
+            followingCount: p.followingCount || 0,
+            postsCount: p.postsCount || 0,
+            isFollowing: followingSet.has(p.username),
+            isSelf: p.username === myUsername,
+        }));
 
         return sendResponse(res, 200, true, 'Top creators fetched successfully', { creators });
 
@@ -95,6 +125,11 @@ router.get('/api/top-creators', verifyToken, async (req, res) => {
 });
 
 // ================= FOLLOW A USER =================
+// PHASE 11 (Part 1/2) — added followHandler.emitNewFollower() right after
+// the follower-count updates commit, so the target user gets a real-time
+// `new_follower` event (if connected) AND a persisted Notification row
+// (see followHandler.js / notificationService.js) that shows up on
+// /notifications even if they weren't online at the time.
 router.post('/api/follow', verifyToken, async (req, res) => {
 
     try {
@@ -132,15 +167,11 @@ router.post('/api/follow', verifyToken, async (req, res) => {
             ),
         ]);
 
-        // PHASE 4 — keep the cache honest instead of leaving a stale
-        // followersCount/followingCount sitting there for up to 5 minutes.
-        patchCached(targetUsername, { followersCount: updatedTarget?.followersCount ?? 0 });
-        invalidate(myUsername); // followingCount changed — cheap to drop and refetch next read
-
-        // PHASE 5 — target's followersCount moved, so their leaderboard
-        // position might have too. Fire-and-forget-safe (awaited here so
-        // errors are caught, but it never touches the follow itself).
-        await syncTrendingCreator(targetUsername);
+        followHandler.emitNewFollower({ // PHASE 11 Part 1/2
+            targetUsername,
+            actorUsername: myUsername,
+            followersCount: updatedTarget?.followersCount ?? 0,
+        });
 
         return sendResponse(res, 200, true, `You are now following ${targetUsername}`, {
             followersCount: updatedTarget?.followersCount ?? 0,
@@ -153,6 +184,8 @@ router.post('/api/follow', verifyToken, async (req, res) => {
 });
 
 // ================= UNFOLLOW A USER =================
+// Deliberately NOT wired to followHandler — see the file header note in
+// followHandler.js on why unfollow never emits/notifies.
 router.post('/api/unfollow', verifyToken, async (req, res) => {
 
     try {
@@ -181,11 +214,6 @@ router.post('/api/unfollow', verifyToken, async (req, res) => {
                 { $inc: { followingCount: -1 } }
             ),
         ]);
-
-        patchCached(targetUsername, { followersCount: updatedTarget?.followersCount ?? 0 });
-        invalidate(myUsername);
-
-        await syncTrendingCreator(targetUsername);
 
         return sendResponse(res, 200, true, `You unfollowed ${targetUsername}`, {
             followersCount: updatedTarget?.followersCount ?? 0,

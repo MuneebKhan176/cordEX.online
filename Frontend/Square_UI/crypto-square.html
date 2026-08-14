@@ -82,19 +82,6 @@
     }
     .nav-pill:hover { color:#fff; border-color:#444; background: var(--surface2); }
 
-    /* ── App shell (nav rail + page + right widgets) ──
-       PHASE 15 fix: the old breakpoints (1360 / 1080) collapsed the
-       sidebar labels and hid the widget panel on completely
-       ordinary desktop windows (~1280-1366px), which is what made the
-       nav text and the widgets disappear even with the browser
-       maximized. Column widths are now tighter and the feed column is
-       allowed to flex/shrink, so all columns realistically fit
-       together well below typical laptop widths.
-       PHASE 16: left widget panel removed — Top 3 Cryptocurrencies and
-       Top Creators now live in the right panel alongside Search and
-       Fear & Greed. The icon nav rail (.sidebar) and the right widget
-       panel (.side-panel.right-panel) are sized/padded to match so the
-       two sides of the feed feel balanced again. ── */
     .app-shell {
       display: flex;
       justify-content: center;
@@ -131,8 +118,6 @@
     .sidebar-item.active { background: var(--blue-dim); color: var(--blue); }
     .sidebar-item .sb-label { white-space: nowrap; overflow: hidden; }
 
-    /* Icon-only rail only kicks in once the window is genuinely narrow
-       (tablet-ish), not on ordinary desktop widths. */
     @media (max-width: 900px) {
       .sidebar { width: 74px; padding: 28px 8px; }
       .sidebar-item { justify-content: center; padding: 12px; }
@@ -165,9 +150,6 @@
       position: sticky;
       top: 60px;
     }
-    /* Right panel now carries every widget, so it drops out a little
-       later than before (still comfortably visible on a normal
-       maximized laptop window). */
     @media (max-width: 1180px) { .right-panel { display: none; } }
 
     .widget-card {
@@ -197,7 +179,6 @@
     }
     @keyframes pulseDot { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:.5;transform:scale(.7);} }
 
-    /* ── Search widget (REQ 7) ── */
     .search-box-wrap { position: relative; }
     .search-box-input {
       width: 100%;
@@ -231,7 +212,6 @@
     }
     .search-active-banner button:hover { text-decoration: underline; }
 
-    /* Top 3 Cryptocurrencies widget */
     .crypto3-row {
       display: flex; align-items: center; gap: 10px;
       padding: 8px 6px; border-radius: 8px;
@@ -262,8 +242,6 @@
       0% { background: rgba(59,130,246,.14); }
       100% { background: transparent; }
     }
-    /* REQ 2 — small status tag next to each coin's symbol: transparent
-       background, blue text, compact and slightly rounded. */
     .crypto3-tag {
       display: inline-block;
       font-size: .58rem; font-weight: 800; letter-spacing: .02em; text-transform: uppercase;
@@ -275,7 +253,6 @@
     .widget-skeleton { font-size: .78rem; color: var(--text-3); padding: 8px 4px; }
     .widget-error { font-size: .78rem; color: var(--red); padding: 8px 4px; }
 
-    /* Top Creators widget */
     .creator-row {
       display: flex; align-items: center; gap: 10px; padding: 9px 6px;
       border-radius: 8px; transition: background .18s, transform .18s var(--ease);
@@ -305,7 +282,6 @@
     .creator-follow-btn.following:hover { border-color: var(--red); color: var(--red); background: var(--red-dim); box-shadow: none; }
     .creator-follow-btn:disabled { opacity: .5; cursor: not-allowed; }
 
-    /* REQ 3 — "View More" is now plain text, not a button */
     .view-more-text {
       display: block; width: 100%; margin-top: 12px;
       padding: 4px 0; text-align: center;
@@ -315,7 +291,6 @@
     }
     .view-more-text:hover { color: #93c5fd; text-decoration: underline; }
 
-    /* Fear & Greed widget */
     .fg-gauge-wrap { display: flex; flex-direction: column; align-items: center; padding-top: 4px; }
     .fg-gauge-svg { overflow: visible; filter: drop-shadow(0 4px 14px rgba(0,0,0,.4)); }
     .fg-arc-bg { opacity: .25; }
@@ -348,11 +323,6 @@
     .fg-vote-btn:disabled { opacity: .6; cursor: not-allowed; }
     .fg-vote-split { font-size: .68rem; color: var(--text-3); text-align: center; margin-top: 8px; min-height: 14px; }
     .fg-live-note { font-size: .66rem; color: var(--text-3); text-align: center; margin-top: 4px; }
-    /* REQ 4 — vote is purely visual: choosing a side applies a
-       persistent green/red tint + border to the widget card (not just a
-       brief pulse), and the vote buttons are then hidden — only the
-       selected effect remains. The card's normal hover styling (above)
-       still applies on top of these classes. */
     .widget-card.fg-selected-bullish {
       border-color: rgba(34,197,94,.55);
       box-shadow: var(--shadow-card), 0 0 0 1px rgba(34,197,94,.25), 0 20px 44px -20px rgba(34,197,94,.25);
@@ -395,7 +365,6 @@
       .page { padding: 18px 14px 80px; }
     }
 
-    /* ── New-posts banner ── */
     .new-posts-banner {
       display: none;
       width: 100%;
@@ -415,7 +384,6 @@
     .new-posts-banner svg { width: 15px; height: 15px; }
     @keyframes bannerIn { from { opacity:0; transform: translateY(-6px); } to { opacity:1; transform: translateY(0); } }
 
-    /* ── Post card ── */
     .post-card {
       background: linear-gradient(180deg, var(--surface2) 0%, var(--surface) 65%);
       border: 1px solid var(--border);
@@ -423,6 +391,7 @@
       position: relative;
       box-shadow: var(--shadow-card);
       transition: border-color .22s var(--ease), transform .22s var(--ease), box-shadow .22s var(--ease);
+      cursor: pointer;
     }
     .post-card:hover {
       border-color: rgba(59,130,246,.35);
@@ -485,16 +454,7 @@
       display: -webkit-box; line-clamp: 4; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
     }
     .post-content.expanded { line-clamp: unset; -webkit-line-clamp: unset; overflow: visible; }
-    .read-more-btn {
-      display: inline-block; background: none; border: none; padding: 0;
-      margin-top: 6px; color: var(--blue); font-size: .78rem; font-weight: 600; cursor: pointer;
-    }
-    .read-more-btn:hover { text-decoration: underline; }
 
-    /* ── Media — REQ 1: preview media is now clean (no action-icon /
-       stat overlay). Full post interaction (like/comment/bookmark) lives
-       exclusively in .post-footer below, which stays fully functional.
-       REQ 3: media is clickable -> opens the lightbox gallery. ── */
     .sq-media {
       margin-top: 12px; position: relative; border-radius: 14px; overflow: hidden;
       border: 1px solid var(--border2); background: #000; cursor: zoom-in;
@@ -531,7 +491,6 @@
       .post-header .who { max-width: 140px; }
     }
 
-    /* Hashtags */
     .post-hashtags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
     .hashtag-pill {
       font-size: .76rem; font-weight: 600; color: var(--blue);
@@ -541,9 +500,6 @@
     }
     .hashtag-pill:hover { text-decoration: underline; }
 
-    /* ── Analytics row — REQ 6: spacing increased further (40px -> 56px)
-       so like / comment / views sit clearly apart and are easier to
-       tap/click individually. ── */
     .post-footer {
       display: flex; align-items: center; gap: 56px;
       margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
@@ -565,110 +521,9 @@
     .analytic-stat.like-btn.liked svg { fill: currentColor; animation: likePulse .35s var(--ease); }
     @keyframes likePulse { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
 
-    .analytic-stat.comment-btn.open { color: var(--blue); }
-
     .analytic-stat.bookmark-btn { margin-left: auto; }
     .analytic-stat.bookmark-btn.bookmarked { color: var(--blue); }
     .analytic-stat.bookmark-btn.bookmarked svg { fill: currentColor; animation: likePulse .35s var(--ease); }
-
-    /* ── Comments ── */
-    .comments-section { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
-    .comments-section.open { display: block; }
-
-    .comment-composer { display: flex; gap: 8px; margin-bottom: 14px; }
-    .comment-input-wrap { position: relative; flex: 1; }
-    .comment-input, .reply-input {
-      width: 100%; background: var(--surface2); border: 1px solid var(--border2);
-      border-radius: 8px; color: var(--text); font-size: .84rem;
-      padding: 9px 38px 9px 12px; outline: none; transition: border-color .2s; font-family: inherit;
-    }
-    .reply-input { border-radius: 999px; padding: 6px 34px 6px 12px; font-size: .78rem; }
-    .comment-input:focus, .reply-input:focus { border-color: #444; }
-
-    .emoji-btn {
-      position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
-      background: transparent; border: none; padding: 5px; cursor: pointer;
-      color: var(--text-3); display: flex; align-items: center; justify-content: center;
-      border-radius: 6px; transition: color .15s, background .15s;
-    }
-    .emoji-btn:hover { color: #fff; background: var(--surface3); }
-    .emoji-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; }
-
-    .emoji-picker {
-      position: absolute; bottom: calc(100% + 6px); right: 0; z-index: 60;
-      background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px;
-      padding: 8px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px;
-      box-shadow: 0 14px 34px rgba(0,0,0,.55);
-    }
-    .emoji-picker button {
-      background: none; border: none; font-size: 1.05rem; padding: 6px;
-      border-radius: 6px; cursor: pointer; line-height: 1;
-    }
-    .emoji-picker button:hover { background: var(--surface3); }
-
-    .comment-post-btn {
-      padding: 9px 16px; border-radius: 8px; font-size: .82rem; font-weight: 700;
-      background: linear-gradient(135deg, var(--blue), #2563eb); color: #fff; border: none;
-      cursor: pointer; transition: transform .15s var(--ease); flex-shrink: 0;
-    }
-    .comment-post-btn:hover { transform: translateY(-1px); }
-    .comment-post-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
-
-    .comment-list { display: flex; flex-direction: column; gap: 14px; }
-    .comment-item { display: flex; gap: 10px; }
-    .comment-avatar {
-      width: 30px; height: 30px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
-      background: linear-gradient(135deg,#3b82f6,#1d4ed8);
-      display: flex; align-items: center; justify-content: center;
-      font-size: .68rem; font-weight: 700; color: #fff; cursor: pointer;
-    }
-    .comment-avatar img { width: 100%; height: 100%; object-fit: cover; }
-    .comment-body { flex: 1; min-width: 0; }
-    .comment-bubble {
-      background: var(--surface2); border: 1px solid var(--border2);
-      border-radius: 12px; padding: 8px 12px; display: inline-block; max-width: 100%;
-    }
-    .comment-who { font-size: .8rem; font-weight: 700; color: #fff; display: block; margin-bottom: 2px; cursor: pointer; }
-    .comment-who:hover { text-decoration: underline; }
-    .comment-text { font-size: .83rem; color: var(--text-2); line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
-    .comment-meta-row { display: flex; align-items: center; gap: 14px; margin-top: 5px; padding-left: 4px; flex-wrap: wrap; }
-    .comment-time { font-size: .7rem; color: var(--text-3); }
-
-    .comment-like-btn, .comment-reply-toggle, .comment-delete-btn, .view-replies-btn, .load-more-replies-btn {
-      background: none; border: none; padding: 0; cursor: pointer;
-      font-size: .72rem; font-weight: 700; color: var(--text-3);
-      display: inline-flex; align-items: center; gap: 4px; transition: color .15s;
-    }
-    .comment-like-btn:hover, .comment-reply-toggle:hover, .view-replies-btn:hover, .load-more-replies-btn:hover { color: #fff; }
-    .comment-delete-btn:hover { color: var(--red); }
-    .comment-like-btn svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; }
-    .comment-like-btn.liked { color: var(--red); }
-    .comment-like-btn.liked svg { fill: currentColor; }
-    .comment-like-btn:disabled, .comment-reply-toggle:disabled { opacity: .5; cursor: not-allowed; }
-
-    .view-replies-btn { margin-top: 6px; margin-left: 4px; color: var(--blue); }
-    .load-more-replies-btn { margin-top: 4px; margin-left: 40px; }
-    .replies-list { margin-top: 8px; margin-left: 30px; display: flex; flex-direction: column; gap: 10px; }
-    .replies-loading { font-size: .72rem; color: var(--text-3); margin-left: 4px; margin-top: 4px; }
-
-    .reply-composer { display: flex; gap: 6px; margin-top: 8px; margin-left: 4px; }
-    .reply-input-wrap { position: relative; flex: 1; }
-    .reply-post-btn {
-      padding: 6px 12px; border-radius: 999px; font-size: .74rem; font-weight: 700;
-      background: var(--surface3); border: 1px solid var(--border2); color: var(--text-2);
-      cursor: pointer; flex-shrink: 0;
-    }
-    .reply-post-btn:hover { color: #fff; border-color: #444; }
-    .reply-post-btn:disabled { opacity: .5; cursor: not-allowed; }
-
-    .comments-empty { font-size: .8rem; color: var(--text-3); padding: 6px 4px; }
-    .comments-loading { font-size: .8rem; color: var(--text-3); padding: 6px 4px; }
-    .load-more-comments-btn {
-      display: block; margin: 4px auto 0; padding: 7px 16px; border-radius: 8px;
-      background: var(--surface2); border: 1px solid var(--border2); color: var(--text-2);
-      font-size: .78rem; font-weight: 600; cursor: pointer;
-    }
-    .load-more-comments-btn:hover { color: #fff; border-color: #444; }
 
     .empty-state {
       background: var(--surface); border: 1px dashed var(--border2);
@@ -687,10 +542,6 @@
     }
     @keyframes spin { to { transform:rotate(360deg); } }
 
-    /* REQ 7 — infinite scroll sentinel replaces the manual "Load more"
-       button as the primary loading trigger; the button is kept in the
-       DOM as a silent fallback (e.g. for browsers without
-       IntersectionObserver) but stays visually hidden. */
     .load-more-wrap { text-align:center; margin-top: 8px; }
     .load-more-btn {
       padding: 9px 22px; border-radius: 8px; font-size: .82rem; font-weight: 600;
@@ -741,6 +592,26 @@
       padding: 5px 14px; border-radius: 999px;
     }
 
+    /* ── PHASE 11 Part 1 — real-time toast ── */
+    .social-toast-stack {
+      position: fixed; top: 74px; right: 20px; z-index: 900;
+      display: flex; flex-direction: column; gap: 8px;
+      max-width: 320px;
+    }
+    .social-toast {
+      background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: 10px; padding: 11px 14px;
+      font-size: .82rem; color: var(--text);
+      box-shadow: 0 14px 34px rgba(0,0,0,.55);
+      display: flex; align-items: center; gap: 8px;
+      animation: toastIn .2s var(--ease);
+      cursor: pointer;
+    }
+    .social-toast .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--blue); flex-shrink: 0; }
+    .social-toast.fading { animation: toastOut .2s var(--ease) forwards; }
+    @keyframes toastIn { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes toastOut { to { opacity: 0; transform: translateX(12px); } }
+
     ::-webkit-scrollbar { width:5px; }
     ::-webkit-scrollbar-track { background:transparent; }
     ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:99px; }
@@ -773,6 +644,11 @@
       <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       <span class="sb-label">Profile</span>
     </a>
+    <a href="/notifications" class="sidebar-item" id="side-notifications" title="Notifications" style="position:relative;">
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span class="sb-label">Notifications</span>
+      <span id="notifBadge" style="display:none; position:absolute; top:6px; left:26px; min-width:16px; height:16px; padding:0 4px; border-radius:999px; background:var(--red); color:#fff; font-size:.62rem; font-weight:800; align-items:center; justify-content:center; line-height:1;"></span>
+    </a>
     <button type="button" class="sidebar-item" id="side-bookmarks" onclick="switchTab('bookmarks')" title="Bookmarks">
       <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
       <span class="sb-label">Bookmarks</span>
@@ -797,9 +673,6 @@
       <div class="loading-state"><span class="spinner-inline"></span>Loading posts…</div>
     </div>
 
-    <!-- REQ 7 (infinite scroll): sentinel that fires the next page fetch
-         while the user is still ~6-7 posts away from the bottom, so the
-         next batch is ready before they scroll into it. -->
     <div class="infinite-sentinel" id="infiniteSentinel"></div>
 
     <div class="load-more-wrap" id="loadMoreWrap" style="display:none;">
@@ -807,12 +680,9 @@
     </div>
   </main>
 
-  <!-- ── Right widget panel: Search, Fear & Greed, Top 3
-       Cryptocurrencies, Top Creators — all moved here for a balanced
-       single-column widget rail opposite the icon nav. ── -->
+  <!-- ── Right widget panel ── -->
   <aside class="side-panel right-panel">
 
-    <!-- REQ 7 — Search box: search posts by hashtag or display name -->
     <div class="widget-card">
       <div class="widget-title"><span>Search</span></div>
       <div class="search-box-wrap">
@@ -841,11 +711,8 @@
               <stop offset="100%" stop-color="#22c55e"/>
             </linearGradient>
           </defs>
-          <!-- track -->
           <path class="fg-arc-bg" d="M 15 100 A 85 85 0 0 1 185 100" fill="none" stroke="#333" stroke-width="14" stroke-linecap="round"/>
-          <!-- colored arc -->
           <path class="fg-arc-fg" d="M 15 100 A 85 85 0 0 1 185 100" fill="none" stroke="url(#fgGrad)" stroke-width="14" stroke-linecap="round"/>
-          <!-- tick marks at 0/25/50/75/100 -->
           <g class="fg-ticks">
             <line class="fg-tick" x1="15" y1="100" x2="15" y2="92"/>
             <line class="fg-tick" x1="49" y1="35" x2="55" y2="41"/>
@@ -853,9 +720,6 @@
             <line class="fg-tick" x1="151" y1="35" x2="145" y2="41"/>
             <line class="fg-tick" x1="185" y1="100" x2="185" y2="92"/>
           </g>
-          <!-- needle: a tapered pointer, shortened and lifted so it
-               floats above the score readout below the gauge instead of
-               touching/overlapping it. -->
           <g id="fgNeedle" class="fg-needle-pivot">
             <polygon points="100,40 97,101 103,101" fill="#fff"/>
           </g>
@@ -905,30 +769,12 @@
   </div>
 </div>
 
+<!-- ── PHASE 11 Part 1 — real-time toast stack ── -->
+<div class="social-toast-stack" id="socialToastStack"></div>
+
 <script>
 /* ═══════════════════════════════════════════════════════
    STATE
-   ═══════════════════════════════════════════════════════
-   Backend endpoints in play:
-     GET  /api/insights/discover?page=N&limit=8   -> personalized ranked feed
-     GET  /api/insights/following?page=N&limit=8  -> chronological, people you follow
-     GET  /api/posts/bookmarks?page=N&limit=8     -> your saved posts, newest saved first
-     POST /api/insights/posts/:id/like    -> { liked, likesCount }
-     POST /api/posts/:id/bookmark         -> { bookmarked, saveCount }
-     POST /api/follow / POST /api/unfollow  { username }
-     POST /api/posts/:id/view             -> viewsCount + interest tracking
-     POST /api/posts/:id/activity         -> { activityType: 'watch_video' | 'open_profile' }
-     GET  /api/top-creators                -> Social_Platform/routes (PHASE 5 leaderboard, provided)
-     WS   /ws/market-data                  -> shared live price snapshot (reused from landing page)
-   Fear & Greed (REQ 5): fetched directly from Binance's public REST API
-   (no first-party backend route involved) — see fetchFearGreedFromBinance().
-   Comments: Social_Platform/routes/comments.js
-     GET/POST   /api/posts/:postId/comments
-     PUT/DELETE /api/comments/:commentId
-     POST       /api/comments/:commentId/like
-     GET/POST   /api/comments/:commentId/replies
-     PUT/DELETE /api/replies/:replyId
-     POST       /api/replies/:replyId/like
    ═══════════════════════════════════════════════════════ */
 const FEED_ENDPOINTS = {
   discover:  '/api/insights/discover',
@@ -936,7 +782,7 @@ const FEED_ENDPOINTS = {
   bookmarks: '/api/posts/bookmarks',
 };
 const ALL_TABS = ['discover', 'following', 'bookmarks'];
-const PAGE_SIZE = 8; // initial load 8 posts, same size per subsequent batch
+const PAGE_SIZE = 8;
 
 let currentTab = 'discover';
 
@@ -988,7 +834,7 @@ function switchTab(tab) {
 }
 
 /* ═══════════════════════════════════════════════════════
-   FETCH FEED (Discover / Following / Bookmarks)
+   FETCH FEED
    ═══════════════════════════════════════════════════════ */
 async function fetchFeed(tab) {
   const state = tabState[tab];
@@ -1042,19 +888,13 @@ function loadMore() {
 }
 
 /* ═══════════════════════════════════════════════════════
-   REQ 7 — INFINITE SCROLL / PROGRESSIVE LOADING
-   ═══════════════════════════════════════════════════════
-   Rather than waiting for the very bottom of the page, we watch the post
-   card sitting ~6th/7th-from-the-end of the currently loaded batch. Once
-   that card scrolls into view the next batch is already being requested
-   in the background, so by the time the user reaches the true end of the
-   list, new posts are already rendered — no visible loading gap.
+   INFINITE SCROLL
    ═══════════════════════════════════════════════════════ */
-const LOOKAHEAD_FROM_END = 3; // trigger when ~6th/7th of an 8-post batch is visible
+const LOOKAHEAD_FROM_END = 3;
 let infiniteObserver = null;
 
 function setupInfiniteScroll() {
-  if (activeSearchQuery) return; // search results are a static filtered list
+  if (activeSearchQuery) return;
   const sentinel = document.getElementById('infiniteSentinel');
   if (!sentinel) return;
 
@@ -1079,15 +919,11 @@ function setupInfiniteScroll() {
     }
   }
 
-  document.getElementById('loadMoreWrap').style.display = 'none'; // sentinel handles it now
+  document.getElementById('loadMoreWrap').style.display = 'none';
 }
 
 /* ═══════════════════════════════════════════════════════
-   REQ 7 — SEARCH POSTS BY HASHTAG OR DISPLAY NAME
-   ═══════════════════════════════════════════════════════
-   Filters the posts already loaded for the current tab, matching either
-   a hashtag (with or without the leading #) or a creator's display
-   name / username. Debounced on typing, and Enter runs it immediately.
+   SEARCH POSTS BY HASHTAG OR DISPLAY NAME
    ═══════════════════════════════════════════════════════ */
 let activeSearchQuery = '';
 let searchDebounceTimer = null;
@@ -1195,7 +1031,6 @@ const ICON_DOWN      = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M1
 const ICON_COMMENT   = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.4 8.4 8.3 8.3 0 0 1-3.8-.9L3 21l1.9-5.7a8.3 8.3 0 0 1-.9-3.8A8.4 8.4 0 0 1 12.5 3h.1A8.4 8.4 0 0 1 21 11.4v.1z"/></svg>';
 const ICON_VIEWS     = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
 const ICON_BOOKMARK  = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
-const ICON_EMOJI     = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>';
 
 function sentimentPillHtml(sentiment) {
   if (sentiment === 'bullish') return `<span class="sentiment-pill bullish">${ICON_UP}Bullish</span>`;
@@ -1222,9 +1057,6 @@ function mediaTag(m) {
     : `<img src="${m.url}" alt="post media" loading="lazy"/>`;
 }
 
-// Media preview stays clean: no hover stat overlay / action icons sit on
-// top of images or videos. Engagement stats/actions live only in
-// .post-footer, which remains fully interactive.
 function mediaSliderHtml(media, uid, post) {
   if (!media || !media.length) return '';
   const slides = media.map(m => `<div class="slider-slide">${mediaTag(m)}</div>`).join('');
@@ -1254,8 +1086,6 @@ const EMPTY_STATE_HTML = {
   bookmarks: `<div class="empty-state">No bookmarks yet. Tap the bookmark icon on any post to save it here.</div>`,
 };
 
-// REQ 4 — post cards no longer show the @handle; that lives only in the
-// Top Creators widget now. The meta row just shows the post date.
 function renderPostCardHtml(post, idxKey) {
   const avatarHtml = post.author?.avatarUrl
     ? `<img src="${post.author.avatarUrl}" alt="avatar"/>`
@@ -1275,10 +1105,8 @@ function renderPostCardHtml(post, idxKey) {
       ${post.isFollowing ? 'Following' : 'Follow'}
     </button>`;
 
-  const commentsOpen = !!commentsState[post._id]?.open;
-
   return `
-    <div class="post-card" data-post-id="${post._id || ''}" data-author="${escapeHtml(post.username)}" data-self="${post.isSelf ? '1' : '0'}">
+    <div class="post-card" data-post-id="${post._id || ''}" data-author="${escapeHtml(post.username)}" data-self="${post.isSelf ? '1' : '0'}" onclick="goToPost('${post._id}')">
       <div class="post-header">
         <div class="mini-avatar" data-open-profile="1">${avatarHtml}</div>
         <div class="post-header-text">
@@ -1292,14 +1120,12 @@ function renderPostCardHtml(post, idxKey) {
       ${followBtnHtml}
       ${title ? `<div class="post-title">${escapeHtml(title)}</div>` : ''}
       <div class="post-content clamped" id="${contentId}">${escapeHtml(body)}</div>
-      <button class="read-more-btn" data-target="${contentId}" style="display:none;">Read more</button>
       ${mediaSliderHtml(post.media, sliderUid, post)}
       ${hashtagsHtml(post.hashtags)}
       <div class="post-footer">
         <button type="button"
-                class="analytic-stat comment-btn${commentsOpen ? ' open' : ''}"
+                class="analytic-stat comment-btn"
                 data-post-id="${post._id}"
-                onclick="toggleComments(this)"
                 title="Comments">
           ${ICON_COMMENT}<span class="comment-count">${formatCount(post.commentsCount || 0)}</span>
         </button>
@@ -1321,20 +1147,13 @@ function renderPostCardHtml(post, idxKey) {
           ${ICON_BOOKMARK}<span class="bookmark-count">${formatCount(post.bookmarksCount || 0)}</span>
         </button>
       </div>
-      <div class="comments-section${commentsOpen ? ' open' : ''}" id="comments-${post._id}">
-        ${commentsOpen ? renderCommentsInner(post._id) : ''}
-      </div>
     </div>`;
 }
 
 function attachClampReadMore() {
-  const container = document.getElementById('feedContainer');
-  container.querySelectorAll('.post-content.clamped').forEach(contentEl => {
-    if (contentEl.scrollHeight > contentEl.clientHeight + 1) {
-      const btn = container.querySelector(`.read-more-btn[data-target="${contentEl.id}"]`);
-      if (btn) btn.style.display = 'inline-block';
-    }
-  });
+  /* content no longer expands inline — clicking the card navigates to the
+     full post page instead, so this is now a no-op kept for call-site
+     compatibility. */
 }
 
 function renderFeed(tab) {
@@ -1352,7 +1171,7 @@ function renderFeed(tab) {
 
   requestAnimationFrame(attachClampReadMore);
 
-  loadMoreWrap.style.display = 'none'; // infinite scroll drives loading now
+  loadMoreWrap.style.display = 'none';
 
   setupViewTracking();
   setupVideoWatchTracking();
@@ -1366,7 +1185,7 @@ function renderFeed(tab) {
 }
 
 /* ═══════════════════════════════════════════════════════
-   EVENT DELEGATION — read more + media slider + lightbox + profile nav
+   EVENT DELEGATION
    ═══════════════════════════════════════════════════════ */
 document.getElementById('feedContainer').addEventListener('click', (e) => {
   const openProfileEl = e.target.closest('[data-open-profile]');
@@ -1378,16 +1197,6 @@ document.getElementById('feedContainer').addEventListener('click', (e) => {
       if (!isSelf) trackOpenProfile(card.dataset.postId);
       goToProfile(username, isSelf);
     }
-    return;
-  }
-
-  const readMoreBtn = e.target.closest('.read-more-btn');
-  if (readMoreBtn) {
-    const contentEl = document.getElementById(readMoreBtn.dataset.target);
-    if (!contentEl) return;
-    const isExpanded = contentEl.classList.toggle('expanded');
-    contentEl.classList.toggle('clamped', !isExpanded);
-    readMoreBtn.textContent = isExpanded ? 'Show less' : 'Read more';
     return;
   }
 
@@ -1407,17 +1216,35 @@ document.getElementById('feedContainer').addEventListener('click', (e) => {
     return;
   }
 
-  // Clicking media (but not a video's native controls) opens the lightbox
   const mediaWrap = e.target.closest('.sq-media');
   if (mediaWrap && e.target.tagName !== 'VIDEO') {
     const postId = mediaWrap.dataset.postId;
     const currentIdx = parseInt(mediaWrap.dataset.index, 10) || 0;
     openLightboxForPost(postId, currentIdx);
+    return;
+  }
+
+  // Anything else inside the card (title, body text, hashtags area,
+  // whitespace) other than the header avatar/name, media, follow button,
+  // and the footer icon row (handled by their own onclick handlers, and
+  // excluded here so we don't double-fire / navigate away from a like or
+  // bookmark tap) takes the user to the full post page.
+  const footerEl = e.target.closest('.post-footer');
+  const followBtnEl = e.target.closest('.follow-btn');
+  if (footerEl || followBtnEl) return;
+
+  const card = e.target.closest('.post-card');
+  if (card && card.dataset.postId) {
+    goToPost(card.dataset.postId);
   }
 });
 
 function goToProfile(username, isSelf) {
   window.location.href = isSelf ? '/profile' : `/profile/${encodeURIComponent(username)}`;
+}
+
+function goToPost(postId) {
+  window.location.href = `/post/${postId}`;
 }
 
 function moveSlider(wrap, dir) {
@@ -1445,7 +1272,7 @@ function goToSlide(wrap, idx) {
 }
 
 /* ═══════════════════════════════════════════════════════
-   LIGHTBOX GALLERY (full-screen, in-page, arrow-key nav)
+   LIGHTBOX GALLERY
    ═══════════════════════════════════════════════════════ */
 let lightboxMedia = [];
 let lightboxIndex = 0;
@@ -1511,7 +1338,6 @@ document.getElementById('lightboxOverlay').addEventListener('click', (e) => {
   if (e.target.id === 'lightboxOverlay') closeLightbox();
 });
 
-// left/right arrow key navigation between images in the gallery
 document.addEventListener('keydown', (e) => {
   const overlay = document.getElementById('lightboxOverlay');
   if (!overlay.classList.contains('open')) return;
@@ -1570,7 +1396,7 @@ function trackActivity(postId, activityType) {
 }
 
 /* ═══════════════════════════════════════════════════════
-   FOLLOW / UNFOLLOW (post cards + Top Creators widget share this)
+   FOLLOW / UNFOLLOW
    ═══════════════════════════════════════════════════════ */
 async function toggleFollow(btn) {
   const username = btn.dataset.username;
@@ -1701,484 +1527,7 @@ async function toggleBookmark(btn) {
 }
 
 /* ═══════════════════════════════════════════════════════
-   COMMENTS + REPLIES
-   ═══════════════════════════════════════════════════════ */
-const commentsState = {};
-const repliesState  = {};
-const EMOJI_SET = ['😀','😂','😍','🔥','👍','🎉','😮','😢','🙏','💯','🚀','💰','😎','🤔','👀','❤️','🐂','🐻'];
-let openEmojiPicker = null;
-
-function ensureCommentsState(postId) {
-  if (!commentsState[postId]) {
-    commentsState[postId] = { open: false, comments: [], page: 0, hasMore: true, loading: false };
-  }
-  return commentsState[postId];
-}
-
-function ensureRepliesState(commentId) {
-  if (!repliesState[commentId]) {
-    repliesState[commentId] = { open: false, composerOpen: false, replies: [], page: 0, hasMore: true, loading: false };
-  }
-  return repliesState[commentId];
-}
-
-function refreshCommentsSection(postId) {
-  const section = document.getElementById(`comments-${postId}`);
-  if (section) section.innerHTML = renderCommentsInner(postId);
-}
-
-function bumpCommentCountBadge(postId, delta) {
-  let updatedCount = null;
-
-  ALL_TABS.forEach(tab => {
-    const p = tabState[tab].posts.find(p => String(p._id) === String(postId));
-    if (p) {
-      p.commentsCount = Math.max(0, (p.commentsCount || 0) + delta);
-      if (tab === currentTab) updatedCount = p.commentsCount;
-    }
-  });
-
-  const badge = document.querySelector(`.comment-btn[data-post-id="${cssEscape(postId)}"] .comment-count`);
-  if (badge && updatedCount !== null) badge.textContent = formatCount(updatedCount);
-}
-
-async function toggleComments(btn) {
-  const postId = btn.dataset.postId;
-  const st = ensureCommentsState(postId);
-  st.open = !st.open;
-  btn.classList.toggle('open', st.open);
-
-  const section = document.getElementById(`comments-${postId}`);
-  if (!section) return;
-
-  if (!st.open) {
-    section.classList.remove('open');
-    section.innerHTML = '';
-    return;
-  }
-
-  section.classList.add('open');
-  refreshCommentsSection(postId);
-
-  if (!st.comments.length && st.hasMore && !st.loading) {
-    await loadComments(postId);
-  }
-}
-
-async function loadComments(postId) {
-  const st = ensureCommentsState(postId);
-  st.loading = true;
-  refreshCommentsSection(postId);
-
-  try {
-    const nextPage = st.page + 1;
-    const r = await fetch(`/api/posts/${postId}/comments?page=${nextPage}`);
-    const d = await r.json();
-    if (d.success) {
-      st.comments = st.comments.concat(d.data.comments || []);
-      st.page = d.data.page || nextPage;
-      st.hasMore = !!d.data.hasMore;
-    }
-  } catch (e) {
-    console.error('loadComments error:', e);
-  } finally {
-    st.loading = false;
-    refreshCommentsSection(postId);
-  }
-}
-
-function loadMoreComments(btn) {
-  loadComments(btn.dataset.postId);
-}
-
-function handleCommentKeydown(e, postId) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    if (!e.target.value.trim()) return;
-    const btn = document.querySelector(`.comment-post-btn[data-post-id="${cssEscape(postId)}"]`);
-    if (btn) submitComment(btn);
-  }
-}
-
-function handleReplyKeydown(e, commentId) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    if (!e.target.value.trim()) return;
-    const btn = document.querySelector(`.reply-post-btn[data-comment-id="${cssEscape(commentId)}"]`);
-    if (btn) submitReply(btn);
-  }
-}
-
-async function submitComment(btn) {
-  const postId = btn.dataset.postId;
-  const input = document.getElementById(`commentInput-${postId}`);
-  const content = (input?.value || '').trim();
-  if (!content) return;
-
-  btn.disabled = true;
-  try {
-    const r = await fetch(`/api/posts/${postId}/comments`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content }),
-    });
-    const d = await r.json();
-    if (!d.success) { alert(d.message || 'Failed to post comment.'); return; }
-
-    const st = ensureCommentsState(postId);
-    st.comments.unshift(d.data.comment);
-
-    bumpCommentCountBadge(postId, 1);
-    closeEmojiPicker();
-    refreshCommentsSection(postId);
-  } catch (e) {
-    console.error('submitComment error:', e);
-    alert('Network error while posting your comment.');
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-async function deleteComment(btn) {
-  const postId = btn.dataset.postId;
-  const commentId = btn.dataset.commentId;
-  if (!confirm('Delete this comment?')) return;
-
-  try {
-    const r = await fetch(`/api/comments/${commentId}`, { method: 'DELETE' });
-    const d = await r.json();
-    if (!d.success) { alert(d.message || 'Failed to delete comment.'); return; }
-
-    const st = ensureCommentsState(postId);
-    st.comments = st.comments.filter(c => String(c._id) !== String(commentId));
-    delete repliesState[commentId];
-
-    bumpCommentCountBadge(postId, -1);
-    refreshCommentsSection(postId);
-  } catch (e) {
-    console.error('deleteComment error:', e);
-    alert('Network error while deleting the comment.');
-  }
-}
-
-async function toggleCommentLike(btn) {
-  const postId = btn.dataset.postId;
-  const commentId = btn.dataset.commentId;
-  btn.disabled = true;
-
-  try {
-    const r = await fetch(`/api/comments/${commentId}/like`, { method: 'POST' });
-    const d = await r.json();
-    if (!d.success) return;
-
-    const liked = !!d.data.liked;
-    const likesCount = d.data.likesCount ?? 0;
-
-    const st = ensureCommentsState(postId);
-    const c = st.comments.find(c => String(c._id) === String(commentId));
-    if (c) { c.isLiked = liked; c.likesCount = likesCount; }
-
-    btn.classList.toggle('liked', liked);
-    const countEl = btn.querySelector('.comment-like-count');
-    if (countEl) countEl.textContent = likesCount > 0 ? formatCount(likesCount) : '';
-  } catch (e) {
-    console.error('toggleCommentLike error:', e);
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-function toggleReplyComposer(btn) {
-  const postId = btn.dataset.postId;
-  const commentId = btn.dataset.commentId;
-  const rst = ensureRepliesState(commentId);
-  rst.composerOpen = !rst.composerOpen;
-  refreshCommentsSection(postId);
-}
-
-async function toggleRepliesList(btn) {
-  const postId = btn.dataset.postId;
-  const commentId = btn.dataset.commentId;
-  const rst = ensureRepliesState(commentId);
-  rst.open = !rst.open;
-
-  if (rst.open && !rst.replies.length && rst.hasMore) {
-    await loadReplies(commentId, postId);
-  } else {
-    refreshCommentsSection(postId);
-  }
-}
-
-async function loadReplies(commentId, postId) {
-  const rst = ensureRepliesState(commentId);
-  rst.loading = true;
-  refreshCommentsSection(postId);
-
-  try {
-    const nextPage = rst.page + 1;
-    const r = await fetch(`/api/comments/${commentId}/replies?page=${nextPage}`);
-    const d = await r.json();
-    if (d.success) {
-      rst.replies = rst.replies.concat(d.data.replies || []);
-      rst.page = d.data.page || nextPage;
-      rst.hasMore = !!d.data.hasMore;
-    }
-  } catch (e) {
-    console.error('loadReplies error:', e);
-  } finally {
-    rst.loading = false;
-    refreshCommentsSection(postId);
-  }
-}
-
-function loadMoreReplies(btn) {
-  loadReplies(btn.dataset.commentId, btn.dataset.postId);
-}
-
-async function submitReply(btn) {
-  const postId = btn.dataset.postId;
-  const commentId = btn.dataset.commentId;
-  const input = document.getElementById(`replyInput-${commentId}`);
-  const content = (input?.value || '').trim();
-  if (!content) return;
-
-  btn.disabled = true;
-  try {
-    const r = await fetch(`/api/comments/${commentId}/replies`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content }),
-    });
-    const d = await r.json();
-    if (!d.success) { alert(d.message || 'Failed to post reply.'); return; }
-
-    const st = ensureCommentsState(postId);
-    const comment = st.comments.find(c => String(c._id) === String(commentId));
-    if (comment) comment.repliesCount = d.data.repliesCount;
-
-    const rst = ensureRepliesState(commentId);
-    rst.replies.push(d.data.reply);
-    rst.open = true;
-    rst.composerOpen = false;
-
-    closeEmojiPicker();
-    refreshCommentsSection(postId);
-  } catch (e) {
-    console.error('submitReply error:', e);
-    alert('Network error while posting your reply.');
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-async function deleteReply(btn) {
-  const postId = btn.dataset.postId;
-  const commentId = btn.dataset.commentId;
-  const replyId = btn.dataset.replyId;
-  if (!confirm('Delete this reply?')) return;
-
-  try {
-    const r = await fetch(`/api/replies/${replyId}`, { method: 'DELETE' });
-    const d = await r.json();
-    if (!d.success) { alert(d.message || 'Failed to delete reply.'); return; }
-
-    const st = ensureCommentsState(postId);
-    const comment = st.comments.find(c => String(c._id) === String(commentId));
-    if (comment) comment.repliesCount = d.data.repliesCount;
-
-    const rst = ensureRepliesState(commentId);
-    rst.replies = rst.replies.filter(rp => String(rp._id) !== String(replyId));
-
-    refreshCommentsSection(postId);
-  } catch (e) {
-    console.error('deleteReply error:', e);
-    alert('Network error while deleting the reply.');
-  }
-}
-
-async function toggleReplyLike(btn) {
-  const commentId = btn.dataset.commentId;
-  const replyId = btn.dataset.replyId;
-  btn.disabled = true;
-
-  try {
-    const r = await fetch(`/api/replies/${replyId}/like`, { method: 'POST' });
-    const d = await r.json();
-    if (!d.success) return;
-
-    const liked = !!d.data.liked;
-    const likesCount = d.data.likesCount ?? 0;
-
-    const rst = ensureRepliesState(commentId);
-    const rp = rst.replies.find(rp => String(rp._id) === String(replyId));
-    if (rp) { rp.isLiked = liked; rp.likesCount = likesCount; }
-
-    btn.classList.toggle('liked', liked);
-    const countEl = btn.querySelector('.comment-like-count');
-    if (countEl) countEl.textContent = likesCount > 0 ? formatCount(likesCount) : '';
-  } catch (e) {
-    console.error('toggleReplyLike error:', e);
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-function toggleEmojiPicker(e, btn) {
-  e.stopPropagation();
-  const wrap = btn.closest('.comment-input-wrap, .reply-input-wrap');
-  const alreadyOpenHere = openEmojiPicker && openEmojiPicker.parentElement === wrap;
-  closeEmojiPicker();
-  if (alreadyOpenHere) return;
-
-  const targetId = btn.dataset.target;
-  const panel = document.createElement('div');
-  panel.className = 'emoji-picker';
-  panel.innerHTML = EMOJI_SET.map(em => `<button type="button" data-emoji="${em}">${em}</button>`).join('');
-  panel.addEventListener('click', (ev) => {
-    const emBtn = ev.target.closest('button[data-emoji]');
-    if (!emBtn) return;
-    const input = document.getElementById(targetId);
-    if (input) { input.value += emBtn.dataset.emoji; input.focus(); }
-  });
-  wrap.appendChild(panel);
-  openEmojiPicker = panel;
-}
-
-function closeEmojiPicker() {
-  if (openEmojiPicker) { openEmojiPicker.remove(); openEmojiPicker = null; }
-}
-
-document.addEventListener('click', (e) => {
-  if (openEmojiPicker && !e.target.closest('.emoji-picker') && !e.target.closest('.emoji-btn')) {
-    closeEmojiPicker();
-  }
-});
-
-function commentAvatarHtml(author, username) {
-  return author?.avatarUrl
-    ? `<img src="${author.avatarUrl}" alt="avatar"/>`
-    : (author?.displayName || username || '?').slice(0, 2).toUpperCase();
-}
-
-function replyItemHtml(reply, commentId, postId) {
-  const { short: whenShort, full: whenFull } = formatPostDate(reply.createdAt);
-  return `
-    <div class="comment-item">
-      <div class="comment-avatar" onclick="goToProfile('${escapeHtml(reply.username)}', ${reply.isSelf ? 'true' : 'false'})">${commentAvatarHtml(reply.author, reply.username)}</div>
-      <div class="comment-body">
-        <div class="comment-bubble">
-          <span class="comment-who" onclick="goToProfile('${escapeHtml(reply.username)}', ${reply.isSelf ? 'true' : 'false'})">${escapeHtml(reply.author?.displayName || reply.username)}</span>
-          <div class="comment-text">${escapeHtml(reply.content)}</div>
-        </div>
-        <div class="comment-meta-row" title="${escapeHtml(whenFull)}">
-          <span class="comment-time">${escapeHtml(whenShort)}</span>
-          <button type="button"
-                  class="comment-like-btn${reply.isLiked ? ' liked' : ''}"
-                  data-comment-id="${commentId}" data-reply-id="${reply._id}"
-                  onclick="toggleReplyLike(this)">
-            ${ICON_LIKE}<span class="comment-like-count">${reply.likesCount > 0 ? formatCount(reply.likesCount) : ''}</span>
-          </button>
-          ${reply.isSelf ? `<button type="button" class="comment-delete-btn" data-post-id="${postId}" data-comment-id="${commentId}" data-reply-id="${reply._id}" onclick="deleteReply(this)">Delete</button>` : ''}
-        </div>
-      </div>
-    </div>`;
-}
-
-function repliesBlockHtml(comment, postId) {
-  const commentId = comment._id;
-  const rst = ensureRepliesState(commentId);
-  const totalReplies = comment.repliesCount || 0;
-
-  let html = '';
-
-  if (totalReplies > 0 && !rst.open) {
-    html += `<button type="button" class="view-replies-btn" data-post-id="${postId}" data-comment-id="${commentId}" onclick="toggleRepliesList(this)">
-      View ${totalReplies} repl${totalReplies === 1 ? 'y' : 'ies'}
-    </button>`;
-  }
-
-  if (rst.open) {
-    html += `<div class="replies-list">`;
-    html += rst.replies.map(rp => replyItemHtml(rp, commentId, postId)).join('');
-    if (rst.loading) html += `<div class="replies-loading"><span class="spinner-inline"></span>Loading…</div>`;
-    if (rst.hasMore && !rst.loading) {
-      html += `<button type="button" class="load-more-replies-btn" data-post-id="${postId}" data-comment-id="${commentId}" onclick="loadMoreReplies(this)">Load more replies</button>`;
-    }
-    if (totalReplies > 0) {
-      html += `<button type="button" class="view-replies-btn" data-post-id="${postId}" data-comment-id="${commentId}" onclick="toggleRepliesList(this)">Hide replies</button>`;
-    }
-    html += `</div>`;
-  }
-
-  if (rst.composerOpen) {
-    html += `<div class="reply-composer">
-      <div class="reply-input-wrap">
-        <input type="text" class="reply-input" id="replyInput-${commentId}" placeholder="Write a reply…" maxlength="1000"
-               onkeydown="handleReplyKeydown(event,'${commentId}')"/>
-        <button type="button" class="emoji-btn" data-target="replyInput-${commentId}" onclick="toggleEmojiPicker(event, this)" title="Add emoji">${ICON_EMOJI}</button>
-      </div>
-      <button type="button" class="reply-post-btn" data-post-id="${postId}" data-comment-id="${commentId}" onclick="submitReply(this)">Reply</button>
-    </div>`;
-  }
-
-  return html;
-}
-
-function commentItemHtml(comment, postId) {
-  const { short: whenShort, full: whenFull } = formatPostDate(comment.createdAt);
-  return `
-    <div class="comment-item">
-      <div class="comment-avatar" onclick="goToProfile('${escapeHtml(comment.username)}', ${comment.isSelf ? 'true' : 'false'})">${commentAvatarHtml(comment.author, comment.username)}</div>
-      <div class="comment-body">
-        <div class="comment-bubble">
-          <span class="comment-who" onclick="goToProfile('${escapeHtml(comment.username)}', ${comment.isSelf ? 'true' : 'false'})">${escapeHtml(comment.author?.displayName || comment.username)}</span>
-          <div class="comment-text">${escapeHtml(comment.content)}</div>
-        </div>
-        <div class="comment-meta-row" title="${escapeHtml(whenFull)}">
-          <span class="comment-time">${escapeHtml(whenShort)}</span>
-          <button type="button"
-                  class="comment-like-btn${comment.isLiked ? ' liked' : ''}"
-                  data-post-id="${postId}" data-comment-id="${comment._id}"
-                  onclick="toggleCommentLike(this)">
-            ${ICON_LIKE}<span class="comment-like-count">${comment.likesCount > 0 ? formatCount(comment.likesCount) : ''}</span>
-          </button>
-          <button type="button" class="comment-reply-toggle" data-post-id="${postId}" data-comment-id="${comment._id}" onclick="toggleReplyComposer(this)">Reply</button>
-          ${comment.isSelf ? `<button type="button" class="comment-delete-btn" data-post-id="${postId}" data-comment-id="${comment._id}" onclick="deleteComment(this)">Delete</button>` : ''}
-        </div>
-        ${repliesBlockHtml(comment, postId)}
-      </div>
-    </div>`;
-}
-
-function renderCommentsInner(postId) {
-  const st = ensureCommentsState(postId);
-
-  let listHtml;
-  if (st.loading && !st.comments.length) {
-    listHtml = `<div class="comments-loading"><span class="spinner-inline"></span>Loading comments…</div>`;
-  } else if (!st.comments.length) {
-    listHtml = `<div class="comments-empty">No comments yet. Be the first to say something.</div>`;
-  } else {
-    listHtml = `<div class="comment-list">${st.comments.map(c => commentItemHtml(c, postId)).join('')}</div>`;
-    if (st.hasMore) {
-      listHtml += `<button type="button" class="load-more-comments-btn" data-post-id="${postId}" onclick="loadMoreComments(this)">Load more comments</button>`;
-    }
-  }
-
-  return `
-    <div class="comment-composer">
-      <div class="comment-input-wrap">
-        <input type="text" class="comment-input" id="commentInput-${postId}" placeholder="Write a comment…" maxlength="1000"
-               onkeydown="handleCommentKeydown(event,'${postId}')"/>
-        <button type="button" class="emoji-btn" data-target="commentInput-${postId}" onclick="toggleEmojiPicker(event, this)" title="Add emoji">${ICON_EMOJI}</button>
-      </div>
-      <button type="button" class="comment-post-btn" data-post-id="${postId}" onclick="submitComment(this)">Post</button>
-    </div>
-    ${listHtml}`;
-}
-
-/* ═══════════════════════════════════════════════════════
-   NEW-POSTS BANNER — Discover/Following only
+   NEW-POSTS BANNER
    ═══════════════════════════════════════════════════════ */
 const NEW_POSTS_POLL_MS = 20000;
 
@@ -2195,9 +1544,7 @@ async function pollNewPostsCount() {
 
     const count = d.data?.count || 0;
     if (count > 0) showNewPostsBanner(count);
-  } catch (e) {
-    // silent — polling failures shouldn't interrupt the feed
-  }
+  } catch (e) { /* silent */ }
 }
 
 function showNewPostsBanner(count) {
@@ -2221,14 +1568,6 @@ function refreshWithNewPosts() {
 
 /* ═══════════════════════════════════════════════════════
    RIGHT-PANEL WIDGETS: Top 3 Cryptocurrencies + Top Creators
-   ═══════════════════════════════════════════════════════
-   Top 3 Cryptocurrencies reuses the exact shared-server WebSocket the
-   landing page uses (Market_Stream/market_data.js @ /ws/market-data) —
-   one upstream Binance connection on the server, rebroadcast to every
-   connected browser. We render BTC, ETH and SOL by rank.
-   REQ 2 — each coin's "status tag" badge is now fixed per coin (not
-   derived from its live % change): BTC = Trending, ETH = Rapid Riser,
-   SOL = Hot. Styling is a transparent, blue-text, compact pill.
    ═══════════════════════════════════════════════════════ */
 const TOP3_COINS = [
   { id: 'bitcoin',  symbol: 'BTC', name: 'Bitcoin',  cls: 'btc', icon: '₿', tag: 'Trending' },
@@ -2247,9 +1586,6 @@ function connectMarketSocket() {
   const url = `${proto}://${location.host}/ws/market-data`;
   marketSocket = new WebSocket(url);
 
-  // If nothing arrives within 6s (server not reachable, wrong path,
-  // upgrade handler not wired up, etc.) surface that in the widget
-  // instead of leaving it stuck on a silent skeleton forever.
   clearTimeout(marketConnectTimeoutTimer);
   marketConnectTimeoutTimer = setTimeout(() => {
     if (!marketSocketEverConnected) {
@@ -2280,7 +1616,7 @@ function connectMarketSocket() {
 
   marketSocket.onerror = () => { /* onclose will handle reconnect */ };
 }
-const WS_MARKET_PATH = '/ws/market-data'; // must match Web_Sockets/ws_manager.js's "case" and marketData_ws.js's WS_PATH
+const WS_MARKET_PATH = '/ws/market-data';
 
 function formatWidgetPrice(n) {
   if (n === undefined || n === null || isNaN(n)) return '—';
@@ -2316,7 +1652,7 @@ function renderTop3Crypto() {
     : `<div class="widget-skeleton"><span class="spinner-inline"></span>Waiting for live prices…</div>`;
 }
 
-/* ── Top Creators (GET /api/top-creators — Social_Platform PHASE 5 leaderboard) ── */
+/* ── Top Creators ── */
 async function loadTopCreatorsWidget() {
   const list = document.getElementById('topCreatorsList');
   const MEDALS = ['🥇', '🥈', '🥉'];
@@ -2346,10 +1682,8 @@ async function loadTopCreatorsWidget() {
           ${c.isFollowing ? 'Following' : 'Follow'}
         </button>`;
 
-      // Handles (@username) are kept here — this is the one place in the
-      // UI that still shows them; post cards no longer do (REQ 4).
       return `
-        <div class="creator-row">
+        <div class="creator-row" data-username="${escapeHtml(c.username)}">
           <div class="creator-rank">${MEDALS[i] || (i + 1)}</div>
           <div class="creator-avatar" onclick="goToProfile('${escapeHtml(c.username)}', ${c.isSelf ? 'true' : 'false'})">${avatarHtml}</div>
           <div class="creator-info" onclick="goToProfile('${escapeHtml(c.username)}', ${c.isSelf ? 'true' : 'false'})">
@@ -2366,18 +1700,7 @@ async function loadTopCreatorsWidget() {
 }
 
 /* ═══════════════════════════════════════════════════════
-   FEAR & GREED INDEX WIDGET (REQ 3, REQ 4)
-   ═══════════════════════════════════════════════════════
-   The gauge is always fetched directly from Binance's public REST API
-   (no first-party backend route involved) — 24hr ticker stats for
-   BTC/ETH/BNB, blended into a 0-100 mood score. Polled every 30s.
-
-   REQ 4 — Bullish/Bearish voting is purely a visual affordance: it
-   applies a persistent green/red tint + border to the widget card and
-   then hides both vote buttons, leaving only that visual effect (and
-   the card's normal hover behavior) in place. It never touches the
-   gauge score, and no vote is sent anywhere — the gauge value is 100%
-   owned by the live Binance fetch.
+   FEAR & GREED INDEX WIDGET
    ═══════════════════════════════════════════════════════ */
 const FG_LABELS = [
   { max: 20,  label: 'Extreme Fear',  color: '#ef4444' },
@@ -2386,7 +1709,7 @@ const FG_LABELS = [
   { max: 80,  label: 'Greed',         color: '#84cc16' },
   { max: 100, label: 'Extreme Greed', color: '#22c55e' },
 ];
-const FG_ARC_LENGTH = Math.PI * 85; // path length of the "M 15 100 A 85 85 0 0 1 185 100" semicircle
+const FG_ARC_LENGTH = Math.PI * 85;
 const BINANCE_24HR_URL = 'https://api.binance.com/api/v3/ticker/24hr';
 const FG_POLL_MS = 30000;
 
@@ -2404,8 +1727,6 @@ function renderFearGreedGauge(score) {
   labelEl.style.color = bucket.color;
   labelEl.style.background = bucket.color + '22';
 
-  // Needle sweeps from -90deg (0 / extreme fear) to +90deg (100 / extreme
-  // greed) via a real CSS transform so the spring transition applies.
   const angle = (clamped / 100) * 180 - 90;
   document.getElementById('fgNeedle').style.transform = `rotate(${angle}deg)`;
 
@@ -2414,9 +1735,6 @@ function renderFearGreedGauge(score) {
   if (arcFg) arcFg.style.strokeDasharray = `${filled} ${FG_ARC_LENGTH}`;
 }
 
-// Weighted blend of each coin's 24h % price change (from Binance) into a
-// single 0-100 "market mood" figure, 50 = neutral. Weighted toward
-// BTC/ETH since they dominate overall sentiment.
 function computeMoodFromBinanceTickers(tickers) {
   const WEIGHTS = { BTCUSDT: 3, ETHUSDT: 2, BNBUSDT: 1 };
   let weightedSum = 0, totalWeight = 0;
@@ -2431,7 +1749,7 @@ function computeMoodFromBinanceTickers(tickers) {
   });
 
   if (!totalWeight) return null;
-  const avgChange = weightedSum / totalWeight; // roughly -10..+10 in a normal day
+  const avgChange = weightedSum / totalWeight;
   return Math.max(0, Math.min(100, 50 + avgChange * 6));
 }
 
@@ -2465,24 +1783,150 @@ function startFearGreedPolling() {
 
 let userVotedSentiment = null;
 
-// REQ 4 — voting is purely visual: it applies a persistent tint to the
-// widget card (green for bullish, red for bearish) plus a one-off pulse
-// for feedback, then hides the vote row entirely so only the selected
-// effect remains visible. It does NOT touch the gauge score, and does
-// NOT call any backend — the Fear & Greed number keeps coming
-// exclusively from fetchFearGreedFromBinance().
 function castSentimentVote(vote) {
   userVotedSentiment = vote;
 
   const card = document.getElementById('fgWidgetCard');
   card.classList.remove('fg-pulse-bullish', 'fg-pulse-bearish', 'fg-selected-bullish', 'fg-selected-bearish');
-  // force reflow so the pulse animation can re-trigger
   void card.offsetWidth;
   card.classList.add(vote === 'bullish' ? 'fg-pulse-bullish' : 'fg-pulse-bearish');
   card.classList.add(vote === 'bullish' ? 'fg-selected-bullish' : 'fg-selected-bearish');
 
   const voteRow = document.getElementById('fgVoteRow');
   if (voteRow) voteRow.style.display = 'none';
+}
+
+/* ═══════════════════════════════════════════════════════
+   PHASE 11 Part 1 — REAL-TIME SOCIAL SOCKET
+   ═══════════════════════════════════════════════════════
+   Connects to /ws/social (see Social_Platform/services/websocketService.js).
+   The handshake uses a short-lived token from GET /api/ws-token (browsers
+   can't set headers on a WS upgrade), which also hands back `username` so
+   this page knows "who am I" for labelling/self-checks below.
+   ═══════════════════════════════════════════════════════ */
+let socialSocket = null;
+let socialReconnectTimer = null;
+let myUsername = null;
+
+async function connectSocialSocket() {
+  try {
+    const r = await fetch('/api/ws-token');
+    const d = await r.json();
+    if (!d.success) return;
+
+    myUsername = d.data.username;
+
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    const url = `${proto}://${location.host}/ws/social?token=${encodeURIComponent(d.data.token)}`;
+    socialSocket = new WebSocket(url);
+
+    socialSocket.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        handleSocialEvent(msg.event, msg.data);
+      } catch (e) { /* ignore malformed frame */ }
+    };
+
+    socialSocket.onclose = () => {
+      clearTimeout(socialReconnectTimer);
+      socialReconnectTimer = setTimeout(connectSocialSocket, 4000);
+    };
+
+    socialSocket.onerror = () => { /* onclose handles reconnect */ };
+
+  } catch (e) {
+    clearTimeout(socialReconnectTimer);
+    socialReconnectTimer = setTimeout(connectSocialSocket, 4000);
+  }
+}
+
+function handleSocialEvent(event, data) {
+  switch (event) {
+    case 'post_liked':     return onLivePostLiked(data);
+    case 'new_comment':    return onLiveNewComment(data);
+    case 'new_follower':   return onLiveNewFollower(data);
+    case 'notification':   return refreshNotifBadge();
+    default: break;
+  }
+}
+
+function onLivePostLiked(data) {
+  const { postId, actorUsername, liked, likesCount } = data;
+
+  ALL_TABS.forEach(tab => {
+    const p = tabState[tab].posts.find(p => String(p._id) === String(postId));
+    if (p) p.likesCount = likesCount;
+  });
+
+  const countEl = document.querySelector(`.like-btn[data-post-id="${cssEscape(postId)}"] .like-count`);
+  if (countEl) countEl.textContent = formatCount(likesCount);
+
+  if (liked) showSocialToast(`${actorUsername} liked your post`, postId);
+}
+
+// PHASE 11 Part 2 — comments now live on post.html, so here we just bump
+// the badge number on the feed card; no inline panel to reopen anymore.
+function onLiveNewComment(data) {
+  const { postId, actorUsername, commentsCount } = data;
+
+  ALL_TABS.forEach(tab => {
+    const p = tabState[tab].posts.find(p => String(p._id) === String(postId));
+    if (p) p.commentsCount = commentsCount;
+  });
+
+  const badge = document.querySelector(`.comment-btn[data-post-id="${cssEscape(postId)}"] .comment-count`);
+  if (badge) badge.textContent = formatCount(commentsCount);
+
+  showSocialToast(`${actorUsername} commented on your post`, postId);
+}
+
+function onLiveNewFollower(data) {
+  const { actorUsername } = data;
+  showSocialToast(`${actorUsername} started following you`);
+}
+
+/* ── Notification bell badge ── */
+async function refreshNotifBadge() {
+  try {
+    const r = await fetch('/api/notifications/unread-count');
+    const d = await r.json();
+    if (!d.success) return;
+    const badge = document.getElementById('notifBadge');
+    if (!badge) return;
+    if (d.data.count > 0) {
+      badge.textContent = d.data.count > 99 ? '99+' : d.data.count;
+      badge.style.display = 'flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  } catch (e) { /* silent */ }
+}
+
+/* ── Toast stack ── */
+function showSocialToast(message, postId) {
+  const stack = document.getElementById('socialToastStack');
+  if (!stack) return;
+
+  const el = document.createElement('div');
+  el.className = 'social-toast';
+  el.innerHTML = `<span class="dot"></span><span>${escapeHtml(message)}</span>`;
+
+  if (postId) {
+    el.addEventListener('click', () => {
+      const card = document.querySelector(`.post-card[data-post-id="${cssEscape(postId)}"]`);
+      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }
+
+  stack.appendChild(el);
+
+  setTimeout(() => {
+    el.classList.add('fading');
+    setTimeout(() => el.remove(), 220);
+  }, 4500);
+
+  // Cap the stack so a burst of events doesn't fill the screen.
+  while (stack.children.length > 4) stack.removeChild(stack.firstChild);
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -2494,9 +1938,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   connectMarketSocket();
   loadTopCreatorsWidget();
+  connectSocialSocket(); // PHASE 11 Part 1
 
-  renderFearGreedGauge(50); // neutral rest position until the first Binance fetch lands
+  renderFearGreedGauge(50);
   startFearGreedPolling();
+
+  refreshNotifBadge();
+  setInterval(refreshNotifBadge, 30000);
 });
 </script>
 </body>
