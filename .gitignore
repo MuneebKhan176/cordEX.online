@@ -3,3 +3,4 @@ routes/.env
 uploads/posts/
 futures_engine.exe/
 engine.exe/
+ai_analytics/__pycache__/
