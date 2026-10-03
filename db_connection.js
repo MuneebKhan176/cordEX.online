@@ -43,6 +43,8 @@ const mysql = require('mysql2');
    release() it when done. See Wallets_Config/walletTransfer.js and
    routes/spotPanel_Route.js for the pattern.
    ═══════════════════════════════════════════════════════════════════════ */
+
+
 const pool = mysql.createPool({
     host: DB_HOST,
     user: DB_USERNAME,
@@ -52,6 +54,7 @@ const pool = mysql.createPool({
     connectionLimit: 10,
     queueLimit: 0,
 });
+
 
 pool.getConnection((err, connection) => {
     if (err) {

@@ -1,92 +1,252 @@
 [
-  {
-    "question": "What is CryptoTrade?",
-    "answer": "CryptoTrade is a demo cryptocurrency trading platform for educational purposes. All funds are virtual — no real money is ever used.",
-    "keywords": ["what is", "cryptotrade", "platform", "about", "demo platform"]
-  },
-  {
-    "question": "How do I get demo funds?",
-    "answer": "Go to the Demo Funds panel and click 'Request $50,000 Demo Funds'. This is a one-time grant, only available while your balance is $0.00.",
-    "keywords": ["demo funds", "free money", "get funds", "starting balance", "50000", "$50,000"]
-  },
-  {
-    "question": "Why can't I request demo funds again?",
-    "answer": "Demo funds are a one-time grant per account. Once your balance is above $0, the request button is disabled. You can still receive funds via transfer from another user.",
-    "keywords": ["already funded", "cant request", "demo funds again", "one time"]
-  },
-  {
-    "question": "How do I check my balance?",
-    "answer": "Your current balance is shown on the Overview panel (top balance card) and in the Account panel. It updates automatically after any transfer or demo funds request.",
-    "keywords": ["balance", "how much money", "check balance", "my funds"]
-  },
-  {
-    "question": "How do I transfer funds to another user?",
-    "answer": "Open the Transfer panel, enter the recipient's account number (shown in their Account panel, format like ACC000000012), enter an amount, and click Send Funds.",
-    "keywords": ["transfer", "send funds", "send money", "recipient", "account number"]
-  },
-  {
-    "question": "Why did my transfer fail?",
-    "answer": "Common causes: insufficient balance, an incorrect/nonexistent recipient account number, trying to send to your own account, or the recipient's account being inactive. Double-check the account number and your available balance.",
-    "keywords": ["transfer failed", "transfer error", "insufficient balance", "account not found", "transfer not working"]
-  },
-  {
-    "question": "Where do I find my account number?",
-    "answer": "Your account number is on the Account panel under 'Account', and also shown at the top of the Overview panel and in the Transfer panel's 'Sending From' strip.",
-    "keywords": ["account number", "my account number", "find account number"]
-  },
-  {
-    "question": "Can I trade cryptocurrencies right now?",
-    "answer": "You can view live prices and charts on the Trade and Markets panels, but the actual buy/sell execution ('Trade' button) is coming soon — it's not live yet.",
-    "keywords": ["trade", "buy crypto", "sell crypto", "trading", "execute trade"]
-  },
-  {
-    "question": "Where do prices come from and how often do they update?",
-    "answer": "Live prices, 24h change, and market cap come from the CoinGecko API and refresh automatically every 30 seconds on the Overview, Trade, and Markets panels.",
-    "keywords": ["price update", "coingecko", "live prices", "how often", "refresh rate"]
-  },
-  {
-    "question": "Which coins are supported?",
-    "answer": "CryptoTrade currently tracks Bitcoin (BTC), Ethereum (ETH), Solana (SOL), XRP, BNB, Tether (USDT), and USD Coin (USDC).",
-    "keywords": ["which coins", "supported coins", "btc", "eth", "sol", "xrp", "bnb", "usdt", "usdc"]
-  },
-  {
-    "question": "How do I change the chart timeframe?",
-    "answer": "Use the 1D / 7D / 30D buttons above the price chart on the Overview or Trade panel, and pick a coin from the dropdown next to them.",
-    "keywords": ["chart", "timeframe", "1d", "7d", "30d", "price chart"]
-  },
-  {
-    "question": "Is my password secure / can I enable 2FA?",
-    "answer": "Your password is stored securely and shown masked in the Account panel. Two-factor authentication (2FA) isn't enabled yet on this account.",
-    "keywords": ["password", "2fa", "two factor", "security", "secure"]
-  },
-  {
-    "question": "How do I update my profile info?",
-    "answer": "Your username, email, and member-since date are shown on the Account panel. Profile editing isn't available yet — reach out to Support if you need a change.",
-    "keywords": ["profile", "update email", "change username", "edit account"]
-  },
-  {
-    "question": "What is the Insights feed?",
-    "answer": "The Insights panel is a community feed where you can post and read short market analysis or trade ideas from other demo traders.",
-    "keywords": ["insights", "post insight", "market analysis", "community feed"]
-  },
-  {
-    "question": "How do I join the live chat?",
-    "answer": "Click 'Live Chat' in the top navigation or sidebar to open the real-time chat rooms, where you can join public rooms or private ones with other traders.",
-    "keywords": ["live chat", "chat room", "group chat", "private room", "join chat"]
-  },
-  {
-    "question": "How do I contact support?",
-    "answer": "Visit the Support panel for options: this AI chatbot, email at support@cryptotrade.app (replies within 2 hours), the Help Center, or the community Live Chat.",
-    "keywords": ["support", "contact", "help", "email support", "customer service"]
-  },
-  {
-    "question": "Is this real money?",
-    "answer": "No — CryptoTrade is strictly a demo/educational platform. All balances, transfers, and trades use virtual funds only.",
-    "keywords": ["real money", "is this real", "actual money", "educational"]
-  },
-  {
-    "question": "How do I log out?",
-    "answer": "Click 'Log out' at the bottom of the sidebar to end your session.",
-    "keywords": ["log out", "logout", "sign out", "end session"]
-  }
+{
+"question": "What is cordEX.online?",
+"answer": "cordEX.online is a cryptocurrency trading platform built for educational and demonstration purposes. It provides virtual accounts, cryptocurrency markets, wallets, spot trading, futures trading, market data, transfers, trading analytics, and community features. All funds are virtual and no real money is used.",
+"keywords": ["what is", "cordex", "cordex.online", "platform", "about", "crypto exchange", "demo platform"]
+},
+{
+"question": "Is cordEX.online a real-money exchange?",
+"answer": "No. cordEX.online is a virtual/demo trading platform. Account balances, deposits, transfers, trades, positions, profits, and losses are simulated using virtual funds.",
+"keywords": ["real money", "actual money", "real exchange", "demo", "virtual money", "educational"]
+},
+{
+"question": "How do I get demo funds?",
+"answer": "Use the Demo Funds feature available in your account. Demo funds are provided as virtual trading capital and are subject to the platform's account and funding rules.",
+"keywords": ["demo funds", "free money", "get funds", "starting balance", "virtual funds", "fund account"]
+},
+{
+"question": "Can I request demo funds multiple times?",
+"answer": "The initial demo-funds grant is subject to the platform's funding rules and is not intended to function as unlimited free funding. If you need additional funds, use the supported transfer functionality when available.",
+"keywords": ["demo funds again", "request funds", "free funds", "funding", "additional funds"]
+},
+{
+"question": "How do I check my balance?",
+"answer": "Your account and wallet balances are available through the account and wallet sections of the platform. Trading activity, transfers, and executed orders can change the available balance.",
+"keywords": ["balance", "check balance", "account balance", "wallet balance", "available balance", "funds"]
+},
+{
+"question": "What is the difference between available and locked balance?",
+"answer": "Available balance is the portion of your funds that can currently be used. Locked balance is reserved for an active order or another operation and cannot be freely used until it is released.",
+"keywords": ["available balance", "locked balance", "reserved funds", "wallet", "balance"]
+},
+{
+"question": "How do I transfer funds to another user?",
+"answer": "Use the Transfer feature, provide the recipient's account number, enter the amount, and submit the transfer. Transfers use virtual funds and are processed according to the platform's account and balance rules.",
+"keywords": ["transfer", "send funds", "send money", "recipient", "account number", "wallet transfer"]
+},
+{
+"question": "Why did my transfer fail?",
+"answer": "A transfer can fail because of insufficient available funds, an invalid or nonexistent recipient account, attempting to transfer to your own account, or another account or validation restriction. Check the recipient account number and your available balance.",
+"keywords": ["transfer failed", "transfer error", "insufficient balance", "account not found", "transfer not working"]
+},
+{
+"question": "Where do I find my account number?",
+"answer": "Your account number is available in the Account section of the platform and is used to identify your account when receiving transfers.",
+"keywords": ["account number", "my account number", "find account number", "account id"]
+},
+{
+"question": "Can I trade cryptocurrencies on cordEX.online?",
+"answer": "Yes. cordEX.online supports active virtual cryptocurrency trading. The platform includes spot trading and futures trading, with orders processed through the platform's trading infrastructure.",
+"keywords": ["trade", "trading", "buy crypto", "sell crypto", "spot", "futures", "execute trade"]
+},
+{
+"question": "What is spot trading?",
+"answer": "Spot trading is the direct buying and selling of cryptocurrency assets. When a spot order is executed, the resulting asset and balance changes are reflected in your spot wallet and holdings.",
+"keywords": ["spot trading", "spot", "spot market", "buy", "sell", "spot wallet", "holdings"]
+},
+{
+"question": "What is futures trading?",
+"answer": "Futures trading allows you to trade contracts whose value is based on an underlying cryptocurrency market. Unlike spot trading, futures trading uses positions and associated futures-account mechanics such as position size, entry price, and profit or loss.",
+"keywords": ["futures", "futures trading", "futures market", "position", "contract", "derivatives"]
+},
+{
+"question": "What is the difference between spot and futures trading?",
+"answer": "Spot trading directly changes your cryptocurrency holdings when an order executes. Futures trading creates and manages trading positions instead of directly adding the traded asset to your spot holdings. The two systems use different wallet and position mechanics.",
+"keywords": ["spot vs futures", "difference spot futures", "spot", "futures", "positions", "holdings"]
+},
+{
+"question": "What is a market order?",
+"answer": "A market order is an order intended to execute immediately against available market liquidity at the prices available when the order is processed. The final execution price can differ from the price you saw when submitting the order.",
+"keywords": ["market order", "market", "instant order", "buy market", "sell market"]
+},
+{
+"question": "What is a limit order?",
+"answer": "A limit order specifies the price at which you are willing to buy or sell. The order can execute when compatible market liquidity reaches the specified price, but execution is not guaranteed.",
+"keywords": ["limit order", "limit", "limit price", "buy limit", "sell limit"]
+},
+{
+"question": "What is an order?",
+"answer": "An order is a request submitted to the trading system to buy or sell an asset or to establish or manage a trading position. Orders have a lifecycle and can remain open, execute, or be cancelled depending on their type and conditions.",
+"keywords": ["order", "trade order", "buy order", "sell order", "order lifecycle"]
+},
+{
+"question": "What is an executed trade?",
+"answer": "An executed trade is a completed match or fill produced when an order successfully executes. Executed trades contain information such as the traded asset, quantity, execution price, and execution time and are used to update the relevant wallet, holdings, or position.",
+"keywords": ["executed trade", "trade execution", "fill", "filled order", "execution"]
+},
+{
+"question": "What is the difference between an order and a trade?",
+"answer": "An order is your request to buy or sell. A trade is the actual execution resulting from that order. One order can produce one or more executions depending on how the trading system processes it.",
+"keywords": ["order vs trade", "trade vs order", "execution", "fill", "order"]
+},
+{
+"question": "Why has my order not executed?",
+"answer": "An order may remain open when its execution conditions have not been met or when there is not enough compatible market liquidity. This is especially relevant for orders that specify a target price or other execution conditions.",
+"keywords": ["order not executed", "order pending", "open order", "not filled", "why order pending"]
+},
+{
+"question": "What happens when a spot order executes?",
+"answer": "When a spot order executes, the corresponding funds and cryptocurrency quantities are updated in the spot wallet and holdings. The execution is recorded as a trade and the order status is updated according to the execution result.",
+"keywords": ["spot execution", "spot order executed", "holdings update", "wallet update", "trade execution"]
+},
+{
+"question": "What are spot holdings?",
+"answer": "Spot holdings represent the cryptocurrency assets currently held in your spot wallet. Holdings include information such as the asset symbol, quantity, average buy price, and total cost, which can be used to calculate the current value and profit or loss of the position.",
+"keywords": ["spot holdings", "holdings", "crypto holdings", "assets", "portfolio", "average buy price"]
+},
+{
+"question": "What is average buy price?",
+"answer": "Average buy price represents the average acquisition price of an asset in your spot holdings based on the recorded purchases. It is useful for estimating the cost basis and unrealized profit or loss.",
+"keywords": ["average buy price", "average price", "cost basis", "buy price", "holdings"]
+},
+{
+"question": "How is my spot portfolio value calculated?",
+"answer": "The value of a spot holding is calculated from the quantity you hold and the current market price of that asset. The platform can aggregate the values of your supported holdings to determine your current spot portfolio value.",
+"keywords": ["portfolio value", "spot portfolio", "holdings value", "portfolio calculation", "asset value"]
+},
+{
+"question": "What is unrealized profit and loss?",
+"answer": "Unrealized P&L represents the estimated profit or loss on assets that you still hold. It is based on the difference between their current market value and their recorded cost basis. It can change as market prices move.",
+"keywords": ["unrealized pnl", "unrealized profit", "unrealized loss", "pnl", "profit loss", "holdings"]
+},
+{
+"question": "What is realized profit and loss?",
+"answer": "Realized P&L represents profit or loss associated with trades that have been completed and the relevant position or asset has been sold or otherwise closed. It is based on the recorded execution and cost-basis information.",
+"keywords": ["realized pnl", "realized profit", "realized loss", "pnl", "closed trade", "profit loss"]
+},
+{
+"question": "Where can I see my trading history?",
+"answer": "Your executed trading activity is available through the relevant trading and history sections. Trading history records completed executions, while open orders represent orders that have not fully completed.",
+"keywords": ["trading history", "trade history", "past trades", "executions", "orders"]
+},
+{
+"question": "Where can I see my open orders?",
+"answer": "Open orders are available through the trading interface and represent orders that have been submitted but have not yet completed or been fully cancelled.",
+"keywords": ["open orders", "pending orders", "active orders", "orders", "order history"]
+},
+{
+"question": "What are futures positions?",
+"answer": "A futures position represents your current exposure to a futures contract. Position information can include the traded symbol, quantity or size, entry price, and current profit or loss.",
+"keywords": ["futures position", "position", "futures", "position size", "entry price", "pnl"]
+},
+{
+"question": "How do I know whether my futures position is profitable?",
+"answer": "The platform calculates the position's profit or loss from the relevant position information and current market price. Because futures positions are continuously affected by market movements, the displayed P&L can change while the position remains open.",
+"keywords": ["futures pnl", "position profit", "position loss", "futures profit", "futures loss"]
+},
+{
+"question": "Where do cryptocurrency prices come from?",
+"answer": "cordEX.online uses live market-data infrastructure to provide cryptocurrency prices and market information to the trading interface. Market data is used for charts, current valuations, and trading-related calculations.",
+"keywords": ["price", "live price", "market data", "crypto prices", "price source", "market"]
+},
+{
+"question": "Are market prices updated in real time?",
+"answer": "The platform maintains live market-data updates for supported markets and uses WebSocket-based updates for real-time application features. Exact update frequency can vary by market-data stream and application component.",
+"keywords": ["real time", "live prices", "websocket", "market updates", "price updates"]
+},
+{
+"question": "Which cryptocurrencies are supported?",
+"answer": "The supported assets and markets are determined by the markets configured in the current cordEX.online trading system. Commonly supported assets include BTC, ETH, SOL, XRP, BNB, USDT, and USDC.",
+"keywords": ["supported coins", "supported cryptocurrencies", "btc", "eth", "sol", "xrp", "bnb", "usdt", "usdc", "markets"]
+},
+{
+"question": "What is the trading engine?",
+"answer": "The trading engine is the system responsible for processing trading orders and producing executions. cordEX.online uses dedicated trading-engine infrastructure so that order processing and execution are separated from the main application interface.",
+"keywords": ["trading engine", "engine", "order matching", "execution engine", "spot engine", "futures engine"]
+},
+{
+"question": "How does a trade move through the system?",
+"answer": "A typical trade flows from the user interface to the application backend, where the request is authenticated and validated. The appropriate trading system processes the order, an execution is produced when the order conditions are satisfied, and the resulting wallet, holdings, positions, and trade records are updated.",
+"keywords": ["trade flow", "order flow", "execution flow", "how trading works", "backend", "trading engine"]
+},
+{
+"question": "What is a wallet?",
+"answer": "A wallet represents the funds available for a particular trading system or account. cordEX.online separates wallet and trading concepts so that spot assets and futures-related balances or positions can be managed according to their respective trading mechanisms.",
+"keywords": ["wallet", "crypto wallet", "spot wallet", "futures wallet", "balance"]
+},
+{
+"question": "What is the difference between a wallet, holding, and position?",
+"answer": "A wallet represents available funds. A spot holding represents cryptocurrency you currently own in the spot market. A futures position represents exposure created through a futures trade. These are related but are managed differently by the trading system.",
+"keywords": ["wallet vs holding", "holding vs position", "wallet", "holding", "position", "spot", "futures"]
+},
+{
+"question": "How do I change the chart timeframe?",
+"answer": "Use the available timeframe controls in the relevant market or trading interface to switch between supported chart periods. Available timeframes depend on the chart component and market-data configuration.",
+"keywords": ["chart", "timeframe", "1d", "7d", "30d", "price chart", "candlestick"]
+},
+{
+"question": "What is the Insights feed?",
+"answer": "The Insights feature is a community-oriented area where users can share market analysis, trading ideas, and other trading-related content with other users.",
+"keywords": ["insights", "market analysis", "community", "trade ideas", "posts"]
+},
+{
+"question": "How do I use Live Chat?",
+"answer": "Use the Live Chat feature from the platform navigation to communicate with other users through the available chat rooms and messaging functionality.",
+"keywords": ["live chat", "chat room", "group chat", "messaging", "community"]
+},
+{
+"question": "What does the AI chatbot do?",
+"answer": "The cordEX AI chatbot is designed to help users understand the platform, trading concepts, account features, markets, orders, wallets, and other supported functionality. It can explain how the platform works and provide information based on the system's available knowledge.",
+"keywords": ["ai chatbot", "chatbot", "assistant", "help", "ai", "support"]
+},
+{
+"question": "Can the AI chatbot execute trades for me?",
+"answer": "The AI chatbot should not be treated as a substitute for explicit user trading actions. Trading orders are handled through the platform's normal authenticated trading flow. Always review an order carefully before submitting it.",
+"keywords": ["ai trade", "chatbot trade", "execute trade", "ai trading", "buy through ai", "sell through ai"]
+},
+{
+"question": "Is my password secure?",
+"answer": "Your account credentials are handled through the platform's authentication system. Passwords should never be shared with the AI chatbot or another user. Use the platform's normal authentication and account-security mechanisms to protect your account.",
+"keywords": ["password", "security", "secure", "credentials", "authentication"]
+},
+{
+"question": "Can I enable two-factor authentication?",
+"answer": "Two-factor authentication availability depends on the current account-security features enabled in the platform. Check the Account or Security section for the features currently available to your account.",
+"keywords": ["2fa", "two factor", "authentication", "security", "otp"]
+},
+{
+"question": "How do I update my profile information?",
+"answer": "Use the account or profile section to view the information currently associated with your account. The availability of individual profile-editing options depends on the current account implementation.",
+"keywords": ["profile", "update profile", "change email", "change username", "account"]
+},
+{
+"question": "How do I log out?",
+"answer": "Use the Log Out option in the platform navigation or account menu to end your current authenticated session.",
+"keywords": ["log out", "logout", "sign out", "end session"]
+},
+{
+"question": "How do I contact support?",
+"answer": "Use the Support or help functionality available in cordEX.online for assistance with account, platform, or technical issues. Do not share passwords, authentication tokens, or other sensitive credentials when requesting support.",
+"keywords": ["support", "contact support", "help", "customer service", "technical support"]
+},
+{
+"question": "Why is my balance different after a trade?",
+"answer": "A completed trade can change your available balance because funds are exchanged for the purchased or sold asset. Order reservations can also temporarily lock funds, while commissions or other execution-related adjustments can affect the final amount.",
+"keywords": ["balance changed", "after trade", "trade balance", "locked balance", "commission", "wallet"]
+},
+{
+"question": "Why did my holdings change?",
+"answer": "Spot holdings change when spot trades are executed or when assets are otherwise transferred into or out of the relevant wallet. The quantity and cost information are updated based on the recorded trading and wallet activity.",
+"keywords": ["holdings changed", "holding changed", "crypto balance", "spot holdings", "asset quantity"]
+},
+{
+"question": "Why can the displayed profit or loss change even when I do not trade?",
+"answer": "Unrealized profit and loss depends on current market prices. Your P&L can therefore increase or decrease while you hold the same quantity of an asset because the market price changes.",
+"keywords": ["pnl changing", "profit changing", "loss changing", "market price", "unrealized pnl"]
+},
+{
+"question": "What should I do if an order or trade appears incorrect?",
+"answer": "First check the order status, execution history, traded quantity, execution price, and relevant wallet or position balance. If the recorded information still appears incorrect, use the platform's support functionality and provide the relevant order or trade information.",
+"keywords": ["wrong trade", "incorrect order", "trade problem", "order issue", "execution issue"]
+}
 ]

@@ -1303,55 +1303,55 @@ function toggleChat() {
   document.getElementById('chatWindow').classList.toggle('open');
 }
 
+let chatBusy = false;
+
 async function sendChat() {
+  if (chatBusy) return;
   const inp  = document.getElementById('chatInput');
   const msgs = document.getElementById('chatMsgs');
   const txt  = inp.value.trim();
   if (!txt) return;
 
-  // Render the user's message immediately
-  const userDiv = document.createElement('div');
-  userDiv.className = 'chat-msg user';
-  userDiv.textContent = txt;
-  msgs.appendChild(userDiv);
+  const history = chatHistory.slice(-6);          // BEFORE adding the new message
+  const add = (cls, text) => {
+    const d = document.createElement('div');
+    d.className = 'chat-msg ' + cls;
+    d.textContent = text;
+    msgs.appendChild(d);
+    msgs.scrollTop = msgs.scrollHeight;
+    return d;
+  };
+
+  add('user', txt);
   chatHistory.push({ role: 'user', text: txt });
-
   inp.value = '';
-  msgs.scrollTop = msgs.scrollHeight;
+  chatBusy = true;
 
-  // Typing indicator while we wait on the backend
-  const typingDiv = document.createElement('div');
-  typingDiv.className = 'chat-msg bot';
-  typingDiv.id = 'chat-typing';
-  typingDiv.innerHTML = '<span class="spinner-inline"></span>Typing…';
-  msgs.appendChild(typingDiv);
-  msgs.scrollTop = msgs.scrollHeight;
+  const typing = add('bot', 'Typing…');
+  typing.id = 'chat-typing';
 
+  let ok = false;
   try {
     const r = await fetch('/api/ai-chatbot/message', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: txt, history: chatHistory.slice(-6) }),
+      body: JSON.stringify({ message: txt, history }),
     });
-    const d = await r.json();
-
-    document.getElementById('chat-typing')?.remove();
-
-    const botDiv = document.createElement('div');
-    botDiv.className = 'chat-msg bot';
-    botDiv.textContent = d.reply || "Sorry, I couldn't process that — please try again.";
-    msgs.appendChild(botDiv);
-    chatHistory.push({ role: 'bot', text: botDiv.textContent });
-
+    if (r.status === 401) { window.location.href = '/login'; return; }
+    const d = await r.json().catch(() => ({}));
+    const reply = d.reply || d.message || "Sorry, I couldn't process that. Please try again.";
+    typing.remove();
+    add('bot', reply);
+    ok = d.success !== false && !d.fallback;
+    if (ok) chatHistory.push({ role: 'bot', text: reply });
   } catch (e) {
-    document.getElementById('chat-typing')?.remove();
-    const errDiv = document.createElement('div');
-    errDiv.className = 'chat-msg bot';
-    errDiv.textContent = 'Network error — please check your connection and try again.';
-    msgs.appendChild(errDiv);
+    typing.remove();
+    add('bot', 'Network error. Please check your connection and try again.');
+  } finally {
+    // Failed turn: drop the user message so history keeps alternating user/bot.
+    if (!ok) chatHistory.pop();
+    chatBusy = false;
   }
-
-  msgs.scrollTop = msgs.scrollHeight;
 }
 
 /* ═══════════════════════════════════════════════════════

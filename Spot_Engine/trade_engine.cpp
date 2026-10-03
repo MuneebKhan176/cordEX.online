@@ -17,7 +17,7 @@
 //     to MySQL — on process restart the book starts empty. Persistence of
 //     fills/history is entirely Node's job, done in response to the
 //     EXECUTION packets this engine sends back.
-//
+//  
 // ORDER TYPES:
 //   - MARKET: fills immediately against the last reference price.
 //   - LIMIT:  rests on the book until the reference price crosses it.

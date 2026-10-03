@@ -491,6 +491,96 @@
     @keyframes toastIn { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
     @keyframes toastOut { to { opacity: 0; transform: translateX(12px); } }
 
+    /* ── Profile tabs + analytics ── */
+    .profile-tabs { display:flex; gap:6px; margin-bottom:18px; border-bottom:1px solid var(--border); }
+    .tab-btn {
+      position:relative; background:none; border:none; color:var(--text-2);
+      font-size:.88rem; font-weight:600; padding:10px 16px; cursor:pointer;
+      font-family:inherit; transition:color .15s;
+    }
+    .tab-btn:hover, .tab-btn.active { color:#fff; }
+    .tab-btn.active::after {
+      content:''; position:absolute; left:10px; right:10px; bottom:-1px; height:2px;
+      border-radius:2px; background:linear-gradient(90deg, var(--blue), #60a5fa);
+    }
+    .tab-btn:focus-visible { outline:2px solid var(--blue); outline-offset:-2px; border-radius:6px; }
+
+    .analytics-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .a-card {
+      background: linear-gradient(180deg, var(--surface2) 0%, var(--surface) 65%);
+      border:1px solid var(--border); border-radius:16px; padding:20px;
+      box-shadow: var(--shadow-card); min-height:360px; display:flex; flex-direction:column; min-width:0;
+    }
+    .a-card-head { display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:14px; }
+    .a-card-head h3 { font-size:.95rem; font-weight:700; }
+    .a-sub { font-size:.72rem; color:var(--text-3); }
+    .a-body { flex:1; display:flex; flex-direction:column; justify-content:center; min-width:0; }
+
+    .a-state { text-align:center; color:var(--text-3); font-size:.84rem; line-height:1.6; padding:30px 10px; }
+    .a-state-title { color:var(--text-2); font-weight:600; font-size:.9rem; margin-bottom:4px; }
+    .a-retry {
+      margin-top:10px; padding:7px 14px; border-radius:7px; font-size:.78rem; font-weight:600;
+      background:var(--surface2); border:1px solid var(--border2); color:var(--text); cursor:pointer;
+    }
+    .a-retry:hover { border-color:#444; }
+
+    /* donut */
+    .donut-wrap { position:relative; width:180px; height:180px; margin:0 auto; }
+    .donut-wrap svg { width:100%; height:100%; transform:rotate(-90deg); }
+    .donut-track { stroke:var(--border); }
+    .donut-seg { cursor:pointer; transition:opacity .15s, stroke-width .15s; }
+    .donut-wrap.dim .donut-seg:not(.active) { opacity:.3; }
+    .donut-seg.active { stroke-width:26; }
+    .donut-center {
+      position:absolute; inset:0; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; pointer-events:none;
+    }
+    .dc-main { font-size:1.15rem; font-weight:800; letter-spacing:-.4px; }
+    .dc-label { font-size:.7rem; color:var(--text-3); text-transform:uppercase; letter-spacing:.06em; margin-top:2px; }
+    .legend { margin-top:18px; display:flex; flex-direction:column; gap:2px; max-height:190px; overflow-y:auto; }
+    .legend-row {
+      display:grid; grid-template-columns:10px 1fr auto 56px; align-items:center; gap:10px;
+      padding:6px 8px; border-radius:8px; font-size:.82rem; transition:background .15s;
+    }
+    .legend-row.active { background:var(--surface3); }
+    .legend-dot { width:10px; height:10px; border-radius:50%; }
+    .legend-sym { font-weight:700; }
+    .legend-val { color:var(--text-3); font-size:.76rem; }
+    .legend-pct { text-align:right; font-weight:700; }
+
+    /* line chart */
+    .line-wrap { position:relative; }
+    .line-svg { width:100%; height:auto; display:block; touch-action:pan-y; }
+    .axis-text { fill:var(--text-3); font-size:10px; }
+    .grid-line { stroke:var(--border); stroke-width:1; }
+    .zero-line { stroke:var(--border2); stroke-width:1; stroke-dasharray:4 4; }
+    .flat-line { stroke:var(--text-3); stroke-width:2; opacity:.6; stroke-linecap:round; }
+    .cursor-line { stroke:var(--text-3); stroke-width:1; stroke-dasharray:3 3; }
+    .flat-msg { position:absolute; left:0; right:0; top:14%; text-align:center; color:var(--text-3); font-size:.8rem; line-height:1.5; padding:0 10px; }
+    .line-tip {
+      position:absolute; top:0; transform:translateX(-50%); display:none; pointer-events:none;
+      background:var(--surface2); border:1px solid var(--border2); border-radius:8px;
+      padding:6px 10px; font-size:.72rem; white-space:nowrap; box-shadow:0 10px 24px rgba(0,0,0,.5);
+    }
+    .tt-date { color:var(--text-3); }
+    .tt-val { font-weight:700; font-size:.82rem; }
+    .tt-sub { color:var(--text-2); }
+    .f-stats { display:flex; justify-content:space-between; gap:10px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+    .f-stat .num { font-size:.95rem; font-weight:700; }
+    .f-stat .label { font-size:.68rem; color:var(--text-3); text-transform:uppercase; letter-spacing:.06em; }
+    .pos { color:var(--green); } .neg { color:var(--red); }
+
+    /* lazy avatar */
+    .avatar-big.loading, .post-header .mini-avatar.loading {
+      background:linear-gradient(90deg,#16264a 25%,#21386b 50%,#16264a 75%);
+      background-size:200% 100%; animation:shimmer 1.2s linear infinite;
+    }
+    @keyframes shimmer { to { background-position:-200% 0; } }
+    .fade-in { animation:fadeIn .35s ease; }
+    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+
+    @media(max-width:720px){ .analytics-grid { grid-template-columns:1fr; } }
+
     ::-webkit-scrollbar { width:5px; }
     ::-webkit-scrollbar-track { background:transparent; }
     ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:99px; }
@@ -575,13 +665,35 @@
     </div>
   </div>
 
-  <div class="sec-head">
-    <h3>Your Posts</h3>
-    <a href="/create-post" class="nav-pill" title="Create Post">+ Create Post</a>
+  <div class="profile-tabs" role="tablist" aria-label="Profile sections">
+    <button class="tab-btn active" id="tabAnalytics" data-tab="analytics" role="tab" aria-selected="true" aria-controls="panelAnalytics">Analytics</button>
+    <button class="tab-btn" id="tabPosts" data-tab="posts" role="tab" aria-selected="false" aria-controls="panelPosts">Posts</button>
   </div>
-  <div id="postsContainer">
-    <div class="loading-state"><span class="spinner-inline"></span>Loading posts…</div>
-  </div>
+
+  <section id="panelAnalytics" role="tabpanel" aria-labelledby="tabAnalytics">
+    <div class="analytics-grid" id="analyticsGrid">
+      <div class="a-card">
+        <div class="a-card-head"><h3>Spot Holdings</h3><span class="a-sub" id="spotSub"></span></div>
+        <div class="a-body" id="spotBody">
+          <div class="a-state"><span class="spinner-inline"></span>Loading Spot Analytics…</div>
+        </div>
+      </div>
+      <div class="a-card">
+        <div class="a-card-head"><h3>Futures Performance</h3><span class="a-sub" id="futuresSub"></span></div>
+        <div class="a-body" id="futuresBody">
+          <div class="a-state"><span class="spinner-inline"></span>Loading Futures Analytics…</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="panelPosts" role="tabpanel" aria-labelledby="tabPosts" hidden>
+    <div class="sec-head">
+      <h3>Your Posts</h3>
+      <a href="/create-post" class="nav-pill" title="Create Post">+ Create Post</a>
+    </div>
+    <div id="postsContainer"></div>
+  </section>
 </div>
 
 <div class="modal-overlay" id="deleteModalOverlay">
@@ -614,6 +726,10 @@
 let currentProfile   = null;
 let pendingAvatarData = null;
 const viewedPostIds  = new Set();
+let profilePromise = null;
+let activeTab = 'analytics';
+let postsLoaded = false, postsLoading = false, postsDirty = false;
+let cachedPosts = [];
 
 const DEFAULT_AVATAR_HTML = (name) => (name || '?').slice(0, 2).toUpperCase();
 
@@ -662,42 +778,39 @@ document.addEventListener('keydown', (e) => {
 });
 
 /* ═══════════════════════════════════════════════════════
-   LOAD PROFILE + POSTS
+   LOAD PROFILE (profile only — posts are lazy-loaded)
    ═══════════════════════════════════════════════════════ */
 async function loadProfile() {
   try {
-    const r = await fetch('/api/profile');
+    const r = await fetch('/api/profile?posts=0');
     const d = await r.json();
 
     if (!d.success) {
       if (r.status === 401) { window.location.href = '/login'; return; }
-      document.getElementById('postsContainer').innerHTML =
-        `<div class="empty-state">${escapeHtml(d.message || 'Failed to load profile.')}</div>`;
+      document.getElementById('bioView').textContent = d.message || 'Failed to load profile.';
       return;
     }
 
     currentProfile = d.data.profile;
     renderProfile(currentProfile);
-    renderPosts(d.data.posts || []);
 
+    // Posts already loaded earlier? Keep their header (name/avatar) fresh after an edit.
+    if (postsLoaded) {
+      if (activeTab === 'posts') renderPosts(cachedPosts);
+      else postsDirty = true;
+    }
   } catch (e) {
     console.error('loadProfile error:', e);
-    document.getElementById('postsContainer').innerHTML =
-      `<div class="empty-state">Network error while loading your profile.</div>`;
+    document.getElementById('bioView').textContent = 'Network error while loading your profile.';
   }
 }
 
 function renderProfile(p) {
   const initials = DEFAULT_AVATAR_HTML(p.displayName || p.username);
 
-  ['avatarBig', 'avatarBigEdit'].forEach(id => {
-    const el = document.getElementById(id);
-    if (p.avatarUrl) {
-      el.innerHTML = `<img src="${p.avatarUrl}" alt="avatar"/>`;
-    } else {
-      el.textContent = initials;
-    }
-  });
+  ['avatarBig', 'avatarBigEdit'].forEach(id =>
+    setAvatar(document.getElementById(id), p.avatarUrl, initials)
+  );
 
   document.getElementById('displayNameView').textContent = p.displayName || p.username;
   document.getElementById('usernameView').textContent    = '@' + p.username;
@@ -901,6 +1014,8 @@ async function handleDeletePost(btn) {
       return;
     }
 
+    cachedPosts = cachedPosts.filter(p => String(p._id) !== String(postId));
+
     if (card) {
       card.classList.add('removing');
       setTimeout(() => {
@@ -1009,7 +1124,9 @@ document.getElementById('avatarFileInput').addEventListener('change', function (
   const reader = new FileReader();
   reader.onload = function (ev) {
     pendingAvatarData = ev.target.result;
-    document.getElementById('avatarBigEdit').innerHTML = `<img src="${pendingAvatarData}" alt="preview"/>`;
+    const prevEl = document.getElementById('avatarBigEdit');
+    prevEl.dataset.src = 'preview'; prevEl.classList.remove('loading');
+    prevEl.innerHTML = `<img src="${pendingAvatarData}" alt="preview"/>`;
   };
   reader.onerror = function () {
     showMsg('⚠ Could not read that file. Please try another image.', 'error');
@@ -1195,8 +1312,336 @@ function showSocialToast(message) {
   while (stack.children.length > 4) stack.removeChild(stack.firstChild);
 }
 
+/* ═══════════════════════════════════════════════════════
+   LAZY AVATAR — profile info renders first, image swaps in when ready
+   ═══════════════════════════════════════════════════════ */
+function setAvatar(el, url, initials) {
+  if (!el) return;
+  if (!url) { el.dataset.src = ''; el.classList.remove('loading'); el.textContent = initials; return; }
+  const cur = el.querySelector('img');
+  if (cur && cur.getAttribute('src') === url) return; // already showing it
+
+  el.dataset.src = url;
+  el.textContent = initials;          // placeholder (initials + shimmer)
+  el.classList.add('loading');
+
+  const img = new Image();
+  img.decoding = 'async';
+  img.alt = 'avatar';
+  img.onload = () => {
+    if (el.dataset.src !== url) return; // superseded by a newer avatar/preview
+    el.classList.remove('loading');
+    el.textContent = '';
+    img.classList.add('fade-in');
+    el.appendChild(img);
+  };
+  img.onerror = () => { if (el.dataset.src === url) el.classList.remove('loading'); };
+  img.src = url;
+}
+
+/* ═══════════════════════════════════════════════════════
+   TABS — Analytics (default) / Posts (lazy)
+   ═══════════════════════════════════════════════════════ */
+function switchTab(tab) {
+  if (tab === activeTab) return;
+  activeTab = tab;
+  ['analytics', 'posts'].forEach(name => {
+    const on = name === tab;
+    const btn = document.getElementById(name === 'analytics' ? 'tabAnalytics' : 'tabPosts');
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-selected', String(on));
+    document.getElementById(name === 'analytics' ? 'panelAnalytics' : 'panelPosts').hidden = !on;
+  });
+  if (tab === 'posts') ensurePostsLoaded(); // panel is visible before rendering (read-more needs layout)
+}
+
+async function ensurePostsLoaded() {
+  const container = document.getElementById('postsContainer');
+  if (postsLoaded) {
+    if (postsDirty) { renderPosts(cachedPosts); postsDirty = false; }
+    return;
+  }
+  if (postsLoading) return;
+  postsLoading = true;
+  container.innerHTML = `<div class="loading-state"><span class="spinner-inline"></span>Loading posts…</div>`;
+  try {
+    if (profilePromise) await profilePromise; // renderPosts uses currentProfile
+    const r = await fetch('/api/profile/me/posts');
+    const d = await r.json();
+    if (!d.success) throw new Error(d.message || 'failed');
+    cachedPosts = d.data.posts || [];
+    postsLoaded = true;
+    postsDirty = false;
+    renderPosts(cachedPosts);
+  } catch (e) {
+    console.error('loadPosts error:', e);
+    container.innerHTML = `<div class="empty-state">Couldn't load your posts.<br>
+      <button class="a-retry" data-retry="posts">Retry</button></div>`;
+  } finally {
+    postsLoading = false;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   ANALYTICS — helpers
+   ═══════════════════════════════════════════════════════ */
+const COIN_COLORS = {
+  BTC: '#f7931a', ETH: '#627eea', BNB: '#f3ba2f', SOL: '#9945ff',
+  XRP: '#e5e7eb', USDT: '#26a17b', USDC: '#2dd4ee',
+};
+const FALLBACK_COLORS = ['#a78bfa', '#f472b6', '#fb7185', '#34d399', '#38bdf8', '#fbbf24', '#c084fc', '#94a3b8'];
+function coinColor(symbol) { // same symbol → same color, always
+  if (COIN_COLORS[symbol]) return COIN_COLORS[symbol];
+  let h = 0;
+  for (const ch of String(symbol)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return FALLBACK_COLORS[h % FALLBACK_COLORS.length];
+}
+
+const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
+const compactNum = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });
+const fmtSigned = (n) => (n >= 0 ? '+' : '−') + usd.format(Math.abs(n));
+const fmtAxis = (v) => (v < 0 ? '-' : '') + '$' + compactNum.format(Math.abs(v));
+const fmtPct = (n) => (n > 0 && n < 0.1 ? '<0.1%' : n.toFixed(1) + '%');
+
+const stateLoading = (t) => `<div class="a-state"><span class="spinner-inline"></span>${t}</div>`;
+const stateError = (t, key) => `<div class="a-state">${t}<br><button class="a-retry" data-retry="${key}">Retry</button></div>`;
+const stateEmpty = (title, sub) => `<div class="a-state"><div class="a-state-title">${title}</div>${sub}</div>`;
+
+/* ═══════════════════════════════════════════════════════
+   ANALYTICS — Spot allocation donut (independent request)
+   ═══════════════════════════════════════════════════════ */
+async function loadSpotAnalytics() {
+  const body = document.getElementById('spotBody');
+  body.innerHTML = stateLoading('Loading Spot Analytics…');
+  try {
+    const r = await fetch('/api/profile/analytics/spot');
+    const d = await r.json();
+    if (!d.success) throw new Error(d.message || 'failed');
+    renderSpot(d.data);
+  } catch (e) {
+    console.error('loadSpotAnalytics error:', e);
+    document.getElementById('spotSub').textContent = '';
+    body.innerHTML = stateError("Couldn't load Spot analytics.", 'spot');
+  }
+}
+
+function renderSpot(data) {
+  const body = document.getElementById('spotBody');
+  const sub = document.getElementById('spotSub');
+  const holdings = (data && data.holdings) || [];
+
+  if (!holdings.length) {
+    sub.textContent = '';
+    body.innerHTML = stateEmpty('No Spot holdings yet', 'Assets in your Spot wallet will show up here.');
+    return;
+  }
+
+  const total = data.totalValue || 0;
+  sub.textContent = 'Total ' + usd.format(total);
+
+  const R = 70, C = 2 * Math.PI * R, GAP = holdings.length > 1 ? 2 : 0;
+  let offset = 0;
+  const segs = holdings.map((h, i) => {
+    const arc = (h.percentage / 100) * C;
+    const len = Math.max(0.5, arc - GAP);
+    const seg = `<circle class="donut-seg" data-i="${i}" cx="100" cy="100" r="${R}" fill="none"
+      stroke="${coinColor(h.symbol)}" stroke-width="22"
+      stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-offset}"/>`;
+    offset += arc;
+    return seg;
+  }).join('');
+
+  const legend = holdings.map((h, i) => `
+    <div class="legend-row" data-i="${i}">
+      <span class="legend-dot" style="background:${coinColor(h.symbol)}"></span>
+      <span class="legend-sym">${escapeHtml(h.symbol)}</span>
+      <span class="legend-val">${usd.format(h.value)}</span>
+      <span class="legend-pct">${fmtPct(h.percentage)}</span>
+    </div>`).join('');
+
+  body.innerHTML = `
+    <div class="donut-wrap" id="donutWrap">
+      <svg viewBox="0 0 200 200" role="img" aria-label="Spot holdings allocation">
+        <circle class="donut-track" cx="100" cy="100" r="${R}" fill="none" stroke-width="22"/>
+        ${segs}
+      </svg>
+      <div class="donut-center">
+        <div class="dc-main" id="dcMain">$${compactNum.format(total)}</div>
+        <div class="dc-label" id="dcLabel">Total value</div>
+      </div>
+    </div>
+    <div class="legend">${legend}</div>`;
+
+  const wrap = document.getElementById('donutWrap');
+  const main = document.getElementById('dcMain');
+  const label = document.getElementById('dcLabel');
+  const defMain = main.textContent;
+
+  const focus = (i) => {
+    main.textContent = fmtPct(holdings[i].percentage);
+    label.textContent = holdings[i].symbol;
+    wrap.classList.add('dim');
+    body.querySelectorAll('[data-i]').forEach(n => n.classList.toggle('active', Number(n.dataset.i) === i));
+  };
+  const reset = () => {
+    main.textContent = defMain;
+    label.textContent = 'Total value';
+    wrap.classList.remove('dim');
+    body.querySelectorAll('[data-i].active').forEach(n => n.classList.remove('active'));
+  };
+  body.querySelectorAll('[data-i]').forEach(n => {
+    n.addEventListener('mouseenter', () => focus(Number(n.dataset.i)));
+    n.addEventListener('mouseleave', reset);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════
+   ANALYTICS — Futures performance line chart (independent request)
+   ═══════════════════════════════════════════════════════ */
+async function loadFuturesAnalytics() {
+  const body = document.getElementById('futuresBody');
+  body.innerHTML = stateLoading('Loading Futures Analytics…');
+  try {
+    const r = await fetch('/api/profile/analytics/futures');
+    const d = await r.json();
+    if (!d.success) throw new Error(d.message || 'failed');
+    renderFutures(d.data);
+  } catch (e) {
+    console.error('loadFuturesAnalytics error:', e);
+    document.getElementById('futuresSub').textContent = '';
+    body.innerHTML = stateError("Couldn't load Futures analytics.", 'futures');
+  }
+}
+
+function renderFutures(data) {
+  const body = document.getElementById('futuresBody');
+  const sub = document.getElementById('futuresSub');
+  const W = 360, H = 200, pl = 46, pr = 12, pt = 14, pb = 26;
+  const iw = W - pl - pr, ih = H - pt - pb;
+  const pts = (data && data.points) || [];
+
+  // ── No history: flat baseline + message (no generated data) ──
+  if (!data || !data.hasHistory || pts.length < 2) {
+    sub.textContent = '';
+    const y = pt + ih / 2;
+    body.innerHTML = `
+      <div class="line-wrap">
+        <svg viewBox="0 0 ${W} ${H}" class="line-svg" aria-hidden="true">
+          <line class="flat-line" x1="${pl}" y1="${y}" x2="${W - pr}" y2="${y}"/>
+        </svg>
+        <div class="flat-msg">
+          <div class="a-state-title">No Futures trading history yet</div>
+          Closed positions will appear here as a performance chart.
+        </div>
+      </div>`;
+    return;
+  }
+
+  sub.textContent = 'Cumulative realized P&L';
+
+  const vals = pts.map(p => p.value);
+  let min = Math.min(0, ...vals), max = Math.max(0, ...vals);
+  if (min === max) { min -= 1; max += 1; }
+  const padV = (max - min) * 0.12; min -= padV; max += padV;
+
+  const ts = pts.map(p => new Date(p.timestamp).getTime());
+  const t0 = ts[0], t1 = ts[ts.length - 1];
+  const xs = pts.map((_, i) => t1 > t0 ? pl + ((ts[i] - t0) / (t1 - t0)) * iw : pl + (i / (pts.length - 1)) * iw);
+  const yOf = (v) => pt + ((max - v) / (max - min)) * ih;
+  const ys = vals.map(yOf);
+  const y0 = yOf(0);
+
+  const last = vals[vals.length - 1];
+  const color = last >= 0 ? '#22c55e' : '#ef4444';
+  const line = xs.map((x, i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${ys[i].toFixed(1)}`).join(' ');
+  const area = `${line} L${xs[xs.length - 1].toFixed(1)} ${y0.toFixed(1)} L${xs[0].toFixed(1)} ${y0.toFixed(1)} Z`;
+
+  const grid = [0, 1, 2, 3].map(k => {
+    const v = max - (k / 3) * (max - min), y = yOf(v);
+    return `<line class="grid-line" x1="${pl}" x2="${W - pr}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"/>
+            <text class="axis-text" x="${pl - 6}" y="${(y + 3).toFixed(1)}" text-anchor="end">${fmtAxis(v)}</text>`;
+  }).join('');
+
+  const d0 = new Date(pts[0].timestamp), d1 = new Date(pts[pts.length - 1].timestamp);
+  const dateOpts = d0.getFullYear() === d1.getFullYear()
+    ? { month: 'short', day: 'numeric' } : { month: 'short', day: 'numeric', year: '2-digit' };
+
+  const s = data.summary || {};
+  const pnlClass = (s.totalPnl || 0) >= 0 ? 'pos' : 'neg';
+
+  body.innerHTML = `
+    <div class="line-wrap">
+      <svg viewBox="0 0 ${W} ${H}" class="line-svg" role="img" aria-label="Futures cumulative realized P&L">
+        <defs>
+          <linearGradient id="fgGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="${color}" stop-opacity=".28"/>
+            <stop offset="1" stop-color="${color}" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        ${grid}
+        <line class="zero-line" x1="${pl}" x2="${W - pr}" y1="${y0.toFixed(1)}" y2="${y0.toFixed(1)}"/>
+        <path d="${area}" fill="url(#fgGrad)"/>
+        <path d="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+        <text class="axis-text" x="${pl}" y="${H - 8}" text-anchor="start">${d0.toLocaleDateString('en-US', dateOpts)}</text>
+        <text class="axis-text" x="${W - pr}" y="${H - 8}" text-anchor="end">${d1.toLocaleDateString('en-US', dateOpts)}</text>
+        <line class="cursor-line" id="flCursor" y1="${pt}" y2="${pt + ih}" style="display:none"/>
+        <circle id="flDot" r="4" fill="${color}" stroke="#000" stroke-width="2" style="display:none"/>
+      </svg>
+      <div class="line-tip" id="flTip"></div>
+    </div>
+    <div class="f-stats">
+      <div class="f-stat"><div class="num ${pnlClass}">${fmtSigned(s.totalPnl || 0)}</div><div class="label">Total PNL</div></div>
+      <div class="f-stat"><div class="num">${s.totalTrades ?? 0}</div><div class="label">Closed positions</div></div>
+      <div class="f-stat"><div class="num">${s.winRate != null ? s.winRate.toFixed(0) + '%' : '—'}</div><div class="label">Win rate</div></div>
+    </div>`;
+
+  // hover tooltip (nearest point)
+  const svg = body.querySelector('.line-svg');
+  const tip = document.getElementById('flTip');
+  const cur = document.getElementById('flCursor');
+  const dot = document.getElementById('flDot');
+
+  svg.addEventListener('pointermove', (e) => {
+    const rect = svg.getBoundingClientRect();
+    const sx = (e.clientX - rect.left) * (W / rect.width);
+    let best = 0, bd = Infinity;
+    xs.forEach((x, i) => { const dd = Math.abs(x - sx); if (dd < bd) { bd = dd; best = i; } });
+    const p = pts[best];
+
+    cur.setAttribute('x1', xs[best]); cur.setAttribute('x2', xs[best]); cur.style.display = '';
+    dot.setAttribute('cx', xs[best]); dot.setAttribute('cy', ys[best]); dot.style.display = '';
+
+    tip.innerHTML = `<div class="tt-date">${new Date(p.timestamp).toLocaleString()}</div>
+      <div class="tt-val">${fmtSigned(p.value)}</div>
+      <div class="tt-sub">${best === 0 ? 'Start' : `${escapeHtml(p.symbol || '')} ${escapeHtml(p.side || '')} · ${fmtSigned(p.pnl || 0)}`}</div>`;
+    tip.style.display = 'block';
+    const px = (xs[best] / W) * rect.width;
+    tip.style.left = Math.min(Math.max(px, 70), rect.width - 70) + 'px';
+  });
+  svg.addEventListener('pointerleave', () => {
+    tip.style.display = 'none'; cur.style.display = 'none'; dot.style.display = 'none';
+  });
+}
+
+/* ═══════════════════════════════════════════════════════
+   WIRING
+   ═══════════════════════════════════════════════════════ */
+document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-retry]');
+  if (!btn) return;
+  const k = btn.dataset.retry;
+  if (k === 'spot') loadSpotAnalytics();
+  else if (k === 'futures') loadFuturesAnalytics();
+  else if (k === 'posts') ensurePostsLoaded();
+});
+
 document.addEventListener('DOMContentLoaded', () => {
-  loadProfile();
+  // Three independent requests, fired in parallel. Posts are NOT requested here.
+  profilePromise = loadProfile();
+  loadSpotAnalytics();
+  loadFuturesAnalytics();
   connectSocialSocket(); // PHASE 11 Part 1
 });
 </script>

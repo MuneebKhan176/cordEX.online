@@ -12,6 +12,11 @@ const { SocialProfile, Post, Follow } = require('./social_models'); // PHASE 12 
 const { uploadAvatar } = require('../chat/services/uploadService');
 const avatarService = require('../chat/services/avatarService');
 
+// Analytics dependencies (MySQL connection + live Binance prices).
+// Paths inferred from spotPanel_Route.js — adjust if your layout differs.
+const { conn } = require('../db_connection');
+const { getLivePrice } = require('../Web_Sockets/marketData_ws');
+
 // Max accepted size for the incoming base64 avatar data URL (~2MB decoded).
 // Base64 inflates size by ~4/3, so we check the raw string length before
 // ever decoding it.
@@ -19,6 +24,13 @@ const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 
 function sendResponse(res, statusCode, success, message, data = null) {
     return res.status(statusCode).json({ success, message, data });
+}
+
+// Promise wrapper around the callback-style MySQL connection.
+function queryAsync(sql, params = []) {
+    return new Promise((resolve, reject) => {
+        conn.query(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)));
+    });
 }
 
 // ================= SOCIAL PROFILE PAGE =================
@@ -37,19 +49,25 @@ router.get('/square-profile/:username', verifyToken, (req, res) => {
     res.sendFile(path.join(__dirname, '../Frontend/Square_UI/square-profile.html'));
 });
 
-// ================= GET CURRENT USER'S PROFILE + POSTS =================
-// Returns the SocialProfile doc plus that user's posts (newest first).
-// If the user simply hasn't posted yet, `posts` comes back as an empty
-// array — the frontend shows "No posts yet" in that case.
+// ================= GET CURRENT USER'S PROFILE (+ POSTS) =================
+// Returns the SocialProfile doc, plus that user's posts (newest first)
+// unless ?posts=0 is passed. If the user simply hasn't posted yet, `posts`
+// comes back as an empty array — the frontend shows "No posts yet".
 router.get('/api/profile', verifyToken, async (req, res) => {
 
     try {
         const userId = req.user.id;
+        // ?posts=0 → profile only (Profile page lazy-loads posts separately).
+        // Default stays "with posts" so any other caller keeps working.
+        const includePosts = req.query.posts !== '0';
 
         const profile = await SocialProfile.findOne({ userId });
 
         if (!profile)
             return sendResponse(res, 404, false, 'Social profile not found for this account');
+
+        if (!includePosts)
+            return sendResponse(res, 200, true, 'Profile fetched successfully', { profile });
 
         const posts = await Post.find({ username: profile.username, isDeleted: false })
             .sort({ createdAt: -1 })
@@ -67,6 +85,127 @@ router.get('/api/profile', verifyToken, async (req, res) => {
     }
 });
 
+// ================= OWN POSTS (lazy — only called when the Posts tab is opened) =================
+router.get('/api/profile/me/posts', verifyToken, async (req, res) => {
+    try {
+        const profile = await SocialProfile.findOne({ userId: req.user.id }).select('username').lean();
+        if (!profile)
+            return sendResponse(res, 404, false, 'Social profile not found for this account');
+
+        const posts = await Post.find({ username: profile.username, isDeleted: false })
+            .sort({ createdAt: -1 })
+            .limit(50)
+            .lean();
+
+        return sendResponse(res, 200, true, 'Posts fetched successfully', { posts });
+    } catch (err) {
+        console.error('⚠️ GET /api/profile/me/posts error:', err);
+        return sendResponse(res, 500, false, 'Failed to load posts');
+    }
+});
+
+// ================= ANALYTICS: SPOT ALLOCATION (current holdings) =================
+// value = (available + locked) × live price; percentage = value / total × 100
+router.get('/api/profile/analytics/spot', verifyToken, async (req, res) => {
+    try {
+        const rows = await queryAsync(
+            `SELECT sh.symbol, sh.available_quantity, sh.locked_quantity, sh.average_buy_price
+             FROM spot_wallet sw
+             JOIN spot_holdings sh ON sh.wallet_id = sw.wallet_id
+             WHERE sw.user_id = ?
+               AND (sh.available_quantity > 0 OR sh.locked_quantity > 0)`,
+            [req.user.id]
+        );
+
+        let totalValue = 0;
+        const items = rows.map(r => {
+            const quantity = parseFloat(r.available_quantity) + parseFloat(r.locked_quantity);
+            const avg = parseFloat(r.average_buy_price);
+            const price = getLivePrice(r.symbol) ?? (avg > 0 ? avg : 0);
+            const value = quantity * price;
+            totalValue += value;
+            return { symbol: r.symbol, quantity, price, value };
+        }).filter(h => h.value > 0);
+
+        items.sort((a, b) => b.value - a.value);
+
+        const holdings = items.map(h => ({
+            ...h,
+            percentage: totalValue > 0 ? (h.value / totalValue) * 100 : 0,
+        }));
+
+        return sendResponse(res, 200, true, 'Spot analytics loaded', {
+            currency: 'USDT',
+            totalValue,
+            holdings,
+        });
+    } catch (err) {
+        console.error('⚠️ GET /api/profile/analytics/spot error:', err);
+        return sendResponse(res, 500, false, 'Failed to load Spot analytics');
+    }
+});
+
+// ================= ANALYTICS: FUTURES PERFORMANCE (historical) =================
+// Cumulative realized P&L over closed/liquidated positions, ordered by closed_at.
+// A baseline point (value 0) at the first position's open time anchors the line.
+router.get('/api/profile/analytics/futures', verifyToken, async (req, res) => {
+    try {
+        const rows = await queryAsync(
+            `SELECT symbol, position_side, realized_pnl, opened_at, closed_at
+             FROM positions
+             WHERE user_id = ?
+               AND status IN ('CLOSED', 'LIQUIDATED')
+               AND closed_at IS NOT NULL
+             ORDER BY closed_at ASC, position_id ASC`,
+            [req.user.id]
+        );
+
+        if (!rows.length) {
+            return sendResponse(res, 200, true, 'Futures analytics loaded', {
+                hasHistory: false,
+                points: [],
+                summary: { totalPnl: 0, totalTrades: 0, winRate: null },
+            });
+        }
+
+        const round2 = (n) => Math.round(n * 100) / 100;
+        const firstOpen = rows.reduce((min, r) => {
+            const t = new Date(r.opened_at).getTime();
+            return t < min ? t : min;
+        }, new Date(rows[0].closed_at).getTime());
+
+        const points = [{ timestamp: new Date(firstOpen).toISOString(), value: 0 }];
+        let cumulative = 0;
+        let wins = 0;
+
+        for (const r of rows) {
+            const pnl = parseFloat(r.realized_pnl) || 0;
+            cumulative += pnl;
+            if (pnl > 0) wins++;
+            points.push({
+                timestamp: new Date(r.closed_at).toISOString(),
+                value: round2(cumulative),
+                pnl: round2(pnl),
+                symbol: r.symbol,
+                side: r.position_side,
+            });
+        }
+
+        return sendResponse(res, 200, true, 'Futures analytics loaded', {
+            hasHistory: true,
+            points,
+            summary: {
+                totalPnl: round2(cumulative),
+                totalTrades: rows.length,
+                winRate: (wins / rows.length) * 100,
+            },
+        });
+    } catch (err) {
+        console.error('⚠️ GET /api/profile/analytics/futures error:', err);
+        return sendResponse(res, 500, false, 'Failed to load Futures analytics');
+    }
+});
+
 // ================= GET ANY USER'S PUBLIC PROFILE + POSTS (PHASE 12) =================
 // Powers square-profile.html. Unlike /api/profile above (which resolves the
 // *viewer* via req.user.id), this resolves the *target* via the :username
@@ -76,6 +215,10 @@ router.get('/api/profile', verifyToken, async (req, res) => {
 //   - isFollowing is computed against the viewer, same Follow collection
 //     top-creators.js already uses
 //   - isSelf lets the frontend swap the Follow button for "Edit Profile"
+//
+// NOTE: this must stay AFTER the /api/profile/me/posts and
+// /api/profile/analytics/* routes above, otherwise ":username" would
+// swallow them (e.g. "analytics" is not a username, but "me" could be).
 router.get('/api/profile/:username', verifyToken, async (req, res) => {
 
     try {

@@ -120,18 +120,14 @@ attachWebSocketManager(server);
 bootstrapFutures();
 
 
-// ---------------- Start Server ----------------
+// ---------------- Start Server ----------------npm 
 
 RoomManager.init()
     .then(() => {
 
         server.listen(port_num);
-
     })
     .catch((err) => {
-
         console.error('Failed to initialize chat system:', err);
-
         process.exit(1);
-
     });
