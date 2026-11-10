@@ -1,0 +1,50 @@
+services:
+  spot-engine:
+    build:
+      context: .
+      dockerfile: Spot_Engine/Dockerfile
+    container_name: cordex-spot-engine
+    restart: unless-stopped
+    expose:
+      - "9000"
+    ports:
+      - "127.0.0.1:9000:9000"
+
+  futures-engine:
+    build:
+      context: .
+      dockerfile: Futures_Engine/Dockerfile
+    container_name: cordex-futures-engine
+    restart: unless-stopped
+    expose:
+      - "9001"
+    ports:
+      - "127.0.0.1:9001:9001"
+
+  node-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cordex-node
+    restart: unless-stopped
+    init: true
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 7070
+      TRADE_ENGINE_HOST: spot-engine
+      TRADE_ENGINE_PORT: 9000
+      FUTURES_ENGINE_HOST: futures-engine
+      FUTURES_ENGINE_PORT: 9001
+    ports:
+      - "7070:7070"
+    volumes:
+      - cordex_uploads:/app/uploads
+    depends_on:
+      - spot-engine
+      - futures-engine
+
+volumes:
+  cordex_uploads:
