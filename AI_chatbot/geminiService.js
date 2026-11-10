@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 // GEMINI_API_KEY lives in routes/.env — point dotenv there explicitly
-require('dotenv').config({ path: path.join(__dirname, '../routes/.env') });
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const { TOOL_DECLARATIONS, executeTool } = require('./aiTools');
 

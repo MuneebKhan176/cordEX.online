@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 
 
 def main() -> int:
-    env_file = Path(__file__).resolve().parent.parent / "routes" / ".env"
+    env_file = Path(__file__).resolve().parent.parent / ".env"
     print(f"[ai_analytics] reading env from: {env_file}  (exists: {env_file.exists()})")
 
     try:

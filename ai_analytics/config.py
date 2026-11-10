@@ -4,7 +4,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Same .env the Node app uses (routes/.env at the repo root).
-load_dotenv(Path(__file__).resolve().parent.parent / "routes" / ".env")
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
 def _require(name: str) -> str:

@@ -1,4 +1,4 @@
-require('dotenv').config({ path: './routes/.env' }); // MUST be first line
+require('dotenv').config({ path: './.env' }); // MUST be first line
 
 const { DB_HOST, DB_USERNAME, DB_PASSWORD, DB_NAME } = process.env;
 

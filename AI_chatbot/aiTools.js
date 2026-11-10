@@ -2,7 +2,7 @@ const path = require('path');
 
 // Same .env geminiService.js uses. Env vars below are read lazily (at call
 // time) so load order between modules never matters.
-require('dotenv').config({ path: path.join(__dirname, '../routes/.env') });
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const { searchKnowledgeBase } = require('./knowledgeBase');
 
