@@ -28,12 +28,14 @@
     "mongoose": "^9.7.4",
     "multer": "^2.2.0",
     "mysql2": "^3.22.5",
-    "nodemailer": "^9.0.0",
-    "nodemon": "^3.1.14",
+    "nodemailer": "^10.0.16",
     "sharp": "^0.35.3",
     "ws": "^8.21.0"
   },
   "allowScripts": {
     "bcrypt@6.0.0": true
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }

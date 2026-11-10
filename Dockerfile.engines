@@ -1,0 +1,61 @@
+
+# ============================================================
+# STAGE 1: BUILD BOTH CORDEX C++ ENGINES
+# ============================================================
+
+FROM debian:bookworm AS builder
+
+# Install the C++ compiler and standalone Asio headers.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    g++ \
+    libasio-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+# Copy the two C++ source files into the build environment.
+COPY Spot_Engine/trade_engine.cpp ./spot.cpp
+COPY Futures_Engine/futures_engine.cpp ./futures.cpp
+
+# Compile the Spot Engine.
+RUN g++ -std=c++20 -O2 -pthread \
+    spot.cpp \
+    -o spot-engine
+
+# Compile the Futures Engine.
+RUN g++ -std=c++20 -O2 -pthread \
+    futures.cpp \
+    -o futures-engine
+
+
+# ============================================================
+# STAGE 2: CREATE THE SHARED RUNTIME IMAGE
+# ============================================================
+
+FROM debian:bookworm-slim AS runtime
+
+# Install the C++ runtime library required by the executables.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libstdc++6 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy both compiled executables from the builder stage.
+COPY --from=builder /build/spot-engine /app/spot-engine
+COPY --from=builder /build/futures-engine /app/futures-engine
+
+# Copy the container startup script.
+COPY docker/engines/entrypoint.sh /app/entrypoint.sh
+
+# Make the startup script executable.
+RUN chmod +x /app/entrypoint.sh
+
+# Default engine selection.
+ENV ENGINE=spot
+
+# Both ports are used by the two different engines.
+EXPOSE 9000 9001
+
+# Select which executable this container should run.
+ENTRYPOINT ["/app/entrypoint.sh"]

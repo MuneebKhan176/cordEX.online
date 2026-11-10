@@ -579,6 +579,53 @@
     .fade-in { animation:fadeIn .35s ease; }
     @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
 
+    /* ── Portfolio Division ── */
+    .pd-card { min-height:0; margin-top:16px; --c-funding:#be1924; --c-spot:#2db786; --c-futures:#8b5cf6; }
+    [data-k="funding"] { --c:var(--c-funding); }
+    [data-k="spot"]    { --c:var(--c-spot); }
+    [data-k="futures"] { --c:var(--c-futures); }
+
+    .pd-wrap { position:relative; margin-top:30px; }
+    .pd-track {
+      display:flex; gap:4px; height:22px;
+      border-radius:8px; background:var(--surface3);
+    }
+    .pd-seg {
+      flex-grow:0; flex-shrink:1; flex-basis:0; min-width:0; height:100%;
+      border-radius:6px; background:var(--c);
+      transition:flex-grow .7s var(--ease), opacity .15s, filter .15s;
+    }
+    .pd-seg.empty { margin-left:-4px; } /* a 0% wallet takes no space, gap included */
+    .pd-track.hovering .pd-seg { opacity:.4; }
+    .pd-track.hovering .pd-seg.hot { opacity:1; filter:brightness(1.15); }
+
+    .pd-tip {
+      position:absolute; bottom:100%; margin-bottom:8px; transform:translateX(-50%);
+      background:var(--surface2); border:1px solid var(--border2); border-radius:8px;
+      padding:5px 10px; font-size:.72rem; text-align:center; line-height:1.35;
+      pointer-events:none; opacity:0; transition:opacity .15s, left .12s;
+      box-shadow:0 10px 24px rgba(0,0,0,.5); white-space:nowrap;
+    }
+    .pd-tip.show { opacity:1; }
+    .pd-tip .tt-name { display:block; color:var(--text-3); }
+    .pd-tip .tt-val  { display:block; font-weight:700; font-size:.82rem; }
+
+    .pd-msg { text-align:center; color:var(--text-3); font-size:.84rem; padding:12px 0 2px; }
+    .pd-legend { display:flex; flex-wrap:wrap; gap:6px 18px; margin-top:16px; }
+    .pd-legend[hidden] { display:none; }
+    .pd-item {
+      display:inline-flex; align-items:center; gap:8px; padding:4px 8px;
+      border-radius:8px; font-size:.82rem; transition:background .15s;
+    }
+    .pd-item.hot { background:var(--surface3); }
+    .pd-dot { width:10px; height:10px; border-radius:50%; background:var(--c); flex-shrink:0; }
+    .pd-name { font-weight:700; }
+    .pd-pct { color:var(--text-2); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .pd-seg, .pd-tip { transition:none; }
+    }
+
     @media(max-width:720px){ .analytics-grid { grid-template-columns:1fr; } }
 
     ::-webkit-scrollbar { width:5px; }
@@ -683,6 +730,27 @@
         <div class="a-body" id="futuresBody">
           <div class="a-state"><span class="spinner-inline"></span>Loading Futures Analytics…</div>
         </div>
+      </div>
+    </div>
+
+    <div class="a-card pd-card" id="portfolioCard">
+      <div class="a-card-head">
+        <h3>Portfolio Division</h3>
+        <span class="a-sub">Share of total portfolio by wallet</span>
+      </div>
+      <div class="pd-wrap">
+        <div class="pd-track" id="pdTrack" role="img" aria-label="Portfolio division by wallet">
+          <div class="pd-seg" data-k="funding"></div>
+          <div class="pd-seg" data-k="spot"></div>
+          <div class="pd-seg" data-k="futures"></div>
+        </div>
+        <div class="pd-tip" id="pdTip"></div>
+      </div>
+      <div class="pd-msg" id="pdMsg" hidden></div>
+      <div class="pd-legend" id="pdLegend">
+        <div class="pd-item" data-k="funding"><span class="pd-dot"></span><span class="pd-name">Funding</span><span class="pd-pct">—</span></div>
+        <div class="pd-item" data-k="spot"><span class="pd-dot"></span><span class="pd-name">Spot</span><span class="pd-pct">—</span></div>
+        <div class="pd-item" data-k="futures"><span class="pd-dot"></span><span class="pd-name">Futures</span><span class="pd-pct">—</span></div>
       </div>
     </div>
   </section>
@@ -1624,6 +1692,158 @@ function renderFutures(data) {
 }
 
 /* ═══════════════════════════════════════════════════════
+   PORTFOLIO DIVISION — one segmented line, % per wallet
+   Reuses the existing authenticated wallet endpoints; no new backend.
+   ═══════════════════════════════════════════════════════ */
+const PD_WALLETS = [
+  { key: 'funding', label: 'Funding', url: '/api/wallets/funding', pick: d => d.totalValue },
+  { key: 'spot',    label: 'Spot',    url: '/api/wallets/spot',    pick: d => d.totalValue },
+  { key: 'futures', label: 'Futures', url: '/api/wallets/futures', pick: d => d.walletBalance },
+];
+const PD_MIN_REFRESH_MS = 15000;
+let pdLoading = false, pdHasData = false, pdLastLoad = 0;
+
+async function fetchWalletValue(w) {
+  const r = await fetch(w.url);
+  if (r.status === 404) return 0; // wallet row doesn't exist → contributes nothing
+  const d = await r.json();
+  if (!d.success) throw new Error(d.message || 'failed');
+  return Math.max(0, Number(w.pick(d.data)) || 0);
+}
+
+// Largest-remainder rounding to 0.1% so the shown values always add up to 100.0
+function roundShares(raw) {
+  const tenths = raw.map(p => p * 10);
+  const floors = tenths.map(Math.floor);
+  const left = 1000 - floors.reduce((a, b) => a + b, 0);
+  tenths.map((t, i) => ({ i, f: t - floors[i] }))
+        .sort((a, b) => b.f - a.f)
+        .slice(0, Math.max(0, left))
+        .forEach(o => floors[o.i]++);
+  return floors.map(n => n / 10);
+}
+
+function fmtShare(rounded, raw) {
+  if (rounded === 0 && raw > 0) return '<0.1%';
+  return (Number.isInteger(rounded) ? rounded : rounded.toFixed(1)) + '%';
+}
+
+function setPdMessage(html) {
+  const msg = document.getElementById('pdMsg');
+  msg.innerHTML = html || '';
+  msg.hidden = !html;
+}
+
+function renderPortfolio(values) {
+  const track  = document.getElementById('pdTrack');
+  const legend = document.getElementById('pdLegend');
+  const total  = values.reduce((a, b) => a + b, 0);
+
+  track.getBoundingClientRect(); // flush layout so first-time widths animate from 0
+
+  if (!(total > 0)) {
+    PD_WALLETS.forEach(w => {
+      const seg = track.querySelector(`.pd-seg[data-k="${w.key}"]`);
+      seg.style.flexGrow = '0';
+      seg.classList.add('empty');
+      delete seg.dataset.pct;
+    });
+    legend.hidden = true;
+    track.setAttribute('aria-label', 'Portfolio division: no portfolio balance available');
+    setPdMessage('No portfolio balance available');
+    pdHasData = true;
+    return;
+  }
+
+  const raw   = values.map(v => (v / total) * 100); // exact shares drive the widths
+  const shown = roundShares(raw);                    // rounded shares drive the text
+  const labels = [];
+
+  // Largest valuation first. CSS `order` (not DOM moves) so widths keep animating smoothly.
+  const rankOf = values.map((_, i) => i).sort((a, b) => values[b] - values[a] || a - b);
+
+  PD_WALLETS.forEach((w, i) => {
+    const text = fmtShare(shown[i], raw[i]);
+    const rank = rankOf.indexOf(i);
+    const seg  = track.querySelector(`.pd-seg[data-k="${w.key}"]`);
+    const item = legend.querySelector(`[data-k="${w.key}"]`);
+    seg.style.flexGrow = raw[i];            // flex-grow ∝ share → exact proportional widths
+    seg.classList.toggle('empty', raw[i] === 0);
+    seg.style.order = rank;
+    item.style.order = rank;
+    seg.dataset.pct = text;
+    item.querySelector('.pd-pct').textContent = text;
+  });
+  rankOf.forEach(i => labels.push(`${PD_WALLETS[i].label} ${fmtShare(shown[i], raw[i])}`));
+
+  legend.hidden = false;
+  setPdMessage('');
+  track.setAttribute('aria-label', 'Portfolio division: ' + labels.join(', '));
+  pdHasData = true;
+}
+
+async function loadPortfolio() {
+  if (pdLoading) return;
+  pdLoading = true;
+  try {
+    const values = await Promise.all(PD_WALLETS.map(fetchWalletValue));
+    renderPortfolio(values);
+    pdLastLoad = Date.now();
+  } catch (e) {
+    console.error('loadPortfolio error:', e);
+    // On a background refresh keep what's already shown; only show an error on first load.
+    if (!pdHasData) {
+      setPdMessage(`Couldn't load portfolio division.<br><button class="a-retry" data-retry="portfolio">Retry</button>`);
+    }
+  } finally {
+    pdLoading = false;
+  }
+}
+
+/* Hover: emphasize the segment + show a percentage-only tooltip */
+(function setupPortfolioHover() {
+  const card  = document.getElementById('portfolioCard');
+  const track = document.getElementById('pdTrack');
+  const tip   = document.getElementById('pdTip');
+  const wrap  = track.parentElement;
+
+  function focus(key) {
+    const seg = track.querySelector(`.pd-seg[data-k="${key}"]`);
+    if (!seg || !seg.dataset.pct) return; // nothing to show (loading / empty)
+    track.classList.add('hovering');
+    track.querySelectorAll('.pd-seg').forEach(s => s.classList.toggle('hot', s === seg));
+    card.querySelectorAll('.pd-item').forEach(i => i.classList.toggle('hot', i.dataset.k === key));
+
+    const w = PD_WALLETS.find(x => x.key === key);
+    tip.innerHTML = `<span class="tt-name">${w.label}</span><span class="tt-val">${seg.dataset.pct}</span>`;
+    const wr = wrap.getBoundingClientRect(), sr = seg.getBoundingClientRect();
+    const x = sr.left - wr.left + sr.width / 2;
+    tip.style.left = Math.min(Math.max(x, 36), wr.width - 36) + 'px';
+    tip.classList.add('show');
+  }
+  function blur() {
+    track.classList.remove('hovering');
+    track.querySelectorAll('.hot').forEach(s => s.classList.remove('hot'));
+    card.querySelectorAll('.pd-item.hot').forEach(i => i.classList.remove('hot'));
+    tip.classList.remove('show');
+  }
+
+  card.addEventListener('mouseover', (e) => {
+    const t = e.target.closest('[data-k]');
+    if (t) focus(t.dataset.k);
+  });
+  card.addEventListener('mouseout', (e) => {
+    const to = e.relatedTarget && e.relatedTarget.closest ? e.relatedTarget.closest('[data-k]') : null;
+    if (!to) blur();
+  });
+})();
+
+/* No polling: just refresh when the user comes back to the tab (throttled). */
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && Date.now() - pdLastLoad > PD_MIN_REFRESH_MS) loadPortfolio();
+});
+
+/* ═══════════════════════════════════════════════════════
    WIRING
    ═══════════════════════════════════════════════════════ */
 document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
@@ -1634,14 +1854,16 @@ document.addEventListener('click', (e) => {
   const k = btn.dataset.retry;
   if (k === 'spot') loadSpotAnalytics();
   else if (k === 'futures') loadFuturesAnalytics();
+  else if (k === 'portfolio') loadPortfolio();
   else if (k === 'posts') ensurePostsLoaded();
 });
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Three independent requests, fired in parallel. Posts are NOT requested here.
+  // Independent requests, fired in parallel. Posts are NOT requested here.
   profilePromise = loadProfile();
   loadSpotAnalytics();
   loadFuturesAnalytics();
+  loadPortfolio();       // Portfolio Division (3 existing wallet endpoints)
   connectSocialSocket(); // PHASE 11 Part 1
 });
 </script>
