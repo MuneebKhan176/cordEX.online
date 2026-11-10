@@ -1,5 +1,6 @@
 node_modules/
-routes/.env
+.env
+.env/
 uploads/posts/
 futures_engine.exe/
 engine.exe/

@@ -4,9 +4,7 @@ const http = require('http');
 
 // Load deployment environment variables before importing modules that read them
 // (database pools, MongoDB, trading-engine TCP clients, and the AI service).
-require('dotenv').config({
-    path: path.join(__dirname, 'routes', '.env'),
-});
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const mongoConnection = require('./Social_Platform/mongo_connection');
 const mongoose = require('mongoose');
@@ -47,6 +45,7 @@ const { bootstrap: bootstrapFutures } = require('./Futures_Engine/futuresBootstr
 const app = express();
 const PORT = Number.parseInt(process.env.PORT || '7070', 10);
 const HOST = process.env.HOST || '0.0.0.0';
+const port_num = process.env.PORT || 3306;
 
 if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) {
     throw new Error(`Invalid PORT value: ${process.env.PORT}`);
@@ -158,7 +157,6 @@ bootstrapFutures();
 
 // ---------------- Startup ----------------
 
-<<<<<<< HEAD
 // ---------------- Start Server ----------------npm 
 
 RoomManager.init()
@@ -170,7 +168,7 @@ RoomManager.init()
         console.error('Failed to initialize chat system:', err);
         process.exit(1);
     });
-=======
+
 async function startServer() {
     try {
         // Do not accept application traffic until external persistence and the
@@ -212,4 +210,3 @@ process.once('SIGTERM', () => shutdown('SIGTERM'));
 process.once('SIGINT', () => shutdown('SIGINT'));
 
 startServer();
->>>>>>> 0c77061652e2cad406845236246dea825793926f

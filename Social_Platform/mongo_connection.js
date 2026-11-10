@@ -5,7 +5,7 @@ const mongoose = require("mongoose");
 const path = require("path");
 
 require("dotenv").config({
-    path: path.join(__dirname, "../routes/.env"),
+    path: path.join(__dirname, "../.env"),
 });
 
 async function connectMongoDB() {
