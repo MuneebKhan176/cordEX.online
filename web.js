@@ -5,7 +5,7 @@ const http = require('http');
 // Load deployment environment variables before importing modules that read them
 // (database pools, MongoDB, trading-engine TCP clients, and the AI service).
 require('dotenv').config({
-    path: path.join(__dirname, 'routes', '.env'),
+    path: path.join(__dirname, '.env'),
 });
 
 const mongoConnection = require('./Social_Platform/mongo_connection');
