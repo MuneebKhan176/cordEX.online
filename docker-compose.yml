@@ -21,6 +21,23 @@ services:
     ports:
       - "127.0.0.1:9001:9001"
 
+  ai-analytics:
+    build:
+      context: .
+      dockerfile: ai_analytics/Dockerfile
+    container_name: cordex-ai-analytics
+    restart: unless-stopped
+    init: true
+    environment:
+      AI_DB_HOST: ${AI_DB_HOST:?Set AI_DB_HOST in .env}
+      AI_DB_PORT: ${AI_DB_PORT:-3306}
+      AI_DB_NAME: ${AI_DB_NAME:?Set AI_DB_NAME in .env}
+      AI_DB_USER: ${AI_DB_USER:?Set AI_DB_USER in .env}
+      AI_DB_PASSWORD: ${AI_DB_PASSWORD:?Set AI_DB_PASSWORD in .env}
+      AI_INTERNAL_SERVICE_SECRET: ${AI_INTERNAL_SERVICE_SECRET:?Set AI_INTERNAL_SERVICE_SECRET in .env}
+    expose:
+      - "8001"
+
   node-backend:
     build:
       context: .
@@ -38,6 +55,7 @@ services:
       TRADE_ENGINE_PORT: 9000
       FUTURES_ENGINE_HOST: futures-engine
       FUTURES_ENGINE_PORT: 9001
+      AI_ANALYTICS_SERVICE_URL: http://ai-analytics:8001
     ports:
       - "7070:7070"
     volumes:
@@ -45,6 +63,7 @@ services:
     depends_on:
       - spot-engine
       - futures-engine
+      - ai-analytics
 
 volumes:
   cordex_uploads:
