@@ -1,4 +1,64 @@
 services:
+  mysql:
+    build:
+      context: ./docker/mysql
+      dockerfile: Dockerfile
+    image: cordex-mysql:8.4
+    container_name: cordex-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: ${DB_NAME:?Set DB_NAME in .env}
+      MYSQL_USER: ${DB_USERNAME:?Set DB_USERNAME in .env}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      AI_DB_NAME: ${DB_NAME:?Set DB_NAME in .env}
+      AI_DB_USER: ${AI_DB_USER:?Set AI_DB_USER in .env}
+      AI_DB_PASSWORD: ${AI_DB_PASSWORD:?Set AI_DB_PASSWORD in .env}
+    volumes:
+      - cordex_mysql_data:/var/lib/mysql
+    expose:
+      - "3306"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysqladmin ping -h 127.0.0.1 -uroot -p"$${MYSQL_ROOT_PASSWORD}" --silent
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  mongodb:
+    build:
+      context: ./docker/mongodb
+      dockerfile: Dockerfile
+    image: cordex-mongodb:8.0
+    container_name: cordex-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?Set MONGO_ROOT_USERNAME in .env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD in .env}
+      MONGO_INITDB_DATABASE: ${MONGO_DB_NAME:?Set MONGO_DB_NAME in .env}
+      MONGO_DB_NAME: ${MONGO_DB_NAME:?Set MONGO_DB_NAME in .env}
+      MONGO_APP_USERNAME: ${MONGO_APP_USERNAME:?Set MONGO_APP_USERNAME in .env}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?Set MONGO_APP_PASSWORD in .env}
+    volumes:
+      - cordex_mongodb_data:/data/db
+    expose:
+      - "27017"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          mongosh --quiet
+          --username "$${MONGO_INITDB_ROOT_USERNAME}"
+          --password "$${MONGO_INITDB_ROOT_PASSWORD}"
+          --authenticationDatabase admin
+          --eval "db.adminCommand('ping').ok"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
   spot-engine:
     build:
       context: .
@@ -29,14 +89,17 @@ services:
     restart: unless-stopped
     init: true
     environment:
-      AI_DB_HOST: ${AI_DB_HOST:?Set AI_DB_HOST in .env}
-      AI_DB_PORT: ${AI_DB_PORT:-3306}
-      AI_DB_NAME: ${AI_DB_NAME:?Set AI_DB_NAME in .env}
+      AI_DB_HOST: mysql
+      AI_DB_PORT: 3306
+      AI_DB_NAME: ${DB_NAME:?Set DB_NAME in .env}
       AI_DB_USER: ${AI_DB_USER:?Set AI_DB_USER in .env}
       AI_DB_PASSWORD: ${AI_DB_PASSWORD:?Set AI_DB_PASSWORD in .env}
       AI_INTERNAL_SERVICE_SECRET: ${AI_INTERNAL_SERVICE_SECRET:?Set AI_INTERNAL_SERVICE_SECRET in .env}
     expose:
       - "8001"
+    depends_on:
+      mysql:
+        condition: service_healthy
 
   node-backend:
     build:
@@ -51,6 +114,9 @@ services:
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 7070
+      DB_HOST: mysql
+      DB_PORT: 3306
+      MONGO_URI: ${MONGO_URI:?Set internal MONGO_URI in .env}
       TRADE_ENGINE_HOST: spot-engine
       TRADE_ENGINE_PORT: 9000
       FUTURES_ENGINE_HOST: futures-engine
@@ -61,9 +127,18 @@ services:
     volumes:
       - cordex_uploads:/app/uploads
     depends_on:
-      - spot-engine
-      - futures-engine
-      - ai-analytics
+      mysql:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      spot-engine:
+        condition: service_started
+      futures-engine:
+        condition: service_started
+      ai-analytics:
+        condition: service_started
 
 volumes:
   cordex_uploads:
+  cordex_mysql_data:
+  cordex_mongodb_data:
