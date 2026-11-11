@@ -7,24 +7,24 @@ published on the VPS host.
 
 ## Configure environment
 
-Copy the example values into your existing root `.env` file, then
-merge them with your current application secrets and settings. Do not
-replace your existing `.env` wholesale and do not commit it.
+The `.env.docker.example` file contains the additional database
+settings required by this Compose setup.
 
-```bash
-# Linux VPS
-cp .env.docker.example .env
-```
+- If you do not have a root `.env` yet, copy the example and then add
+  all of your existing application secrets and required settings.
+- If you already have a production `.env`, do **not** overwrite it.
+  Merge the database variables from `.env.docker.example` into it,
+  preserving your current application secrets.
 
-If you already have a production `.env`, add/update only the database
-variables shown in `.env.docker.example`.
-
-Use strong, unique passwords. Keep the MongoDB URI password URL-encoded
-if it contains URI-reserved characters. Set `AI_DB_NAME` to the same
-database as `DB_NAME`; the AI account is provisioned with SELECT-only
-permissions.
+Set `DB_NAME` to the exact MySQL database name you intend to restore.
+The Compose file uses that same database for the AI analytics service
+and provisions its separate account with SELECT-only permissions.
+Use strong, unique passwords. Keep the MongoDB URI password
+URL-encoded if it contains URI-reserved characters.
 
 ## Start
+
+After configuring the root `.env`:
 
 ```bash
 docker compose config
