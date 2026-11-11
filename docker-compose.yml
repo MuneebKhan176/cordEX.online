@@ -8,12 +8,10 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_ROOT_HOST: "%"
       MYSQL_DATABASE: ${DB_NAME:?Set DB_NAME in .env}
       MYSQL_USER: ${DB_USERNAME:?Set DB_USERNAME in .env}
       MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
-      AI_DB_NAME: ${DB_NAME:?Set DB_NAME in .env}
-      AI_DB_USER: ${AI_DB_USER:?Set AI_DB_USER in .env}
-      AI_DB_PASSWORD: ${AI_DB_PASSWORD:?Set AI_DB_PASSWORD in .env}
     volumes:
       - cordex_mysql_data:/var/lib/mysql
     expose:
@@ -26,6 +24,42 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+
+  mysql-schema-init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cordex-node:latest
+    container_name: cordex-mysql-schema-init
+    restart: "no"
+    env_file:
+      - .env
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      MYSQL_ROOT_USER: root
+    command: ["node", "Databases/MySQL/initDB.js"]
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  mysql-ai-permissions:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cordex-node:latest
+    container_name: cordex-mysql-ai-permissions
+    restart: "no"
+    env_file:
+      - .env
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      MYSQL_ROOT_USER: root
+    command: ["node", "Databases/MySQL/initAIPermissions.js"]
+    depends_on:
+      mysql-schema-init:
+        condition: service_completed_successfully
 
   mongodb:
     build:
@@ -58,6 +92,22 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+
+  mongodb-schema-init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cordex-node:latest
+    container_name: cordex-mongodb-schema-init
+    restart: "no"
+    env_file:
+      - .env
+    environment:
+      MONGO_URI: ${MONGO_URI:?Set internal MONGO_URI in .env}
+    command: ["node", "Databases/MongoDB/initMongoDB.js"]
+    depends_on:
+      mongodb:
+        condition: service_healthy
 
   spot-engine:
     build:
@@ -98,13 +148,14 @@ services:
     expose:
       - "8001"
     depends_on:
-      mysql:
-        condition: service_healthy
+      mysql-ai-permissions:
+        condition: service_completed_successfully
 
   node-backend:
     build:
       context: .
       dockerfile: Dockerfile
+    image: cordex-node:latest
     container_name: cordex-node
     restart: unless-stopped
     init: true
@@ -127,10 +178,10 @@ services:
     volumes:
       - cordex_uploads:/app/uploads
     depends_on:
-      mysql:
-        condition: service_healthy
-      mongodb:
-        condition: service_healthy
+      mysql-ai-permissions:
+        condition: service_completed_successfully
+      mongodb-schema-init:
+        condition: service_completed_successfully
       spot-engine:
         condition: service_started
       futures-engine:

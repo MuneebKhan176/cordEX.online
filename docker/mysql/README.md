@@ -5,28 +5,22 @@
 - Internal address: `mysql:3306`
 - Persistent volume: `cordex_mysql_data`
 
-The database is not published on a VPS host port. The Node backend and
-AI analytics service connect over the private Compose network.
+MySQL is reachable only from services on the private Compose network; its port is not published on the VPS host.
 
-The MySQL image creates the application database and application user
-from `DB_NAME`, `DB_USERNAME`, and `DB_PASSWORD`. The initialization
-script also creates the separate AI analytics account with SELECT-only
-permissions using `AI_DB_USER` and `AI_DB_PASSWORD`.
+The Compose startup sequence waits for MySQL health, applies `Databases/MySQL/schema.sql`, then applies the separate `Databases/MySQL/ai_permissions.sql`. These are one-shot Node jobs using the MySQL root account. The schema initializer is rerun on each `docker compose up` and creates missing tables without dropping existing data.
 
 Start:
 
 ```bash
-docker compose up -d mysql
+docker compose up -d mysql mysql-schema-init mysql-ai-permissions
 ```
 
 Logs:
 
 ```bash
-docker compose logs -f mysql
+docker compose logs -f mysql mysql-schema-init mysql-ai-permissions
 ```
 
-Initialization scripts run only when the data directory is empty.
-Changing credentials later does not automatically alter existing MySQL
-users. Persistent data remains in the named volume when containers stop
-or are recreated. Do not use `docker compose down -v` unless you intend
-to delete the database volume.
+The official MySQL image's built-in initialization only runs when the data directory is empty. The schema jobs are separate so they also run against an existing named volume. On an existing volume, ensure the root account is permitted to connect from the Compose network; `MYSQL_ROOT_HOST` is applied automatically only on first initialization.
+
+Persistent data remains in the named volume when containers stop or are recreated. Do not use `docker compose down -v` unless you intend to delete the database volume.
