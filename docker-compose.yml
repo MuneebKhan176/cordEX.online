@@ -170,7 +170,7 @@ services:
       TRADE_ENGINE_PORT: 9000
       FUTURES_ENGINE_HOST: futures-engine
       FUTURES_ENGINE_PORT: 9001
-      AI_SERVICE_URL: http://ai-analytics:8001
+      AI_ANALYTICS_SERVICE_URL: http://ai-analytics:8001
     ports:
       - "7070:7070"
     volumes:
