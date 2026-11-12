@@ -15,7 +15,7 @@
  * -----------------------------------------------------------------------
  */
 
-const { SocialProfile } = require('../../Social_Platform/social_models');
+const { SocialProfile } = require('../../Databases/MongoDB/social_models');
 
 const TTL_MS = 5 * 60 * 1000; // 5 minutes
 const cache = new Map(); // userId -> { url, expiresAt }

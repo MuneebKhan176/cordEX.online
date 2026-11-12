@@ -17,14 +17,14 @@ const jwt = require('jsonwebtoken');
 // dedicated connection via getConnection() and running the whole
 // transaction on that one connection, releasing it in a finally block —
 // same pattern as Wallets_Config/walletTransfer.js.
-const { conn, jwtSecret, getConnection } = require('../db_connection');
+const { conn, jwtSecret, getConnection } = require('../Databases/MySQL/db_connection');
 const { createUserWallets } = require('../Wallets_Config/walletServices');
 const sendVerificationEmail = require('../mailer');
 const verifyToken = require('../middle/middleware');
 const { generateUniqueWalletId } = require('../Wallets_Config/walletIdGenerator');
 
 // 🔗 Mongo side — adjust this path if social_models.js lives somewhere else
-const { SocialProfile } = require('../Social_Platform/social_models');
+const { SocialProfile } = require('../Databases/MongoDB/social_models');
 
 
 function isValidEmail(email) {

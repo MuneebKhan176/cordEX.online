@@ -15,7 +15,7 @@
  */
 
 const jwt = require('jsonwebtoken');
-const { jwtSecret } = require('../db_connection');
+const { jwtSecret } = require('../Databases/MySQL/db_connection');
 
 const COOKIE_NAME = 'token';
 

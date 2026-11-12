@@ -27,7 +27,7 @@
  *  renaming anything top-creators.js or profile.js already depend on.
  * ==========================================================================*/
 
-const { SocialProfile, TrendingCreator } = require('../../social_models');
+const { SocialProfile, TrendingCreator } = require('../../../Databases/MongoDB/social_models');
 
 // Simple, tunable ranking formula — followers dominate (mirrors the old
 // "top creators by followersCount" behavior); postsCount is a small

@@ -10,9 +10,9 @@ require('dotenv').config({
 
 // ---------------- Database Connections ----------------
 
-const mongoConnection = require('./Social_Platform/mongo_connection');
+const mongoConnection = require('./Databases/MongoDB/mongo_connection');
 const mongoose = require('mongoose');
-const { conn: mysqlPool } = require('./db_connection');
+const { conn: mysqlPool } = require('./Databases/MySQL/db_connection');
 const verifyToken = require('./middle/middleware');
 
 // ---------------- Routes ----------------

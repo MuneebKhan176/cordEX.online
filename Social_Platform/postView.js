@@ -3,7 +3,7 @@ const router = express.Router();
 const path = require('path');
 
 const verifyToken = require('../middle/middleware');
-const { Post } = require('./social_models');
+const { Post } = require('../Databases/MongoDB/social_models');
 const { enrichPosts } = require('./services/Post_Services/enrichService');
 
 function sendResponse(res, statusCode, success, message, data = null) {

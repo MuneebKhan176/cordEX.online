@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 // 🛠️ Fix 1: Import the correct secret variable from your db_connection file
-const { jwtSecret } = require('../db_connection'); 
+const { jwtSecret } = require('../Databases/MySQL/db_connection'); 
 
 function verifyToken(req, res, next) {
 

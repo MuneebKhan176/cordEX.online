@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const { jwtSecret } = require("../db_connection"); // was: process.env.JWT_SECRET — must match middleware.js
+const { jwtSecret } = require("../Databases/MySQL/db_connection"); // was: process.env.JWT_SECRET — must match middleware.js
 const { SOCIAL_EVENTS: EVENTS } = require("../Social_Platform/constants/events"); // PHASE 11 Part 2 — single source of truth
 
 const WS_PATH = "/ws/social";

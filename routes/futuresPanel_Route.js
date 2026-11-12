@@ -4,7 +4,7 @@ const path = require("path");
 const router = express.Router();
 
 // Same db module used across the app (authRoutes.js, walletRoutes.js, spotTradeRoutes.js …)
-const { conn } = require("../db_connection");
+const { conn } = require("../Databases/MySQL/db_connection");
 
 // Same auth middleware used by /dashboard, /funding-wallet, /spot-trade, etc.
 const verifyToken = require("../middle/middleware");

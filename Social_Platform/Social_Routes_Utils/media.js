@@ -14,7 +14,7 @@ const router = express.Router();
 const mongoose = require('mongoose');
 
 const verifyToken = require('../../middle/middleware');
-const { Post } = require('../social_models');
+const { Post } = require('../../Databases/MongoDB/social_models');
 
 router.get('/api/media/video/:postId/:mediaOrder', verifyToken, async (req, res) => {
     try {

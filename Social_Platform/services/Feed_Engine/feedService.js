@@ -52,7 +52,7 @@
  *  just decides *when* enrichment runs in the pipeline, not *how*.
  * ==========================================================================*/
 
-const { SocialProfile, Post, Follow } = require('../../social_models');
+const { SocialProfile, Post, Follow } = require('../../../Databases/MongoDB/social_models');
 const { rankPosts } = require('./feedRanking'); // PHASE 10.2
 const { applyRecommendationBoost } = require('./recommendationService'); // PHASE 10.3
 const { getInterestMap } = require('./interestTracker');

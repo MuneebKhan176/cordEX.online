@@ -18,7 +18,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 
 const verifyToken = require('../middle/middleware');
-const { jwtSecret } = require('../db_connection');
+const { jwtSecret } = require('../Databases/MySQL/db_connection');
 
 const WS_TOKEN_TTL = '5m'; // short-lived — only used to authenticate the socket handshake itself
 

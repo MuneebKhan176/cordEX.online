@@ -4,7 +4,7 @@ const path = require('path');
 const mongoose = require('mongoose');
 
 const verifyToken = require('../middle/middleware');
-const { SocialProfile, Post, Follow } = require('./social_models'); // PHASE 12 — added Follow
+const { SocialProfile, Post, Follow } = require('../Databases/MongoDB/mongo_connection'); // PHASE 12 — added Follow
 
 // NOTE ON REQUIRE PATHS: these assume `Social_Platform/` and `chat/` are
 // sibling directories under the same backend root. Adjust if your layout
@@ -14,7 +14,7 @@ const avatarService = require('../chat/services/avatarService');
 
 // Analytics dependencies (MySQL connection + live Binance prices).
 // Paths inferred from spotPanel_Route.js — adjust if your layout differs.
-const { conn } = require('../db_connection');
+const { conn } = require('../Databases/MySQL/db_connection');
 const { getLivePrice } = require('../Web_Sockets/marketData_ws');
 
 // Max accepted size for the incoming base64 avatar data URL (~2MB decoded).

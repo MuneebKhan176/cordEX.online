@@ -19,7 +19,7 @@
  *  commented on carries (see resolveHashtags() below).
  * ==========================================================================*/
 
-const { UserActivity, UserInterest } = require('../../social_models');
+const { UserActivity, UserInterest } = require('../../../Databases/MongoDB/social_models');
 
 // Activity types whose hashtag is implied by the type itself
 // ("view_crypto" always scores the "crypto" hashtag).

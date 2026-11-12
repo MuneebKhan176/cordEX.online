@@ -3,7 +3,7 @@ const router  = express.Router();
 const path    = require('path');
 
 const verifyToken = require('../middle/middleware');
-const { Post, Like } = require('./social_models');
+const { Post, Like } = require('../Databases/MongoDB/social_models');
 const feedService = require('./services/Feed_Engine/feedService'); // PHASE 10.1 — was direct Post/ranking queries
 const { enrichPosts } = require('./services/Post_Services/enrichService'); // PHASE 6
 const likeHandler = require('./socket/handlers/likeHandler'); // PHASE 11 Part 1 — real-time likes

@@ -1,7 +1,7 @@
 const WebSocket = require('ws');
 const jwt = require('jsonwebtoken');
 const { sendPriceUpdate } = require('../Spot_Engine/engineClient');
-const { conn, jwtSecret } = require('../db_connection'); // added jwtSecret
+const { conn, jwtSecret } = require('../Databases/MySQL/db_connection'); // added jwtSecret
 
 // Path browsers connect to on YOUR server (not Binance directly).
 const WS_PATH = '/ws/market-data';

@@ -12,7 +12,7 @@ const path = require('path');
 // shared socket. That's what was throwing "conn.beginTransaction is not
 // a function", and — if it hadn't thrown — is exactly the kind of bug
 // that could produce a corrupted balance under real concurrency.
-const { conn, getConnection } = require('../db_connection');
+const { conn, getConnection } = require('../Databases/MySQL/db_connection');
 const verifyToken = require('../middle/middleware');
 const { generateUniqueWalletId } = require('../Wallets_Config/walletIdGenerator');
 

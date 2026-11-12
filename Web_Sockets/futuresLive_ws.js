@@ -27,7 +27,7 @@
 
 const WebSocket = require('ws');
 const jwt = require('jsonwebtoken');
-const { jwtSecret } = require('../db_connection');
+const { jwtSecret } = require('../Databases/MySQL/db_connection');
 const { engineEvents } = require('../Futures_Engine/futuresEngineClient');
 const { getUserPositionSnapshots, getWalletSnapshot, } = require('../Futures_Engine/LiveStateStore');
 

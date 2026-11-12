@@ -23,7 +23,7 @@
 // margin_mode, TP/SL, wallet_balance) — so re-syncing on a connection
 // that never actually lost engine-side state is a harmless no-op.
 // -----------------------------------------------------------------------
-const { conn: pool } = require('../db_connection');
+const { conn: pool } = require('../Databases/MySQL/db_connection');
 const { syncWallet, syncPosition } = require('./futuresEngineClient');
 
 function queryAsync(sql, params = []) {

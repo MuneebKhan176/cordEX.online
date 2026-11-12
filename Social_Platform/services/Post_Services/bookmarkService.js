@@ -14,7 +14,7 @@
  * ==========================================================================*/
 
 const mongoose = require('mongoose');
-const { Bookmark, Post } = require('../../social_models');
+const { Bookmark, Post } = require('../../../Databases/MongoDB/social_models');
 
 function makeError(status, message) {
     const err = new Error(message);

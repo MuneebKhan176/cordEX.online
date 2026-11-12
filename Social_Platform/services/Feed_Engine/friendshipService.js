@@ -13,7 +13,7 @@
  *  no N+1.
  * ==========================================================================*/
 
-const { Follow } = require('../../social_models');
+const { Follow } = require('../../../Databases/MongoDB/social_models');
 
 // Returns Map<authorUsername, 0 | 0.5 | 1> for the given viewer against
 // each username in authorUsernames.

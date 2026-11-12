@@ -6,7 +6,7 @@ const router = express.Router();
 // `conn` = the shared pool, safe for one-shot queries. `getConnection` =
 // checks out ONE dedicated connection for a real transaction (BEGIN ...
 // FOR UPDATE ... COMMIT) — required any time locking is involved.
-const { conn, getConnection } = require("../db_connection");
+const { conn, getConnection } = require("../Databases/MySQL/db_connection");
 
 // Same auth middleware used by /dashboard, /funding-wallet, etc. — sets req.user.id from the JWT cookie.
 const verifyToken = require("../middle/middleware");

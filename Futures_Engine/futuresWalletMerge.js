@@ -18,7 +18,7 @@
 // engine in the first place, so the cache stayed permanently empty.
 // -----------------------------------------------------------------------
 
-const { conn: pool } = require('../db_connection');
+const { conn: pool } = require('../Databases/MySQL/db_connection');
 const { getWalletSnapshot } = require('./LiveStateStore');
 
 function queryAsync(sql, params = []) {

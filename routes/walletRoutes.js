@@ -3,7 +3,7 @@ const path = require("path");
 const router = express.Router();
 
 // Same db module your authRoutes.js already uses.
-const { conn } = require("../db_connection");
+const { conn } = require("../Databases/MySQL/db_connection");
 
 // Same auth middleware /dashboard already uses — sets req.user.id from the JWT cookie.
 const verifyToken = require("../middle/middleware");

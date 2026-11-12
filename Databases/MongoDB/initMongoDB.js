@@ -10,7 +10,7 @@ async function initMongoDB() {
     await mongoose.connect(uri);
 
     try {
-        const models = require("../../Social_Platform/social_models");
+        const models = require("./social_models");
         const registeredModels = Object.values(models)
             .filter(value => value && value.modelName && typeof value.init === "function");
 

@@ -3,7 +3,7 @@ const router   = express.Router();
 const path     = require('path');
 
 const verifyToken = require('../middle/middleware');
-const { Post, Like, Hashtag, SENTIMENT_TYPES } = require('./social_models');
+const { Post, Like, Hashtag, SENTIMENT_TYPES } = require('../Databases/MongoDB/mongo_connection');
 const feedService = require('./services/Feed_Engine/feedService'); // PHASE 10.1 — was direct Post/ranking queries
 const { enrichPosts } = require('./services/Post_Services/enrichService');
 const bookmarkService = require('./services/Post_Services/bookmarkService'); // PHASE 12

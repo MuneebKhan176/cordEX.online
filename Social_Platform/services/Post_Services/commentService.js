@@ -55,7 +55,7 @@
  * ==========================================================================*/
 
 const mongoose = require('mongoose');
-const { Post, Comment, Reply, Like } = require('../../social_models');
+const { Post, Comment, Reply, Like } = require('../../../Databases/MongoDB/social_models');
 const { getAuthors } = require('./authorService');
 const { getLikes } = require('./likeService');
 const { trackActivity } = require('../Feed_Engine/interestTracker'); // PHASE 11 — ranking-engine wiring

@@ -13,7 +13,7 @@
  *  no concept of a dislike/downvote.
  * ==========================================================================*/
 
-const { Like } = require('../../social_models');
+const { Like } = require('../../../Databases/MongoDB/social_models');
 
 // Returns a Set<targetIdString> of the targets `myUsername` has liked,
 // scoped to just the targetIds passed in (never the viewer's whole like

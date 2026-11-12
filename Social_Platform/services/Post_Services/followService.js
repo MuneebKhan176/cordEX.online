@@ -8,7 +8,7 @@
  *  button.
  * ==========================================================================*/
 
-const { Follow } = require('../../social_models');
+const { Follow } = require('../../../Databases/MongoDB/social_models');
 
 // Returns a Set<username> of everyone `myUsername` currently follows.
 async function getFollows(myUsername) {

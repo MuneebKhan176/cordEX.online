@@ -13,7 +13,7 @@
  *  one place, rather than re-checked in every caller.
  * ==========================================================================*/
 
-const { SocialProfile, Notification, Follow } = require('../../social_models');
+const { SocialProfile, Notification, Follow } = require('../../../Databases/MongoDB/social_models');
 const websocketService = require('../../../Web_Sockets/websocketService'); // adjust if your root differs
 const { SOCIAL_EVENTS, NOTIFICATION_TYPES } = require('../../constants/events');
 const { getAuthors } = require('./authorService');

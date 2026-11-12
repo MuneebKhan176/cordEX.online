@@ -8,7 +8,7 @@
  *  a duplicate caching layer.
  * ==========================================================================*/
 
-const { SocialProfile } = require('../../social_models');
+const { SocialProfile } = require('../../../Databases/MongoDB/social_models');
 const { getManyProfiles } = require('../../cache/profileCache');
 
 const DEFAULT_PROJECTION = 'username displayName avatarUrl followersCount';

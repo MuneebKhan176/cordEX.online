@@ -81,7 +81,7 @@
 // explicitly too, on the same transaction connection so the uniqueness
 // check can't race another connection's uncommitted id.
 // -----------------------------------------------------------------------
-const { conn: pool, getConnection } = require('../db_connection');
+const { conn: pool, getConnection } = require('../Databases/MySQL/db_connection');
 const { engineEvents } = require("./futuresEngineClient");
 const { generateUniqueWalletId } = require("../Wallets_Config/walletIdGenerator");
 
