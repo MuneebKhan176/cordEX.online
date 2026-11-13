@@ -9,7 +9,7 @@ services:
     environment:
       # DB_USERNAME / DB_PASSWORD are the credentials used by the app.
       # The supplied configuration uses DB_USERNAME=root, so the container
-      # initializes the root account with DB_PASSWORD.
+      # initializes the root account with DB_PASSWORD. 
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
       MYSQL_ROOT_HOST: "%"
       MYSQL_DATABASE: ${DB_NAME:?Set DB_NAME in .env}
@@ -69,11 +69,15 @@ services:
     container_name: cordex-mongodb
     restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${DB_USERNAME:?Set DB_USERNAME in .env}
-      MONGO_INITDB_ROOT_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
-      MONGO_INITDB_DATABASE: ${MONGO_DB_NAME:?Set MONGO_DB_NAME in .env}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?MONGO_ROOT_USERNAME is required}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?MONGO_ROOT_PASSWORD is required}
+      MONGO_INITDB_DATABASE: ${MONGO_DB_NAME:?MONGO_DB_NAME is required}
+      MONGO_DB_NAME: ${MONGO_DB_NAME:?MONGO_DB_NAME is required}
+      MONGO_APP_USERNAME: ${MONGO_APP_USERNAME:?MONGO_APP_USERNAME is required}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?MONGO_APP_PASSWORD is required}
     volumes:
-      - cordex_mongodb_data:/data/db
+        - cordex_mongodb_data:/data/db
+        - ./docker/mongodb/init:/docker-entrypoint-initdb.d:ro
     expose:
       - "27017"
     healthcheck:
