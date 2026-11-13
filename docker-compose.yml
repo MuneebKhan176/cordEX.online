@@ -7,11 +7,12 @@ services:
     container_name: cordex-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      # DB_USERNAME / DB_PASSWORD are the credentials used by the app.
+      # The supplied configuration uses DB_USERNAME=root, so the container
+      # initializes the root account with DB_PASSWORD.
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
       MYSQL_ROOT_HOST: "%"
       MYSQL_DATABASE: ${DB_NAME:?Set DB_NAME in .env}
-      MYSQL_USER: ${DB_USERNAME:?Set DB_USERNAME in .env}
-      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
     volumes:
       - cordex_mysql_data:/var/lib/mysql
     expose:
@@ -38,6 +39,7 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       MYSQL_ROOT_USER: root
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
     command: ["node", "Databases/MySQL/initDB.js"]
     depends_on:
       mysql:
@@ -56,25 +58,20 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       MYSQL_ROOT_USER: root
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
     command: ["node", "Databases/MySQL/initAIPermissions.js"]
     depends_on:
       mysql-schema-init:
         condition: service_completed_successfully
 
   mongodb:
-    build:
-      context: ./docker/mongodb
-      dockerfile: Dockerfile
-    image: cordex-mongodb:8.0
+    image: mongo:8.0
     container_name: cordex-mongodb
     restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?Set MONGO_ROOT_USERNAME in .env}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD in .env}
+      MONGO_INITDB_ROOT_USERNAME: ${DB_USERNAME:?Set DB_USERNAME in .env}
+      MONGO_INITDB_ROOT_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
       MONGO_INITDB_DATABASE: ${MONGO_DB_NAME:?Set MONGO_DB_NAME in .env}
-      MONGO_DB_NAME: ${MONGO_DB_NAME:?Set MONGO_DB_NAME in .env}
-      MONGO_APP_USERNAME: ${MONGO_APP_USERNAME:?Set MONGO_APP_USERNAME in .env}
-      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?Set MONGO_APP_PASSWORD in .env}
     volumes:
       - cordex_mongodb_data:/data/db
     expose:
@@ -103,7 +100,8 @@ services:
     env_file:
       - .env
     environment:
-      MONGO_URI: ${MONGO_URI:?Set internal MONGO_URI in .env}
+      MONGO_URI: ${MONGO_URI:?Set MONGO_URI in .env}
+      MONGO_DB_NAME: ${MONGO_DB_NAME:?Set MONGO_DB_NAME in .env}
     command: ["node", "Databases/MongoDB/initMongoDB.js"]
     depends_on:
       mongodb:
@@ -167,7 +165,7 @@ services:
       PORT: 7070
       DB_HOST: mysql
       DB_PORT: 3306
-      MONGO_URI: ${MONGO_URI:?Set internal MONGO_URI in .env}
+      MONGO_URI: ${MONGO_URI:?Set MONGO_URI in .env}
       TRADE_ENGINE_HOST: spot-engine
       TRADE_ENGINE_PORT: 9000
       FUTURES_ENGINE_HOST: futures-engine

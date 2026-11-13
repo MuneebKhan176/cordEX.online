@@ -104,18 +104,18 @@ app.use(chatRoutes);
 
 // ---------------- AI Service ----------------
 
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL
-    ? process.env.AI_SERVICE_URL.replace(/\/+$/, '')
+const AI_ANALYTICS_SERVICE_URL = process.env.AI_ANALYTICS_SERVICE_URL
+    ? process.env.AI_ANALYTICS_SERVICE_URL.replace(/\/+$/, '')
     : null;
 
-if (AI_SERVICE_URL) {
+if (AI_ANALYTICS_SERVICE_URL) {
 
     app.post('/api/ai-chatbot/message', async (req, res) => {
 
         try {
 
             const aiResponse = await fetch(
-                `${AI_SERVICE_URL}/api/ai-chatbot/message`,
+                `${AI_ANALYTICS_SERVICE_URL}/api/ai-chatbot/message`,
                 {
                     method: 'POST',
                     headers: {
@@ -234,7 +234,7 @@ async function startServer() {
 
             console.log(
                 `AI chatbot mode: ${
-                    AI_SERVICE_URL
+                    AI_ANALYTICS_SERVICE_URL
                         ? 'separate service'
                         : 'in-process'
                 }`
