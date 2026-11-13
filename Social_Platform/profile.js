@@ -4,7 +4,17 @@ const path = require('path');
 const mongoose = require('mongoose');
 
 const verifyToken = require('../middle/middleware');
+// Import Mongoose models from the model-definition module.
+// mongo_connection.js only establishes the DB connection; it does not export models.
 const { SocialProfile, Post, Follow } = require('./social_models'); // PHASE 12 — added Follow
+
+// Fail during startup rather than letting profile/follow endpoints fail later
+// with confusing "Cannot read properties of undefined" errors.
+for (const [modelName, model] of Object.entries({ SocialProfile, Post, Follow })) {
+    if (!model || typeof model.findOne !== 'function') {
+        throw new Error(`[Social_Platform/profile] Invalid or missing Mongoose model export: ${modelName}. Check ./social_models.js exports.`);
+    }
+}
 
 // NOTE ON REQUIRE PATHS: these assume `Social_Platform/` and `chat/` are
 // sibling directories under the same backend root. Adjust if your layout
