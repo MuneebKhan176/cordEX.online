@@ -3,7 +3,7 @@ const router = express.Router();
 const path = require('path');
 
 const verifyToken = require('../middle/middleware');
-const { SocialProfile, Follow } = require('../Databases/MongoDB/mongo_connection'); // PHASE 12 — added Follow
+const { SocialProfile, Follow } = require('../Databases/MongoDB/social_models');
 
 function sendResponse(res, statusCode, success, message, data = null) {
     return res.status(statusCode).json({ success, message, data });
