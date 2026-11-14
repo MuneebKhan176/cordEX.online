@@ -1,1281 +1,520 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>cordEX — Risk-Free Demo Trading</title>
-
-  <style>
-    /* =====================
-       Reset & Basenpm ru
-       ===================== */
-    *, *::before, *::after {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    :root {
-      --bg: #000000;
-      --surface: #0a0a0a;
-      --surface2: #111111;
-      --border: #1a1a1a;
-      --border2: #222222;
-      --text-primary: #ffffff;
-      --text-secondary: #888888;
-      --text-muted: #444444;
-      --blue: #3b82f6;
-      --blue-dark: #1d4ed8;
-      --blue-glow: rgba(59, 130, 246, 0.15);
-      --green: #22c55e;
-      --red: #ef4444;
-      --white-glow: rgba(255, 255, 255, 0.06);
-    }
-
-    html { scroll-behavior: smooth; }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
-      background-color: var(--bg);
-      color: var(--text-primary);
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
-
-    /* =====================
-       Navbar
-       ===================== */
-    header {
-      background-color: rgba(0, 0, 0, 0.85);
-      border-bottom: 1px solid var(--border);
-      position: sticky;
-      top: 0;
-      z-index: 200;
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-    }
-
-    .navbar {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 32px;
-      height: 64px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .logo {
-      font-size: 1.3rem;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      background: linear-gradient(90deg, #ffffff 0%, #93c5fd 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      text-decoration: none;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .logo-dot {
-      width: 8px;
-      height: 8px;
-      background: var(--blue);
-      border-radius: 50%;
-      display: inline-block;
-      animation: pulse-dot 2s infinite;
-      -webkit-text-fill-color: initial;
-    }
-
-    @keyframes pulse-dot {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(0.7); }
-    }
-
-    .nav-links {
-      list-style: none;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .nav-link {
-      text-decoration: none;
-      color: var(--text-secondary);
-      font-size: 0.875rem;
-      font-weight: 500;
-      padding: 6px 14px;
-      border-radius: 6px;
-      transition: color 0.2s, background-color 0.2s;
-    }
-
-    .nav-link:hover {
-      color: #ffffff;
-      background-color: var(--surface2);
-    }
-
-    .nav-link.active {
-      color: #ffffff;
-    }
-
-    .nav-link.btn-outline {
-      border: 1px solid var(--border2);
-      color: #cccccc;
-    }
-
-    .nav-link.btn-outline:hover {
-      border-color: #444;
-      color: #fff;
-      background-color: var(--surface2);
-    }
-
-    .nav-link.btn-primary {
-      background: linear-gradient(135deg, var(--blue) 0%, var(--blue-dark) 100%);
-      color: #ffffff;
-      font-weight: 600;
-    }
-
-    .nav-link.btn-primary:hover {
-      opacity: 0.9;
-      background: linear-gradient(135deg, #60a5fa 0%, var(--blue) 100%);
-    }
-
-    /* =====================
-       Hero / Landing
-       ===================== */
-    .hero {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 80px 24px 60px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    /* White radial glow — Next.js style */
-    .hero::before {
-      content: '';
-      position: absolute;
-      top: -10%;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 900px;
-      height: 600px;
-      background: radial-gradient(ellipse at center, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.02) 40%, transparent 70%);
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    /* Blue accent glow bottom */
-    .hero::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 700px;
-      height: 300px;
-      background: radial-gradient(ellipse at center, rgba(59,130,246,0.08) 0%, transparent 70%);
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    .hero-inner {
-      position: relative;
-      z-index: 1;
-      max-width: 760px;
-    }
-
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      border: 1px solid rgba(59,130,246,0.3);
-      background: rgba(59,130,246,0.06);
-      color: #93c5fd;
-      font-size: 0.78rem;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      padding: 5px 14px;
-      border-radius: 100px;
-      margin-bottom: 28px;
-      opacity: 0;
-      animation: fadeUp 0.6s 0.1s forwards;
-    }
-
-    .hero-badge-dot {
-      width: 6px;
-      height: 6px;
-      background: var(--blue);
-      border-radius: 50%;
-      animation: pulse-dot 2s infinite;
-    }
-
-    .hero-title {
-      font-size: clamp(2.4rem, 6vw, 4rem);
-      font-weight: 800;
-      line-height: 1.1;
-      letter-spacing: -1.5px;
-      color: #ffffff;
-      margin-bottom: 24px;
-      opacity: 0;
-      animation: fadeUp 0.6s 0.2s forwards;
-    }
-
-    .hero-title .gradient-text {
-      background: linear-gradient(90deg, #ffffff 0%, #93c5fd 50%, #3b82f6 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .hero-subtitle {
-      font-size: 1.05rem;
-      color: var(--text-secondary);
-      line-height: 1.7;
-      max-width: 540px;
-      margin: 0 auto 40px;
-      opacity: 0;
-      animation: fadeUp 0.6s 0.35s forwards;
-    }
-
-    .hero-cta {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      flex-wrap: wrap;
-      opacity: 0;
-      animation: fadeUp 0.6s 0.5s forwards;
-    }
-
-    .btn-hero-primary {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-      color: #fff;
-      text-decoration: none;
-      font-size: 0.95rem;
-      font-weight: 600;
-      padding: 13px 28px;
-      border-radius: 8px;
-      transition: all 0.2s;
-      box-shadow: 0 0 30px rgba(59,130,246,0.2);
-    }
-
-    .btn-hero-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 0 40px rgba(59,130,246,0.35);
-    }
-
-    .btn-hero-secondary {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      border: 1px solid var(--border2);
-      color: #cccccc;
-      text-decoration: none;
-      font-size: 0.95rem;
-      font-weight: 500;
-      padding: 13px 28px;
-      border-radius: 8px;
-      transition: all 0.2s;
-      background: transparent;
-    }
-
-    .btn-hero-secondary:hover {
-      border-color: #555;
-      color: #fff;
-      background: var(--surface2);
-      transform: translateY(-2px);
-    }
-
-    .hero-stats {
-      display: flex;
-      gap: 40px;
-      justify-content: center;
-      margin-top: 60px;
-      opacity: 0;
-      animation: fadeUp 0.6s 0.65s forwards;
-    }
-
-    .hero-stat {
-      text-align: center;
-    }
-
-    .hero-stat-value {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: #ffffff;
-      letter-spacing: -0.5px;
-    }
-
-    .hero-stat-label {
-      font-size: 0.78rem;
-      color: var(--text-muted);
-      margin-top: 2px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    /* =====================
-       Ticker Bar
-       ===================== */
-    .ticker-bar {
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
-      overflow: hidden;
-      position: relative;
-      padding: 10px 0;
-    }
-
-    .ticker-track {
-      display: flex;
-      gap: 48px;
-      animation: ticker-scroll 30s linear infinite;
-      width: max-content;
-    }
-
-    .ticker-track:hover { animation-play-state: paused; }
-
-    .ticker-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      white-space: nowrap;
-    }
-
-    .ticker-symbol {
-      font-size: 0.8rem;
-      font-weight: 700;
-      color: var(--text-secondary);
-    }
-
-    .ticker-price {
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: #ffffff;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .ticker-change { font-size: 0.78rem; font-weight: 600; }
-    .ticker-change.up { color: var(--green); }
-    .ticker-change.down { color: var(--red); }
-
-    @keyframes ticker-scroll {
-      0% { transform: translateX(0); }
-      100% { transform: translateX(-50%); }
-    }
-
-    /* =====================
-       Market Table Section
-       ===================== */
-    .section {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 80px 32px;
-    }
-
-    .section-label {
-      font-size: 0.75rem;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--blue);
-      margin-bottom: 12px;
-    }
-
-    .section-title {
-      font-size: clamp(1.6rem, 3vw, 2.2rem);
-      font-weight: 700;
-      letter-spacing: -0.5px;
-      color: #ffffff;
-      margin-bottom: 8px;
-    }
-
-    .section-subtitle {
-      font-size: 0.95rem;
-      color: var(--text-secondary);
-      margin-bottom: 40px;
-    }
-
-    /* Market Table */
-    .market-table-wrap {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-      background: var(--surface);
-    }
-
-    .market-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    .market-table thead {
-      background: var(--surface2);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .market-table th {
-      padding: 14px 20px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      text-align: left;
-    }
-
-    .market-table th:not(:first-child) { text-align: right; }
-
-    .market-table td {
-      padding: 16px 20px;
-      font-size: 0.9rem;
-      border-bottom: 1px solid var(--border);
-      vertical-align: middle;
-      transition: background 0.15s;
-    }
-
-    .market-table td:not(:first-child) { text-align: right; }
-
-    .market-table tbody tr:last-child td { border-bottom: none; }
-
-    .market-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
-
-    .coin-cell {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .coin-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1rem;
-      font-weight: 700;
-      flex-shrink: 0;
-    }
-
-    .coin-icon.btc { background: rgba(247,147,26,0.15); color: #f7931a; }
-    .coin-icon.eth { background: rgba(98,126,234,0.15); color: #627eea; }
-    .coin-icon.sol { background: rgba(153,69,255,0.15); color: #9945ff; }
-    .coin-icon.xrp { background: rgba(0,170,228,0.15); color: #00aae4; }
-    .coin-icon.bnb { background: rgba(240,185,11,0.15); color: #f0b90b; }
-
-    .coin-name { font-weight: 600; color: #ffffff; font-size: 0.9rem; }
-    .coin-symbol { font-size: 0.75rem; color: var(--text-muted); }
-
-    .rank-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 24px;
-      height: 24px;
-      background: var(--surface2);
-      border: 1px solid var(--border2);
-      border-radius: 4px;
-      font-size: 0.72rem;
-      font-weight: 700;
-      color: var(--text-secondary);
-    }
-
-    .price-cell {
-      font-weight: 600;
-      font-variant-numeric: tabular-nums;
-      color: #ffffff;
-    }
-
-    .change-cell {
-      font-weight: 600;
-      font-size: 0.85rem;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .change-cell.up { color: var(--green); }
-    .change-cell.down { color: var(--red); }
-
-    .mcap-cell {
-      color: var(--text-secondary);
-      font-size: 0.85rem;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .loading-row td {
-      color: var(--text-muted);
-      font-size: 0.85rem;
-      text-align: center !important;
-      padding: 40px;
-    }
-
-    .spinner {
-      display: inline-block;
-      width: 16px;
-      height: 16px;
-      border: 2px solid var(--border2);
-      border-top-color: var(--blue);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin-right: 8px;
-      vertical-align: middle;
-    }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .live-dot {
-      display: inline-block;
-      width: 7px;
-      height: 7px;
-      background: var(--green);
-      border-radius: 50%;
-      margin-right: 6px;
-      animation: pulse-dot 1.5s infinite;
-      vertical-align: middle;
-    }
-
-    .table-footer {
-      padding: 12px 20px;
-      border-top: 1px solid var(--border);
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      display: flex;
-      align-items: center;
-    }
-
-    /* =====================
-       Features Grid
-       ===================== */
-    .features-section {
-      background: var(--surface);
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 1px;
-      background: var(--border);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-    }
-
-    .feature-card {
-      background: var(--surface);
-      padding: 32px 28px;
-      transition: background 0.2s;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .feature-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(59,130,246,0.4), transparent);
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-
-    .feature-card:hover { background: #0d0d0d; }
-    .feature-card:hover::before { opacity: 1; }
-
-    .feature-icon {
-      width: 44px;
-      height: 44px;
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.3rem;
-      margin-bottom: 16px;
-      background: rgba(59,130,246,0.08);
-      border: 1px solid rgba(59,130,246,0.15);
-    }
-
-    .feature-title {
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: #ffffff;
-      margin-bottom: 8px;
-    }
-
-    .feature-desc {
-      font-size: 0.85rem;
-      color: var(--text-secondary);
-      line-height: 1.6;
-    }
-
-    /* =====================
-       How It Works
-       ===================== */
-    .steps-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 32px;
-      counter-reset: steps;
-    }
-
-    .step-card {
-      text-align: center;
-      counter-increment: steps;
-      opacity: 0;
-      transform: translateY(24px);
-      transition: opacity 0.6s, transform 0.6s;
-    }
-
-    .step-card.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    .step-number {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: var(--surface2);
-      border: 1px solid var(--border2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.9rem;
-      font-weight: 700;
-      color: var(--blue);
-      margin: 0 auto 16px;
-    }
-
-    .step-title {
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: #ffffff;
-      margin-bottom: 8px;
-    }
-
-    .step-desc {
-      font-size: 0.83rem;
-      color: var(--text-secondary);
-      line-height: 1.6;
-    }
-
-    /* =====================
-       CTA Banner
-       ===================== */
-    .cta-section {
-      padding: 80px 32px;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .cta-section::before {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 600px;
-      height: 300px;
-      background: radial-gradient(ellipse at center, rgba(59,130,246,0.08) 0%, transparent 70%);
-      pointer-events: none;
-    }
-
-    .cta-box {
-      position: relative;
-      z-index: 1;
-      max-width: 560px;
-      margin: 0 auto;
-    }
-
-    .cta-box .section-title { margin-bottom: 16px; }
-
-    .cta-box p {
-      color: var(--text-secondary);
-      font-size: 0.95rem;
-      margin-bottom: 32px;
-      line-height: 1.7;
-    }
-
-    /* =====================
-       Footer
-       ===================== */
-    footer {
-      border-top: 1px solid var(--border);
-      background: var(--surface);
-    }
-
-    .footer-inner {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 48px 32px 32px;
-    }
-
-    .footer-top {
-      display: grid;
-      grid-template-columns: 1.5fr repeat(3, 1fr);
-      gap: 40px;
-      margin-bottom: 40px;
-    }
-
-    .footer-brand .logo {
-      display: inline-block;
-      margin-bottom: 12px;
-    }
-
-    .footer-brand p {
-      font-size: 0.83rem;
-      color: var(--text-muted);
-      line-height: 1.7;
-      max-width: 220px;
-    }
-
-    .footer-col h4 {
-      font-size: 0.8rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--text-secondary);
-      margin-bottom: 16px;
-    }
-
-    .footer-col ul { list-style: none; }
-
-    .footer-col li { margin-bottom: 10px; }
-
-    .footer-col a {
-      text-decoration: none;
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      transition: color 0.2s;
-    }
-
-    .footer-col a:hover { color: #ffffff; }
-
-    .footer-bottom {
-      border-top: 1px solid var(--border);
-      padding-top: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-
-    .footer-bottom p {
-      font-size: 0.78rem;
-      color: var(--text-muted);
-    }
-
-    .footer-disclaimer {
-      font-size: 0.72rem;
-      color: var(--text-muted);
-      max-width: 500px;
-      line-height: 1.5;
-    }
-
-    /* =====================
-       Scroll Animations
-       ===================== */
-    .reveal {
-      opacity: 0;
-      transform: translateY(20px);
-      transition: opacity 0.6s, transform 0.6s;
-    }
-
-    .reveal.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    /* =====================
-       Responsive
-       ===================== */
-    @media (max-width: 768px) {
-      .navbar { padding: 0 16px; }
-      .nav-links { gap: 2px; }
-      .nav-link { padding: 6px 10px; font-size: 0.8rem; }
-      .hero { padding: 60px 16px 40px; }
-      .hero-stats { gap: 24px; }
-      .section { padding: 60px 16px; }
-      .footer-top { grid-template-columns: 1fr 1fr; }
-      .market-table th, .market-table td { padding: 12px 12px; }
-    }
-
-    @media (max-width: 480px) {
-      .hero-stats { flex-direction: column; gap: 16px; }
-      .footer-top { grid-template-columns: 1fr; }
-      .footer-bottom { flex-direction: column; text-align: center; }
-    }
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>cordEX — Risk-Free Demo Trading</title>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#000;--surface:#0a0a0a;--surface2:#111;--border:#1a1a1a;--border2:#222;--text-2:#888;--text-3:#555;--blue:#3b82f6;--blue-dark:#1d4ed8;--green:#22c55e;--red:#ef4444;--ease:cubic-bezier(.22,1,.36,1)}
+html{scroll-behavior:smooth;scroll-padding-top:70px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Inter,sans-serif;background:var(--bg);color:#fff;min-height:100vh;overflow-x:hidden}
+a{-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+
+/* ── Header ── */
+header{background:rgba(0,0,0,.82);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:300;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);transition:background .3s,border-color .3s}
+header.scrolled{background:rgba(0,0,0,.94);border-color:var(--border2)}
+.navbar{max-width:1200px;margin:0 auto;padding:0 28px;height:64px;display:flex;align-items:center;gap:14px}
+.burger{display:none;width:40px;height:40px;border-radius:9px;border:1px solid var(--border2);background:var(--surface2);cursor:pointer;flex-direction:column;align-items:center;justify-content:center;gap:5px;flex-shrink:0}
+.burger span{width:18px;height:2px;background:#fff;border-radius:2px;transition:transform .35s var(--ease),opacity .2s,width .3s var(--ease)}
+body.menu-open .burger span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+body.menu-open .burger span:nth-child(2){opacity:0;width:0}
+body.menu-open .burger span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+.logo{font-size:1.3rem;font-weight:800;letter-spacing:-.5px;background:linear-gradient(90deg,#fff,#93c5fd);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+.logo-dot{width:8px;height:8px;background:var(--blue);border-radius:50%;animation:pdot 2s infinite;-webkit-text-fill-color:initial}
+@keyframes pdot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+.nav-links{list-style:none;display:flex;align-items:center;gap:4px;margin-left:auto}
+.nav-link{text-decoration:none;color:var(--text-2);font-size:.88rem;font-weight:500;padding:7px 14px;border-radius:8px;transition:color .2s,background .2s;position:relative}
+.nav-link:hover{color:#fff;background:var(--surface2)}
+.nav-link.active{color:#fff}
+.nav-link.active::after{content:'';position:absolute;left:14px;right:14px;bottom:1px;height:2px;background:var(--blue);border-radius:2px}
+.nav-auth{display:flex;gap:8px;margin-left:10px}
+
+/* Buttons */
+.btn{position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 20px;border-radius:9px;font-size:.88rem;font-weight:600;text-decoration:none;border:1px solid var(--border2);color:#ddd;background:transparent;cursor:pointer;white-space:nowrap;transition:transform .25s var(--ease),box-shadow .25s,border-color .2s,background .2s,color .2s}
+.btn:hover{border-color:#555;color:#fff;background:var(--surface2);transform:translateY(-2px)}
+.btn:active{transform:scale(.96)}
+.btn.primary{background:linear-gradient(135deg,var(--blue),var(--blue-dark));border-color:transparent;color:#fff;box-shadow:0 0 26px rgba(59,130,246,.2)}
+.btn.primary:hover{box-shadow:0 8px 34px rgba(59,130,246,.45);background:linear-gradient(135deg,#60a5fa,var(--blue))}
+.btn.primary::after{content:'';position:absolute;top:0;left:-80%;width:50%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.3),transparent);transform:skewX(-20deg);animation:shine 4s ease-in-out infinite}
+@keyframes shine{0%,60%{left:-80%}100%{left:140%}}
+.btn.lg{padding:14px 30px;font-size:.96rem;border-radius:10px}
+.btn .arr{transition:transform .25s var(--ease)}.btn:hover .arr{transform:translateX(4px)}
+.ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.25);transform:scale(0);animation:rip .6s linear;pointer-events:none}
+@keyframes rip{to{transform:scale(4);opacity:0}}
+
+/* Mobile drawer */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .35s;z-index:240}
+.drawer{position:fixed;top:0;left:0;bottom:0;width:min(300px,84vw);background:var(--surface);border-right:1px solid var(--border);z-index:250;transform:translateX(-102%);transition:transform .45s var(--ease);padding:84px 18px 24px;display:none;flex-direction:column;gap:6px;box-shadow:12px 0 40px rgba(0,0,0,.6)}
+.drawer a.dl{color:var(--text-2);text-decoration:none;font-size:1rem;font-weight:500;padding:13px 14px;border-radius:10px;transition:background .2s,color .2s}
+.drawer a.dl:hover,.drawer a.dl:active{background:var(--surface2);color:#fff}
+.drawer .d-auth{margin-top:auto;display:flex;flex-direction:column;gap:10px}
+.drawer .d-auth .btn{width:100%;padding:13px}
+body.menu-open .drawer{transform:none}
+body.menu-open .overlay{opacity:1;pointer-events:auto}
+body.menu-open{overflow:hidden}
+body.menu-open .drawer>*{animation:dIn .5s var(--ease) both}
+body.menu-open .drawer>*:nth-child(2){animation-delay:.05s}body.menu-open .drawer>*:nth-child(3){animation-delay:.1s}body.menu-open .drawer>*:nth-child(4){animation-delay:.15s}body.menu-open .drawer>*:nth-child(5){animation-delay:.2s}
+@keyframes dIn{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:none}}
+
+/* ── Hero ── */
+.hero{position:relative;overflow:hidden;padding:90px 28px 70px}
+.hero::before{content:'';position:absolute;top:-15%;left:50%;transform:translateX(-50%);width:1000px;height:650px;background:radial-gradient(ellipse at center,rgba(255,255,255,.07),rgba(255,255,255,.02) 40%,transparent 70%);pointer-events:none}
+.orb{position:absolute;border-radius:50%;filter:blur(70px);pointer-events:none;animation:orb 12s ease-in-out infinite alternate}
+.orb.a{width:340px;height:340px;background:rgba(59,130,246,.16);top:10%;right:-80px}
+.orb.b{width:260px;height:260px;background:rgba(147,197,253,.08);bottom:-60px;left:-40px;animation-delay:-5s}
+@keyframes orb{to{transform:translate(-50px,40px) scale(1.15)}}
+.grid-bg{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:56px 56px;mask-image:radial-gradient(ellipse 70% 60% at 50% 30%,#000,transparent);-webkit-mask-image:radial-gradient(ellipse 70% 60% at 50% 30%,#000,transparent);opacity:.55;pointer-events:none}
+.hero-wrap{position:relative;z-index:1;max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;min-height:calc(100vh - 64px - 160px)}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(59,130,246,.3);background:rgba(59,130,246,.07);color:#93c5fd;font-size:.8rem;font-weight:600;padding:6px 14px;border-radius:100px;margin-bottom:26px}
+.hero-badge i{width:6px;height:6px;background:var(--blue);border-radius:50%;animation:pdot 2s infinite}
+.hero-title{font-size:clamp(2.5rem,5.6vw,4.4rem);font-weight:800;line-height:1.06;letter-spacing:-2px;margin-bottom:22px}
+.hero-title .line{display:block;overflow:hidden;padding-bottom:.08em}
+.hero-title .line>span{display:block;transform:translateY(105%);animation:lineUp .9s var(--ease) forwards}
+.hero-title .line:nth-child(2)>span{animation-delay:.12s}
+@keyframes lineUp{to{transform:none}}
+.grad{background:linear-gradient(90deg,#fff,#93c5fd 40%,#3b82f6 70%,#93c5fd);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 5s linear infinite}
+@keyframes shimmer{to{background-position:200% center}}
+.hero-sub{font-size:1.08rem;color:var(--text-2);line-height:1.7;max-width:520px;margin-bottom:34px}
+.hero-cta{display:flex;gap:12px;flex-wrap:wrap}
+.hero-stats{display:grid;grid-template-columns:repeat(4,auto);gap:34px;margin-top:48px;justify-content:start}
+.hs-v{font-size:1.45rem;font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.hs-l{font-size:.76rem;color:var(--text-3);margin-top:2px}
+.fx{opacity:0;animation:fadeUp .8s var(--ease) forwards;animation-delay:calc(.25s + var(--d,0) * .12s)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+
+/* hero visual: live cards */
+.hv{position:relative;height:440px;opacity:0;animation:fadeUp 1s .4s var(--ease) forwards}
+.hv-main{position:absolute;inset:30px 0 auto 24px;background:linear-gradient(160deg,#111,#0a0a0a);border:1px solid var(--border2);border-radius:20px;padding:22px;box-shadow:0 30px 80px rgba(0,0,0,.7),0 0 60px rgba(59,130,246,.08);animation:float 7s ease-in-out infinite}
+.hv-top{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.hv-ico{width:40px;height:40px;border-radius:50%;background:rgba(247,147,26,.15);color:#f7931a;display:flex;align-items:center;justify-content:center;font-weight:700}
+.hv-name{font-weight:700}.hv-sym{font-size:.74rem;color:var(--text-3)}
+.live-tag{margin-left:auto;font-size:.7rem;font-weight:700;color:var(--green);background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);padding:3px 9px;border-radius:100px;display:flex;align-items:center;gap:5px}
+.live-tag i{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pdot 1.4s infinite}
+.hv-price{font-size:2.1rem;font-weight:800;letter-spacing:-1px;font-variant-numeric:tabular-nums;transition:color .4s}
+.hv-price.up{color:var(--green)}.hv-price.down{color:var(--red)}
+.hv-chg{font-size:.85rem;font-weight:600;margin-top:2px}
+.spark{width:100%;height:110px;margin-top:14px;display:block}
+.spark path.line{fill:none;stroke:var(--blue);stroke-width:2.2;stroke-linecap:round;stroke-dasharray:700;stroke-dashoffset:700;animation:draw 2.4s .9s var(--ease) forwards}
+.spark path.fill{fill:url(#sg);opacity:0;animation:fadeIn 1s 2s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}@keyframes fadeIn{to{opacity:1}}
+.hv-float{position:absolute;background:rgba(17,17,17,.92);border:1px solid var(--border2);border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:11px;backdrop-filter:blur(8px);box-shadow:0 14px 40px rgba(0,0,0,.6)}
+.hv-float .hv-ico{width:34px;height:34px;font-size:.85rem}
+.hv-float b{display:block;font-size:.95rem;font-variant-numeric:tabular-nums}
+.hv-float small{font-size:.72rem;font-weight:600}
+.hv-float.f1{left:-8px;bottom:50px;animation:float 6s -2s ease-in-out infinite}
+.hv-float.f2{right:-6px;bottom:-4px;animation:float 8s -4s ease-in-out infinite}
+@keyframes float{50%{transform:translateY(-12px)}}
+.up{color:var(--green)}.down{color:var(--red)}
+
+/* ── Ticker ── */
+.ticker-bar{border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--surface);overflow:hidden;padding:12px 0;mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+.ticker-track{display:flex;gap:52px;animation:tick 32s linear infinite;width:max-content}
+.ticker-bar:hover .ticker-track{animation-play-state:paused}
+.ticker-item{display:flex;align-items:center;gap:10px;white-space:nowrap}
+.t-sym{font-size:.8rem;font-weight:700;color:var(--text-2)}.t-price{font-size:.86rem;font-weight:600;font-variant-numeric:tabular-nums}.t-ch{font-size:.78rem;font-weight:600}
+@keyframes tick{to{transform:translateX(-50%)}}
+
+/* ── Sections ── */
+.section{max-width:1200px;margin:0 auto;padding:88px 28px}
+.s-label{font-size:.78rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin-bottom:12px}
+.s-title{font-size:clamp(1.7rem,3.4vw,2.4rem);font-weight:700;letter-spacing:-.8px;margin-bottom:10px}
+.s-sub{font-size:.98rem;color:var(--text-2);margin-bottom:40px;max-width:560px;line-height:1.6}
+
+/* reveal variants */
+.rv{opacity:0;transition:opacity .8s var(--ease),transform .8s var(--ease);transition-delay:calc(var(--i,0) * 80ms)}
+.rv.up{transform:translateY(30px)}.rv.left{transform:translateX(-40px)}.rv.right{transform:translateX(40px)}.rv.zoom{transform:scale(.9)}
+.rv.in{opacity:1;transform:none}
+
+/* Market */
+.table-wrap{border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--surface)}
+table{width:100%;border-collapse:collapse}
+thead{background:var(--surface2)}
+th{padding:14px 20px;font-size:.74rem;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;text-align:left}
+th:not(:first-child),td:not(:first-child){text-align:right}
+td{padding:16px 20px;font-size:.92rem;border-bottom:1px solid var(--border);vertical-align:middle}
+tbody tr{transition:background .2s,transform .3s var(--ease)}
+tbody tr:hover{background:rgba(255,255,255,.03)}
+tbody tr:last-child td{border-bottom:none}
+.coin-cell{display:flex;align-items:center;gap:12px;text-align:left}
+.coin-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+.coin-icon.btc{background:rgba(247,147,26,.15);color:#f7931a}.coin-icon.eth{background:rgba(98,126,234,.15);color:#627eea}.coin-icon.sol{background:rgba(153,69,255,.15);color:#9945ff}.coin-icon.xrp{background:rgba(0,170,228,.15);color:#00aae4}.coin-icon.bnb{background:rgba(240,185,11,.15);color:#f0b90b}
+.coin-name{font-weight:600;font-size:.92rem}.coin-sym{font-size:.75rem;color:var(--text-3)}
+.rank-badge{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;font-size:.72rem;font-weight:700;color:var(--text-2)}
+.price-cell{font-weight:600;font-variant-numeric:tabular-nums;border-radius:6px;padding:2px 6px}
+.price-cell.flash-up{animation:fu .9s}.price-cell.flash-down{animation:fd .9s}
+@keyframes fu{0%{color:var(--green);background:rgba(34,197,94,.14)}100%{background:transparent}}
+@keyframes fd{0%{color:var(--red);background:rgba(239,68,68,.14)}100%{background:transparent}}
+.chg{font-weight:600;font-size:.85rem;font-variant-numeric:tabular-nums}
+.table-footer{padding:12px 20px;border-top:1px solid var(--border);font-size:.75rem;color:var(--text-3);display:flex;align-items:center;gap:6px}
+.live-dot{width:7px;height:7px;background:var(--green);border-radius:50%;animation:pdot 1.5s infinite}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--border2);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;margin-right:8px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Features */
+.features-section{background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.features-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.feature-card{position:relative;overflow:hidden;background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:26px 22px;transition:border-color .3s,transform .4s var(--ease),box-shadow .4s;transform-style:preserve-3d}
+.feature-card::before{content:'';position:absolute;inset:0;background:radial-gradient(260px circle at var(--mx,50%) var(--my,0%),rgba(59,130,246,.16),transparent 70%);opacity:0;transition:opacity .3s;pointer-events:none}
+.feature-card:hover{border-color:rgba(59,130,246,.35);box-shadow:0 18px 50px rgba(0,0,0,.5)}
+.feature-card:hover::before{opacity:1}
+.feature-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.35rem;margin-bottom:16px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.15);transition:transform .5s var(--ease),background .3s}
+.feature-card:hover .feature-icon{transform:scale(1.12) rotate(-8deg);background:rgba(59,130,246,.18)}
+.feature-title{font-size:.98rem;font-weight:700;margin-bottom:8px}
+.feature-desc{font-size:.86rem;color:var(--text-2);line-height:1.6}
+
+/* Steps */
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:28px;position:relative}
+.steps::before{content:'';position:absolute;top:24px;left:12%;right:12%;height:2px;background:linear-gradient(90deg,var(--blue),rgba(59,130,246,.15));transform:scaleX(0);transform-origin:left;transition:transform 1.6s .3s var(--ease)}
+.steps.in::before{transform:scaleX(1)}
+.step{text-align:center;position:relative}
+.step-n{width:50px;height:50px;border-radius:50%;background:var(--surface2);border:1px solid var(--blue);display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:700;color:var(--blue);margin:0 auto 16px;position:relative;z-index:1;box-shadow:0 0 0 6px var(--bg)}
+.step.in .step-n{animation:pop .6s var(--ease) both;animation-delay:calc(var(--i,0) * 200ms + .2s)}
+@keyframes pop{0%{transform:scale(.4)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+.step-title{font-size:.98rem;font-weight:700;margin-bottom:8px}.step-desc{font-size:.84rem;color:var(--text-2);line-height:1.6;max-width:220px;margin:0 auto}
+
+/* CTA */
+.cta{position:relative;overflow:hidden;text-align:center;padding:90px 28px;border-top:1px solid var(--border)}
+.cta::before{content:'';position:absolute;top:50%;left:50%;width:700px;height:350px;transform:translate(-50%,-50%);background:radial-gradient(ellipse at center,rgba(59,130,246,.12),transparent 70%);pointer-events:none;animation:breathe 5s ease-in-out infinite}
+@keyframes breathe{50%{transform:translate(-50%,-50%) scale(1.2);opacity:.7}}
+.cta-box{position:relative;max-width:580px;margin:0 auto}
+.cta-box p{color:var(--text-2);line-height:1.7;margin-bottom:30px}
+.cta-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+
+/* Footer */
+footer{border-top:1px solid var(--border);background:var(--surface)}
+.f-in{max-width:1200px;margin:0 auto;padding:48px 28px 28px}
+.f-top{display:grid;grid-template-columns:1.5fr repeat(3,1fr);gap:40px;margin-bottom:36px}
+.f-brand p{font-size:.84rem;color:var(--text-3);line-height:1.7;max-width:240px;margin-top:12px}
+.f-col h4{font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-2);margin-bottom:16px}
+.f-col ul{list-style:none}.f-col li{margin-bottom:10px}
+.f-col a{text-decoration:none;font-size:.86rem;color:var(--text-3);transition:color .2s,padding-left .25s var(--ease)}
+.f-col a:hover{color:#fff;padding-left:4px}
+.f-bot{border-top:1px solid var(--border);padding-top:22px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.f-bot p{font-size:.76rem;color:var(--text-3)}.f-bot .disc{max-width:500px;line-height:1.5}
+
+.to-top{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));width:44px;height:44px;border-radius:50%;background:var(--blue);color:#fff;border:none;font-size:1.1rem;cursor:pointer;z-index:200;box-shadow:0 6px 20px rgba(59,130,246,.4);opacity:0;transform:translateY(20px) scale(.8);pointer-events:none;transition:opacity .3s,transform .4s var(--ease)}
+.to-top.show{opacity:1;transform:none;pointer-events:auto}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+
+/* ═══ Tablet ═══ */
+@media(max-width:1024px){
+  .hero-wrap{grid-template-columns:1fr;text-align:center;min-height:0;gap:44px}
+  .hero-sub{margin-inline:auto}.hero-cta{justify-content:center}
+  .hero-stats{justify-content:center}
+  .hv{max-width:460px;width:100%;margin:0 auto}
+  .features-grid{grid-template-columns:repeat(2,1fr)}
+  .f-top{grid-template-columns:1fr 1fr}
+}
+
+/* ═══ Mobile ═══ */
+@media(max-width:768px){
+  .navbar{padding:0 14px;height:58px;gap:10px}
+  .burger{display:flex}.drawer{display:flex}
+  .nav-links{display:none}
+  .nav-auth{margin-left:auto}
+  .nav-auth .btn{padding:8px 14px;font-size:.82rem}
+  .nav-auth .btn.reg-txt{display:inline-flex}
+  .hero{padding:44px 16px 44px}
+  .hero-badge{font-size:.74rem;margin-bottom:20px}
+  .hero-title{letter-spacing:-1.2px}
+  .hero-sub{font-size:.96rem;margin-bottom:26px}
+  .hero-cta{flex-direction:column}.hero-cta .btn{width:100%}
+  .hero-stats{grid-template-columns:repeat(2,1fr);gap:12px;margin-top:34px;text-align:left}
+  .hs{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+  .hs-v{font-size:1.25rem}
+  /* hero visual becomes a compact stacked card */
+  .hv{height:auto;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .hv-main{position:relative;inset:auto;grid-column:1/-1;animation:none;padding:18px}
+  .hv-price{font-size:1.7rem}.spark{height:80px}
+  .hv-float{position:relative;inset:auto!important;animation:none!important;padding:11px 12px;text-align:left}
+  .section{padding:56px 16px}
+  .s-sub{margin-bottom:26px;font-size:.92rem}
+  .ticker-bar{padding:10px 0}
+  /* Market → Binance-style list: coin | price | change pill */
+  .col-rank,.col-vol{display:none}
+  .table-wrap{background:none;border:none;border-radius:0}
+  thead{background:none}th{padding:8px 4px;border-bottom:1px solid var(--border)}
+  td{padding:14px 4px}
+  .chg{display:inline-block;min-width:80px;text-align:center;padding:7px 8px;border-radius:7px;color:#fff}
+  .chg.up{background:var(--green)}.chg.down{background:var(--red)}
+  .table-footer{border:none;padding:12px 4px}
+  /* features: tidy 1-col horizontal cards */
+  .features-grid{grid-template-columns:1fr;gap:10px}
+  .feature-card{display:grid;grid-template-columns:46px 1fr;column-gap:14px;padding:18px 16px}
+  .feature-icon{grid-row:span 2;margin:0}
+  .feature-title{margin-bottom:4px}
+  /* steps: vertical timeline */
+  .steps{grid-template-columns:1fr;gap:6px;padding-left:4px}
+  .steps::before{top:25px;bottom:25px;left:28px;right:auto;width:2px;height:auto;transform:scaleY(0);transform-origin:top;background:linear-gradient(var(--blue),rgba(59,130,246,.15))}
+  .steps.in::before{transform:scaleY(1)}
+  .step{display:grid;grid-template-columns:50px 1fr;column-gap:16px;text-align:left;padding:10px 0}
+  .step-n{grid-row:span 2;margin:0}
+  .step-title{align-self:end;margin:0}.step-desc{margin:0;max-width:none}
+  .rv.left,.rv.right{transform:translateY(26px)}
+  .cta{padding:64px 16px}.cta-btns{flex-direction:column}.cta-btns .btn{width:100%}
+  .f-in{padding:40px 16px 24px}
+  .f-top{grid-template-columns:1fr 1fr;gap:28px}.f-brand{grid-column:1/-1}
+  .f-bot{flex-direction:column}
+}
+@media(max-width:380px){.nav-auth .btn.reg-txt{padding:8px 11px}.logo{font-size:1.15rem}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}.rv,.fx,.hv{opacity:1;transform:none}.hero-title .line>span{transform:none}}
+</style>
 </head>
-
 <body>
 
-  <!-- ========================
-       HEADER / NAV
-       ======================== -->
-  <header>
-    <nav class="navbar">
-      <a href="/" class="logo">
-        <span class="logo-dot"></span>
-        cordEX
-      </a>
-      <ul class="nav-links">
-        <li><a href="/" class="nav-link active">Home</a></li>
-        <li><a href="#market" class="nav-link">Markets</a></li>
-        <li><a href="#features" class="nav-link">Features</a></li>
-        <li><a href="/contact" class="nav-link">Support</a></li>
-        <li><a href="http://localhost:7070/login" class="nav-link btn-outline">Login</a></li>
-        <li><a href="http://localhost:7070/register" class="nav-link btn-primary">Get Started</a></li>
-      </ul>
-    </nav>
-  </header>
+<header id="hdr">
+  <nav class="navbar">
+    <button class="burger" aria-label="Open menu" onclick="toggleMenu()"><span></span><span></span><span></span></button>
+    <a href="/" class="logo"><span class="logo-dot"></span>cordEX</a>
+    <ul class="nav-links">
+      <li><a href="/" class="nav-link active">Home</a></li>
+      <li><a href="#market" class="nav-link">Markets</a></li>
+      <li><a href="#features" class="nav-link">Features</a></li>
+      <li><a href="/contact" class="nav-link">Support</a></li>
+    </ul>
+    <div class="nav-auth">
+      <a href="http://localhost:7070/login" class="btn">Login</a>
+      <a href="http://localhost:7070/register" class="btn primary reg-txt">Register</a>
+    </div>
+  </nav>
+</header>
 
-  <!-- ========================
-       HERO / LANDING
-       ======================== -->
-  <main>
-    <section class="hero">
-      <div class="hero-inner">
-        <div class="hero-badge">
-          <span class="hero-badge-dot"></span>
-          100% Free · No Real Assets at Risk
-        </div>
+<div class="overlay" onclick="closeMenu()"></div>
+<aside class="drawer">
+  <a class="dl" href="/" onclick="closeMenu()">🏠 Home</a>
+  <a class="dl" href="#market" onclick="closeMenu()">🌐 Markets</a>
+  <a class="dl" href="#features" onclick="closeMenu()">⚡ Features</a>
+  <a class="dl" href="/contact">🛡 Support</a>
+  <div class="d-auth">
+    <a href="http://localhost:7070/login" class="btn">Login</a>
+    <a href="http://localhost:7070/register" class="btn primary">Create Free Account</a>
+  </div>
+</aside>
 
-        <h1 class="hero-title">
-          Trade Digital-Assets.<br/>
-          <span class="gradient-text">Risk Nothing.</span>
-        </h1>
-
-        <p class="hero-subtitle">
-          Practice real crypto trading with live market prices and demo funds.
-          Master the market before you invest a single dollar.
-        </p>
-
-        <div class="hero-cta">
-          <a href="http://localhost:7070/register" class="btn-hero-primary">
-            Start Trading Free →
-          </a>
-          <a href="#features" class="btn-hero-secondary">
-            Explore Features
-          </a>
-        </div>
-
-        <div class="hero-stats">
-          <div class="hero-stat">
-            <div class="hero-stat-value">$50,000</div>
-            <div class="hero-stat-label">Demo Funds</div>
-          </div>
-          <div class="hero-stat">
-            <div class="hero-stat-value">24 / 7</div>
-            <div class="hero-stat-label">Live Support</div>
-          </div>
-          <div class="hero-stat">
-            <div class="hero-stat-value">5+</div>
-            <div class="hero-stat-label">Live Cryptos</div>
-          </div>
-          <div class="hero-stat">
-            <div class="hero-stat-value">Free</div>
-            <div class="hero-stat-label">Always</div>
-          </div>
-        </div>
+<main>
+<section class="hero">
+  <div class="grid-bg"></div><div class="orb a"></div><div class="orb b"></div>
+  <div class="hero-wrap">
+    <div>
+      <div class="hero-badge fx" style="--d:0"><i></i>100% free · No real assets at risk</div>
+      <h1 class="hero-title">
+        <span class="line"><span>Trade Digital Assets.</span></span>
+        <span class="line"><span class="grad">Risk Nothing.</span></span>
+      </h1>
+      <p class="hero-sub fx" style="--d:2">Practice real crypto trading with live market prices and demo funds.</p>
+      <div class="hero-cta fx" style="--d:3">
+        <a href="http://localhost:7070/register" class="btn primary lg">Start Trading Free <span class="arr">→</span></a>
+        <a href="http://localhost:7070/login" class="btn lg">Login</a>
       </div>
-    </section>
-
-    <!-- Ticker Bar -->
-    <div class="ticker-bar">
-      <div class="ticker-track" id="tickerTrack">
-        <!-- Populated by JS -->
+      <div class="hero-stats fx" style="--d:4">
+        <div class="hs"><div class="hs-v" data-count="50000" data-prefix="$">$0</div><div class="hs-l">Demo funds</div></div>
+        <div class="hs"><div class="hs-v">24 / 7</div><div class="hs-l">Live support</div></div>
+        <div class="hs"><div class="hs-v" data-count="5" data-suffix="+">0</div><div class="hs-l">Live cryptos</div></div>
+        <div class="hs"><div class="hs-v">Free</div><div class="hs-l">Always</div></div>
       </div>
     </div>
 
-    <!-- ========================
-         LIVE MARKET TABLE
-         ======================== -->
-    <section id="market" class="section">
-      <div class="section-label reveal">Live Prices</div>
-      <h2 class="section-title reveal">Market Overview</h2>
-      <p class="section-subtitle reveal">
-        Real-time prices streamed straight from Binance's public WebSocket feed — the same data you'll trade with.
-      </p>
-
-      <div class="market-table-wrap reveal">
-        <table class="market-table">
-          <thead>
-            <tr>
-              <th>Coin</th>
-              <th>Rank</th>
-              <th>Price</th>
-              <th>24h Change</th>
-              <th>24h Volume</th>
-            </tr>
-          </thead>
-          <tbody id="marketTableBody">
-            <tr class="loading-row">
-              <td colspan="5">
-                <span class="spinner"></span>Connecting to WebSocket…
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="table-footer">
-          <span class="live-dot"></span>
-          <span id="lastUpdated">Connecting to Binance…</span>
-        </div>
+    <div class="hv" aria-hidden="true">
+      <div class="hv-main">
+        <div class="hv-top"><div class="hv-ico">₿</div><div><div class="hv-name">Bitcoin</div><div class="hv-sym">BTC / USDT</div></div><div class="live-tag"><i></i>LIVE</div></div>
+        <div class="hv-price" id="hvPrice">—</div>
+        <div class="hv-chg" id="hvChg">Waiting for feed…</div>
+        <svg class="spark" viewBox="0 0 400 110" preserveAspectRatio="none">
+          <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b82f6" stop-opacity=".3"/><stop offset="1" stop-color="#3b82f6" stop-opacity="0"/></linearGradient></defs>
+          <path class="fill" d="M0,90 C40,80 60,95 100,70 S160,60 200,65 S270,30 310,40 S370,15 400,10 L400,110 L0,110Z"/>
+          <path class="line" d="M0,90 C40,80 60,95 100,70 S160,60 200,65 S270,30 310,40 S370,15 400,10"/>
+        </svg>
       </div>
-    </section>
-
-    <!-- ========================
-         FEATURES
-         ======================== -->
-    <section id="features" class="features-section">
-      <div class="section" style="padding-bottom: 80px;">
-        <div class="section-label reveal">Everything You Need</div>
-        <h2 class="section-title reveal">Built for Serious Learners</h2>
-        <p class="section-subtitle reveal">
-          A full trading ecosystem — no money needed to get started.
-        </p>
-
-        <div class="features-grid">
-          <!-- 1 -->
-          <div class="feature-card reveal">
-            <div class="feature-icon">📈</div>
-            <div class="feature-title">Demo Trading</div>
-            <p class="feature-desc">Trade BTC, ETH, SOL, XRP & BNB at live market prices using virtual funds. Zero risk, real experience.</p>
-          </div>
-          <!-- 2 -->
-          <div class="feature-card reveal">
-            <div class="feature-icon">💸</div>
-            <div class="feature-title">Fund Transfers</div>
-            <p class="feature-desc">Send and receive demo funds between users through our built-in banking model. Practice real portfolio flows.</p>
-          </div>
-          <!-- 3 -->
-          <div class="feature-card reveal">
-            <div class="feature-icon">🕯️</div>
-            <div class="feature-title">Spot Trading</div>
-            <p class="feature-desc">Buy and sell crypto instantly at live market prices. Execute market and limit orders and track your holdings in real time.</p>
-          </div>
-          <!-- 4 -->
-          <div class="feature-card reveal">
-            <div class="feature-icon">⚡</div>
-            <div class="feature-title">Futures Trading</div>
-            <p class="feature-desc">Go long or short on crypto with up to 10× leverage. Practice advanced contracts and manage risk with stop-loss orders.</p>
-          </div>
-          <!-- 5 -->
-          <div class="feature-card reveal">
-            <div class="feature-icon">💬</div>
-            <div class="feature-title">Group Live Chat</div>
-            <p class="feature-desc">Discuss strategies, call market moves, and collaborate with other traders in live group channels.</p>
-          </div>
-          <!-- 6 -->
-          <div class="feature-card reveal">
-            <div class="feature-icon">📝</div>
-            <div class="feature-title">Insights Feed</div>
-            <p class="feature-desc">Share your trade setups and market analysis with the community — like Binance Square, but for learners.</p>
-          </div>
-          <!-- 7 -->
-          <div class="feature-card reveal">
-            <div class="feature-icon">🤖</div>
-            <div class="feature-title">AI Chatbot</div>
-            <p class="feature-desc">Stuck on something? Our smart chatbot answers your trading questions instantly, any time of day.</p>
-          </div>
-          <!-- 8 -->
-          <div class="feature-card reveal">
-            <div class="feature-icon">🛡️</div>
-            <div class="feature-title">24/7 Support</div>
-            <p class="feature-desc">Human support is available around the clock. We're here whenever you need a real answer fast.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ========================
-         HOW IT WORKS
-         ======================== -->
-    <section class="section">
-      <div class="section-label reveal">Simple Start</div>
-      <h2 class="section-title reveal">Up in 60 Seconds</h2>
-      <p class="section-subtitle reveal">No credit card. No deposits. No stress.</p>
-
-      <div class="steps-grid">
-        <div class="step-card">
-          <div class="step-number">01</div>
-          <div class="step-title">Create Free Account</div>
-          <p class="step-desc">Register in under a minute. No payment info required, ever.</p>
-        </div>
-        <div class="step-card">
-          <div class="step-number">02</div>
-          <div class="step-title">Receive Demo Funds</div>
-          <p class="step-desc">Get $50,000 in virtual funds instantly credited to your account.</p>
-        </div>
-        <div class="step-card">
-          <div class="step-number">03</div>
-          <div class="step-title">Trade Live Prices</div>
-          <p class="step-desc">Buy and sell at real market rates. Watch your portfolio move in real time.</p>
-        </div>
-        <div class="step-card">
-          <div class="step-number">04</div>
-          <div class="step-title">Learn & Improve</div>
-          <p class="step-desc">Share insights, join live chats, and track your growth over time.</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- ========================
-         CTA BANNER
-         ======================== -->
-    <section class="cta-section" style="border-top: 1px solid var(--border);">
-      <div class="cta-box reveal">
-        <div class="section-label" style="margin-bottom: 16px;">Join Today</div>
-        <h2 class="section-title">
-          Start Your Trading<br/>
-          <span style="background: linear-gradient(90deg,#fff 0%,#93c5fd 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">Journey Today</span>
-        </h2>
-        <p>No real money. No pressure. Just you, live markets, and a platform built to make you a better trader.</p>
-        <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
-          <a href="http://localhost:7070/register" class="btn-hero-primary">Create Free Account →</a>
-          <a href="/contact" class="btn-hero-secondary">Talk to Support</a>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <!-- ========================
-       FOOTER
-       ======================== -->
-  <footer>
-    <div class="footer-inner">
-      <div class="footer-top">
-        <div class="footer-brand">
-          <a href="/" class="logo"><span class="logo-dot"></span>cordEX</a>
-          <p>A free demo trading platform for learning crypto markets — no real assets, no risk.</p>
-        </div>
-        <div class="footer-col">
-          <h4>Platform</h4>
-          <ul>
-            <li><a href="/">Home</a></li>
-            <li><a href="#market">Markets</a></li>
-            <li><a href="#features">Features</a></li>
-            <li><a href="http://localhost:7070/register">Register</a></li>
-            <li><a href="http://localhost:7070/login">Login</a></li>
-          </ul>
-        </div>
-        <div class="footer-col">
-          <h4>Tools</h4>
-          <ul>
-            <li><a href="#">Demo Trading</a></li>
-            <li><a href="#">Fund Transfer</a></li>
-            <li><a href="#">Insights Feed</a></li>
-            <li><a href="#">Live Group Chat</a></li>
-            <li><a href="#">AI Chatbot</a></li>
-          </ul>
-        </div>
-        <div class="footer-col">
-          <h4>Help</h4>
-          <ul>
-            <li><a href="/contact">Contact Us</a></li>
-            <li><a href="#">24/7 Support</a></li>
-            <li><a href="#">FAQ</a></li>
-            <li><a href="#">Privacy Policy</a></li>
-            <li><a href="#">Terms of Use</a></li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="footer-bottom">
-        <p>© 2025 cordEX. Created By Muneeb.</p>
-        <p class="footer-disclaimer">
-          cordEX uses virtual funds only. This platform is for educational purposes and does not facilitate real financial transactions.
-        </p>
-      </div>
+      <div class="hv-float f1"><div class="hv-ico" style="background:rgba(98,126,234,.15);color:#627eea">Ξ</div><div><b id="hvEth">—</b><small id="hvEthC">ETH</small></div></div>
+      <div class="hv-float f2"><div class="hv-ico" style="background:rgba(153,69,255,.15);color:#9945ff">◎</div><div><b id="hvSol">—</b><small id="hvSolC">SOL</small></div></div>
     </div>
-  </footer>
+  </div>
+</section>
 
-  <!-- ========================
-       JAVASCRIPT
-       ======================== -->
-  <script>
-    /* ——— Scroll reveal ——— */
-    const revealObserver = new IntersectionObserver((entries) => {
-      entries.forEach(e => {
-        if (e.isIntersecting) {
-          e.target.classList.add('visible');
-          revealObserver.unobserve(e.target);
-        }
-      });
-    }, { threshold: 0.1 });
+<div class="ticker-bar"><div class="ticker-track" id="tickerTrack"></div></div>
 
-    document.querySelectorAll('.reveal, .step-card').forEach(el => revealObserver.observe(el));
+<section id="market" class="section">
+  <div class="s-label rv up">Live prices</div>
+  <h2 class="s-title rv up" style="--i:1">Market overview</h2>
+  <div class="table-wrap rv zoom" style="--i:3">
+    <table>
+      <thead><tr><th>Coin</th><th class="col-rank">Rank</th><th>Price</th><th>24h change</th><th class="col-vol">24h volume</th></tr></thead>
+      <tbody id="marketTableBody"><tr><td colspan="5" style="text-align:center;padding:40px;color:var(--text-3)"><span class="spinner"></span>Connecting to WebSocket…</td></tr></tbody>
+    </table>
+    <div class="table-footer"><span class="live-dot"></span><span id="lastUpdated">Connecting to Binance…</span></div>
+  </div>
+</section>
 
-    /* ═══════════════════════════════════════════════════════
-       LIVE MARKET DATA — SHARED SERVER WEBSOCKET
-       ═══════════════════════════════════════════════════════
-       We do NOT connect to Binance from the browser. Every visitor
-       connects to OUR server at /ws/market-data instead. The server
-       (Market_Stream/market_data.js) holds exactly one upstream
-       connection to Binance and rebroadcasts a shared snapshot to
-       every connected browser once a second — no matter how many
-       people are on the site, Binance only ever sees one connection.
+<section id="features" class="features-section">
+  <div class="section">
+    <div class="s-label rv up">Everything you need</div>
+    <h2 class="s-title rv up" style="--i:1">Built for serious learners</h2>
+    <p class="s-sub rv up" style="--i:2">A full trading ecosystem — no money needed to get started.</p>
+    <div class="features-grid">
+      <div class="feature-card rv up" style="--i:0"><div class="feature-icon">📈</div><div class="feature-title">Demo Trading</div><p class="feature-desc">Trade BTC, ETH, SOL, XRP & BNB at live prices with virtual funds. Zero risk, real experience.</p></div>
+      <div class="feature-card rv up" style="--i:1"><div class="feature-icon">💸</div><div class="feature-title">Fund Transfers</div><p class="feature-desc">Send and receive demo funds between users through our built-in banking model.</p></div>
+      <div class="feature-card rv up" style="--i:2"><div class="feature-icon">🕯️</div><div class="feature-title">Spot Trading</div><p class="feature-desc">Buy and sell instantly. Place market and limit orders and track holdings in real time.</p></div>
+      <div class="feature-card rv up" style="--i:3"><div class="feature-icon">⚡</div><div class="feature-title">Futures Trading</div><p class="feature-desc">Go long or short with up to 10× leverage and manage risk with stop-loss orders.</p></div>
+      <div class="feature-card rv up" style="--i:4"><div class="feature-icon">💬</div><div class="feature-title">Group Live Chat</div><p class="feature-desc">Discuss strategies and call market moves with other traders in live channels.</p></div>
+      <div class="feature-card rv up" style="--i:5"><div class="feature-icon">📝</div><div class="feature-title">Insights Feed</div><p class="feature-desc">Share trade setups and analysis with the community — like Binance Square, for learners.</p></div>
+      <div class="feature-card rv up" style="--i:6"><div class="feature-icon">🤖</div><div class="feature-title">AI Chatbot</div><p class="feature-desc">Stuck on something? Get instant answers to your trading questions, any time.</p></div>
+      <div class="feature-card rv up" style="--i:7"><div class="feature-icon">🛡️</div><div class="feature-title">24/7 Support</div><p class="feature-desc">Human support around the clock, whenever you need a real answer fast.</p></div>
+    </div>
+  </div>
+</section>
 
-       Binance doesn't expose "market cap" (it's a supply-based
-       metric, not something an exchange tracks), so that column
-       is live 24h quote volume instead, passed straight through
-       from the server.
-       ═══════════════════════════════════════════════════════ */
-    const COINS = [
-      { id: 'bitcoin',     symbol: 'BTC', name: 'Bitcoin',  cls: 'btc', icon: '₿', rank: 1 },
-      { id: 'ethereum',    symbol: 'ETH', name: 'Ethereum', cls: 'eth', icon: 'Ξ', rank: 2 },
-      { id: 'binancecoin', symbol: 'BNB', name: 'BNB',      cls: 'bnb', icon: 'B', rank: 4 },
-      { id: 'solana',      symbol: 'SOL', name: 'Solana',   cls: 'sol', icon: '◎', rank: 5 },
-      { id: 'ripple',      symbol: 'XRP', name: 'XRP',      cls: 'xrp', icon: '✕', rank: 7 },
-    ];
+<section class="section">
+  <div class="s-label rv left">Simple start</div>
+  <h2 class="s-title rv left" style="--i:1">Up in 60 seconds</h2>
+  <p class="s-sub rv left" style="--i:2">No credit card. No deposits. No stress.</p>
+  <div class="steps rv" id="steps">
+    <div class="step" style="--i:0"><div class="step-n">1</div><div class="step-title">Create free account</div><p class="step-desc">Register in under a minute. No payment info, ever.</p></div>
+    <div class="step" style="--i:1"><div class="step-n">2</div><div class="step-title">Receive demo funds</div><p class="step-desc">Get $50,000 in virtual funds credited instantly.</p></div>
+    <div class="step" style="--i:2"><div class="step-n">3</div><div class="step-title">Trade live prices</div><p class="step-desc">Buy and sell at real market rates and watch your portfolio move.</p></div>
+    <div class="step" style="--i:3"><div class="step-n">4</div><div class="step-title">Learn & improve</div><p class="step-desc">Share insights, join live chats, and track your growth.</p></div>
+  </div>
+</section>
 
-    let liveData = {};
-    let socket = null;
-    let reconnectTimer = null;
+<section class="cta">
+  <div class="cta-box rv zoom">
+    <div class="s-label">Join today</div>
+    <h2 class="s-title" style="margin-bottom:16px">Start your trading <span class="grad">journey today</span></h2>
+    <p>No real money. No pressure. Just you, live markets, and a platform built to make you a better trader.</p>
+    <div class="cta-btns">
+      <a href="http://localhost:7070/register" class="btn primary lg">Create Free Account <span class="arr">→</span></a>
+      <a href="http://localhost:7070/login" class="btn lg">Login</a>
+    </div>
+  </div>
+</section>
+</main>
 
-    function connectSocket() {
-      const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-      socket = new WebSocket(`${proto}://${location.host}/ws/market-data`);
+<footer>
+  <div class="f-in">
+    <div class="f-top">
+      <div class="f-brand"><a href="/" class="logo"><span class="logo-dot"></span>cordEX</a></div>
+      <div class="f-col"><h4>Platform</h4><ul><li><a href="/">Home</a></li><li><a href="#market">Markets</a></li><li><a href="#features">Features</a></li><li><a href="http://localhost:7070/register">Register</a></li><li><a href="http://localhost:7070/login">Login</a></li></ul></div>
+      <div class="f-col"><h4>Tools</h4><ul><li><a href="#">Demo Trading</a></li><li><a href="#">Fund Transfer</a></li><li><a href="#">Insights Feed</a></li><li><a href="#">Live Group Chat</a></li><li><a href="#">AI Chatbot</a></li></ul></div>
+      <div class="f-col"><h4>Help</h4><ul><li><a href="/contact">Contact Us</a></li><li><a href="#">24/7 Support</a></li><li><a href="#">FAQ</a></li><li><a href="#">Privacy Policy</a></li><li><a href="#">Terms of Use</a></li></ul></div>
+    </div>
+    <div class="f-bot"><p>Copyright© 2026 cordEX. Trading and Social Platform.</p><p class="disc">cordEX uses virtual funds only. This platform is for educational purposes and does not facilitate real financial transactions.</p></div>
+  </div>
+</footer>
 
-      socket.onopen = () => setStatus('Live via server WebSocket');
+<button class="to-top" id="toTop" aria-label="Back to top" onclick="scrollTo({top:0,behavior:'smooth'})">↑</button>
 
-      socket.onmessage = (event) => {
-        const msg = JSON.parse(event.data);
-        if (msg.type !== 'snapshot' || !msg.data) return;
-        // Server sends the full latest snapshot keyed by coin id — just adopt it.
-        liveData = msg.data;
-      };
+<script>
+/* Menu */
+function toggleMenu(){document.body.classList.toggle('menu-open')}
+function closeMenu(){document.body.classList.remove('menu-open')}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu()});
+matchMedia('(min-width:769px)').addEventListener('change',closeMenu);
 
-      socket.onerror = () => setStatus('WebSocket error — reconnecting…');
+/* Header + back-to-top */
+const hdr=document.getElementById('hdr'),toTop=document.getElementById('toTop');
+addEventListener('scroll',()=>{hdr.classList.toggle('scrolled',scrollY>20);toTop.classList.toggle('show',scrollY>600)},{passive:true});
 
-      socket.onclose = () => {
-        setStatus('Disconnected — reconnecting…');
-        clearTimeout(reconnectTimer);
-        reconnectTimer = setTimeout(connectSocket, 3000);
-      };
-    }
+/* Ripple */
+document.addEventListener('click',e=>{
+  const b=e.target.closest('.btn');if(!b)return;
+  const r=b.getBoundingClientRect(),s=Math.max(r.width,r.height),d=document.createElement('span');
+  d.className='ripple';d.style.cssText=`width:${s}px;height:${s}px;left:${e.clientX-r.left-s/2}px;top:${e.clientY-r.top-s/2}px`;
+  b.appendChild(d);setTimeout(()=>d.remove(),600);
+});
 
-    function setStatus(text) {
-      const el = document.getElementById('lastUpdated');
-      if (el) el.textContent = text + ' · ' + new Date().toLocaleTimeString();
-    }
+/* Scroll reveal (up / left / right / zoom variants, staggered via --i) */
+const io=new IntersectionObserver(es=>es.forEach(e=>{
+  if(e.isIntersecting){
+    e.target.classList.add('in');io.unobserve(e.target);
+    if(e.target.id==='steps')e.target.querySelectorAll('.step').forEach(s=>s.classList.add('in'));
+  }}),{threshold:.12,rootMargin:'0px 0px -40px 0px'});
+document.querySelectorAll('.rv').forEach(el=>io.observe(el));
 
-    function formatPrice(n) {
-      if (n === undefined || n === null || isNaN(n)) return '—';
-      if (n >= 1000) return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      if (n >= 1)    return '$' + n.toFixed(4);
-      return '$' + n.toFixed(6);
-    }
+/* Count-up stats */
+function countUp(el){
+  const to=+el.dataset.count,pre=el.dataset.prefix||'',suf=el.dataset.suffix||'',t0=performance.now(),dur=1600;
+  (function f(t){const k=Math.min((t-t0)/dur,1),v=Math.round(to*(1-Math.pow(1-k,3)));
+    el.textContent=pre+v.toLocaleString('en-US')+suf;if(k<1)requestAnimationFrame(f)})(t0);
+}
+setTimeout(()=>document.querySelectorAll('[data-count]').forEach(countUp),700);
 
-    function formatVol(n) {
-      if (!n) return '—';
-      if (n >= 1e9) return '$' + (n / 1e9).toFixed(2) + 'B';
-      if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
-      if (n >= 1e3) return '$' + (n / 1e3).toFixed(2) + 'K';
-      return '$' + n.toLocaleString();
-    }
+/* Feature card: cursor spotlight + gentle tilt (desktop pointers only) */
+if(matchMedia('(hover:hover) and (min-width:1025px)').matches){
+  document.querySelectorAll('.feature-card').forEach(c=>{
+    c.addEventListener('mousemove',e=>{
+      const r=c.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+      c.style.setProperty('--mx',x+'px');c.style.setProperty('--my',y+'px');
+      c.style.transform=`perspective(700px) rotateX(${((y/r.height)-.5)*-6}deg) rotateY(${((x/r.width)-.5)*6}deg) translateY(-4px)`;
+    });
+    c.addEventListener('mouseleave',()=>{c.style.transform=''});
+  });
+}else{
+  document.querySelectorAll('.feature-card').forEach(c=>c.addEventListener('touchstart',()=>{c.style.borderColor='rgba(59,130,246,.4)';setTimeout(()=>c.style.borderColor='',500)},{passive:true}));
+}
 
-    function buildTableRow(coin, data) {
-      const pct = data.changePct || 0;
-      const sign = pct >= 0 ? '+' : '';
-      const cls  = pct >= 0 ? 'up' : 'down';
-      const arrow = pct >= 0 ? '▲' : '▼';
-      return `
-        <tr>
-          <td>
-            <div class="coin-cell">
-              <div class="coin-icon ${coin.cls}">${coin.icon}</div>
-              <div>
-                <div class="coin-name">${coin.name}</div>
-                <div class="coin-symbol">${coin.symbol}</div>
-              </div>
-            </div>
-          </td>
-          <td><span class="rank-badge">${coin.rank}</span></td>
-          <td class="price-cell">${formatPrice(data.price)}</td>
-          <td class="change-cell ${cls}">${arrow} ${sign}${pct.toFixed(2)}%</td>
-          <td class="mcap-cell">${formatVol(data.quoteVol)}</td>
-        </tr>`;
-    }
+/* Live market data via shared server WebSocket */
+const COINS=[
+ {id:'bitcoin',symbol:'BTC',name:'Bitcoin',cls:'btc',icon:'₿',rank:1},
+ {id:'ethereum',symbol:'ETH',name:'Ethereum',cls:'eth',icon:'Ξ',rank:2},
+ {id:'binancecoin',symbol:'BNB',name:'BNB',cls:'bnb',icon:'B',rank:4},
+ {id:'solana',symbol:'SOL',name:'Solana',cls:'sol',icon:'◎',rank:5},
+ {id:'ripple',symbol:'XRP',name:'XRP',cls:'xrp',icon:'✕',rank:7}];
+let liveData={},socket=null,reconnectTimer=null,prev={};
+function connectSocket(){
+  const proto=location.protocol==='https:'?'wss':'ws';
+  socket=new WebSocket(`${proto}://${location.host}/ws/market-data`);
+  socket.onopen=()=>setStatus('Live via server WebSocket');
+  socket.onmessage=ev=>{const m=JSON.parse(ev.data);if(m.type!=='snapshot'||!m.data)return;liveData=m.data};
+  socket.onerror=()=>setStatus('WebSocket error — reconnecting…');
+  socket.onclose=()=>{setStatus('Disconnected — reconnecting…');clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connectSocket,3000)};
+}
+function setStatus(t){const el=document.getElementById('lastUpdated');if(el)el.textContent=t+' · '+new Date().toLocaleTimeString()}
+function fmtP(n){if(n==null||isNaN(n))return '—';if(n>=1000)return '$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});if(n>=1)return '$'+n.toFixed(4);return '$'+n.toFixed(6)}
+function fmtV(n){if(!n)return '—';if(n>=1e9)return '$'+(n/1e9).toFixed(2)+'B';if(n>=1e6)return '$'+(n/1e6).toFixed(2)+'M';if(n>=1e3)return '$'+(n/1e3).toFixed(2)+'K';return '$'+n.toLocaleString()}
+const pctTxt=p=>(p>=0?'+':'')+p.toFixed(2)+'%';
 
-    function buildTickerItem(coin, data) {
-      const pct = data.changePct || 0;
-      const sign = pct >= 0 ? '+' : '';
-      const cls = pct >= 0 ? 'up' : 'down';
-      return `
-        <div class="ticker-item">
-          <span class="ticker-symbol">${coin.symbol}</span>
-          <span class="ticker-price">${formatPrice(data.price)}</span>
-          <span class="ticker-change ${cls}">${sign}${pct.toFixed(2)}%</span>
-        </div>`;
-    }
+function rowHTML(c,d){
+  const p=d.changePct||0,cls=p>=0?'up':'down',arrow=p>=0?'▲ ':'▼ ';
+  const old=prev[c.id];let fl='';if(old!==undefined&&old!==d.price)fl=d.price>old?' flash-up':' flash-down';prev[c.id]=d.price;
+  return `<tr><td><div class="coin-cell"><div class="coin-icon ${c.cls}">${c.icon}</div><div><div class="coin-name">${c.name}</div><div class="coin-sym">${c.symbol}</div></div></div></td>
+  <td class="col-rank"><span class="rank-badge">${c.rank}</span></td>
+  <td><span class="price-cell${fl}">${fmtP(d.price)}</span></td>
+  <td><span class="chg ${cls}">${arrow}${pctTxt(p)}</span></td>
+  <td class="col-vol" style="color:var(--text-2);font-size:.85rem">${fmtV(d.quoteVol)}</td></tr>`;
+}
+function tickHTML(c,d){const p=d.changePct||0;return `<div class="ticker-item"><span class="t-sym">${c.symbol}</span><span class="t-price">${fmtP(d.price)}</span><span class="t-ch ${p>=0?'up':'down'}">${pctTxt(p)}</span></div>`}
 
-    function renderMarket() {
-      const tbody = document.getElementById('marketTableBody');
-      const ticker = document.getElementById('tickerTrack');
-      let tableHTML = '';
-      let tickerHTML = '';
+function renderMarket(){
+  let rows='',tick='';
+  COINS.forEach(c=>{const d=liveData[c.id];if(!d)return;rows+=rowHTML(c,d);tick+=tickHTML(c,d)});
+  if(!rows)return;
+  document.getElementById('marketTableBody').innerHTML=rows;
+  const tt=document.getElementById('tickerTrack');
+  if(tt.dataset.n!==String(tick.length)||!tt.innerHTML){tt.innerHTML=tick+tick;tt.dataset.n=tick.length}
+  else{/* keep the marquee smooth: update text in place instead of resetting the animation */
+    const items=tt.querySelectorAll('.ticker-item'),n=COINS.filter(c=>liveData[c.id]).length;
+    COINS.filter(c=>liveData[c.id]).forEach((c,i)=>{[i,i+n].forEach(k=>{if(items[k])items[k].outerHTML=tickHTML(c,liveData[c.id])})});
+  }
+  setStatus('Live via Binance WebSocket');
+  /* hero cards */
+  const b=liveData.bitcoin,e=liveData.ethereum,s=liveData.solana;
+  if(b){const hp=document.getElementById('hvPrice'),o=hp.dataset.p;hp.textContent=fmtP(b.price);
+    if(o&&+o!==b.price){hp.className='hv-price '+(b.price>+o?'up':'down');setTimeout(()=>hp.className='hv-price',500)}
+    hp.dataset.p=b.price;
+    const ch=document.getElementById('hvChg');ch.textContent=pctTxt(b.changePct||0)+' today';ch.className='hv-chg '+((b.changePct||0)>=0?'up':'down')}
+  if(e){document.getElementById('hvEth').textContent=fmtP(e.price);const x=document.getElementById('hvEthC');x.textContent='ETH '+pctTxt(e.changePct||0);x.className=(e.changePct||0)>=0?'up':'down'}
+  if(s){document.getElementById('hvSol').textContent=fmtP(s.price);const x=document.getElementById('hvSolC');x.textContent='SOL '+pctTxt(s.changePct||0);x.className=(s.changePct||0)>=0?'up':'down'}
+}
+connectSocket();
+setInterval(renderMarket,1000);
 
-      COINS.forEach(coin => {
-        const data = liveData[coin.id];
-        if (!data) return;
-        tableHTML  += buildTableRow(coin, data);
-        tickerHTML += buildTickerItem(coin, data);
-      });
-
-      if (!tableHTML) return; // nothing streamed yet
-
-      tbody.innerHTML = tableHTML;
-      ticker.innerHTML = tickerHTML + tickerHTML; // duplicate for seamless loop
-
-      setStatus('Live via Binance WebSocket');
-
-      // Flash updated rows
-      document.querySelectorAll('#marketTableBody tr').forEach(row => {
-        row.style.transition = 'background 0.3s';
-        row.style.background = 'rgba(59,130,246,0.04)';
-        setTimeout(() => { row.style.background = ''; }, 400);
-      });
-    }
-
-    connectSocket();
-    // The socket pushes updates continuously — paint the latest snapshot once a second.
-    setInterval(renderMarket, 1000);
-
-    /* ——— Active nav on scroll ——— */
-    const sections = document.querySelectorAll('section[id]');
-    const navLinks = document.querySelectorAll('.nav-link');
-
-    const navObserver = new IntersectionObserver((entries) => {
-      entries.forEach(e => {
-        if (e.isIntersecting) {
-          navLinks.forEach(l => l.classList.remove('active'));
-          const active = document.querySelector(`.nav-link[href="#${e.target.id}"]`);
-          if (active) active.classList.add('active');
-        }
-      });
-    }, { rootMargin: '-40% 0px -55% 0px' });
-
-    sections.forEach(s => navObserver.observe(s));
-  </script>
-
+/* Active nav on scroll */
+const navLinks=document.querySelectorAll('.nav-link');
+const navIO=new IntersectionObserver(es=>es.forEach(e=>{
+  if(e.isIntersecting){navLinks.forEach(l=>l.classList.remove('active'));const a=document.querySelector(`.nav-link[href="#${e.target.id}"]`);if(a)a.classList.add('active')}
+}),{rootMargin:'-40% 0px -55% 0px'});
+document.querySelectorAll('section[id]').forEach(s=>navIO.observe(s));
+</script>
 </body>
 </html>
