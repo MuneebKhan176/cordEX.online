@@ -4,7 +4,7 @@ const path = require('path');
 const mongoose = require('mongoose');
 
 const verifyToken = require('../middle/middleware');
-const { SocialProfile, Post, Follow } = require('../Databases/MongoDB/mongo_connection'); // PHASE 12 — added Follow
+const { SocialProfile, Post, Follow } = require('../Databases/MongoDB/social_models');
 
 // NOTE ON REQUIRE PATHS: these assume `Social_Platform/` and `chat/` are
 // sibling directories under the same backend root. Adjust if your layout
