@@ -7,10 +7,7 @@ services:
     container_name: cordex-mysql
     restart: unless-stopped
     environment:
-      # DB_USERNAME / DB_PASSWORD are the credentials used by the app.
-      # The supplied configuration uses DB_USERNAME=root, so the container
-      # initializes the root account with DB_PASSWORD. 
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-${DB_PASSWORD:?Set MYSQL_ROOT_PASSWORD or DB_PASSWORD in .env}}
       MYSQL_ROOT_HOST: "%"
       MYSQL_DATABASE: ${DB_NAME:?Set DB_NAME in .env}
     volumes:
@@ -26,6 +23,25 @@ services:
       retries: 10
       start_period: 30s
 
+  mysql-app-user-init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cordex-node:latest
+    container_name: cordex-mysql-app-user-init
+    restart: "no"
+    env_file:
+      - .env
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      MYSQL_ROOT_USER: root
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-${DB_PASSWORD:?Set MYSQL_ROOT_PASSWORD or DB_PASSWORD in .env}}
+    command: ["node", "docker/mysql/create-db-user.js"]
+    depends_on:
+      mysql:
+        condition: service_healthy
+
   mysql-schema-init:
     build:
       context: .
@@ -39,11 +55,11 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       MYSQL_ROOT_USER: root
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-${DB_PASSWORD:?Set MYSQL_ROOT_PASSWORD or DB_PASSWORD in .env}}
     command: ["node", "Databases/MySQL/initDB.js"]
     depends_on:
-      mysql:
-        condition: service_healthy
+      mysql-app-user-init:
+        condition: service_completed_successfully
 
   mysql-ai-permissions:
     build:
@@ -58,7 +74,7 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       MYSQL_ROOT_USER: root
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-${DB_PASSWORD:?Set MYSQL_ROOT_PASSWORD or DB_PASSWORD in .env}}
     command: ["node", "Databases/MySQL/initAIPermissions.js"]
     depends_on:
       mysql-schema-init:
@@ -76,8 +92,8 @@ services:
       MONGO_APP_USERNAME: ${MONGO_APP_USERNAME:?MONGO_APP_USERNAME is required}
       MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?MONGO_APP_PASSWORD is required}
     volumes:
-        - cordex_mongodb_data:/data/db
-        - ./docker/mongodb/init:/docker-entrypoint-initdb.d:ro
+      - cordex_mongodb_data:/data/db
+      - ./docker/mongodb/init:/docker-entrypoint-initdb.d:ro
     expose:
       - "27017"
     healthcheck:
