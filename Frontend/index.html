@@ -6,11 +6,20 @@
 <title>cordEX — Risk-Free Demo Trading</title>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-:root{--bg:#000;--surface:#0a0a0a;--surface2:#111;--border:#1a1a1a;--border2:#222;--text-2:#888;--text-3:#555;--blue:#3b82f6;--blue-dark:#1d4ed8;--green:#22c55e;--red:#ef4444;--ease:cubic-bezier(.22,1,.36,1)}
+:root{
+  --bg:#000;--surface:#0a0a0a;--surface2:#111;--border:#1a1a1a;--border2:#242424;
+  --text-2:#8a8a8a;--text-3:#5a5a5a;
+  --blue:#3b82f6;--blue-dark:#1d4ed8;--blue-soft:#93c5fd;
+  /* gain / loss colours: ice-blue and rose — no green anywhere */
+  --up:#7dd3fc;--down:#fb7185;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --ease:cubic-bezier(.22,1,.36,1)
+}
 html{scroll-behavior:smooth;scroll-padding-top:70px}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Inter,sans-serif;background:var(--bg);color:#fff;min-height:100vh;overflow-x:hidden}
 a{-webkit-tap-highlight-color:transparent}
 :focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.up{color:var(--up)}.down{color:var(--down)}
 
 /* ── Header ── */
 header{background:rgba(0,0,0,.82);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:300;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);transition:background .3s,border-color .3s}
@@ -21,8 +30,8 @@ header.scrolled{background:rgba(0,0,0,.94);border-color:var(--border2)}
 body.menu-open .burger span:nth-child(1){transform:translateY(7px) rotate(45deg)}
 body.menu-open .burger span:nth-child(2){opacity:0;width:0}
 body.menu-open .burger span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
-.logo{font-size:1.3rem;font-weight:800;letter-spacing:-.5px;background:linear-gradient(90deg,#fff,#93c5fd);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
-.logo-dot{width:8px;height:8px;background:var(--blue);border-radius:50%;animation:pdot 2s infinite;-webkit-text-fill-color:initial}
+.logo{font-size:1.3rem;font-weight:800;letter-spacing:-.5px;color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+.logo-dot{width:8px;height:8px;background:var(--blue);border-radius:50%;animation:pdot 2s infinite}
 @keyframes pdot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
 .nav-links{list-style:none;display:flex;align-items:center;gap:4px;margin-left:auto}
 .nav-link{text-decoration:none;color:var(--text-2);font-size:.88rem;font-weight:500;padding:7px 14px;border-radius:8px;transition:color .2s,background .2s;position:relative}
@@ -37,8 +46,6 @@ body.menu-open .burger span:nth-child(3){transform:translateY(-7px) rotate(-45de
 .btn:active{transform:scale(.96)}
 .btn.primary{background:linear-gradient(135deg,var(--blue),var(--blue-dark));border-color:transparent;color:#fff;box-shadow:0 0 26px rgba(59,130,246,.2)}
 .btn.primary:hover{box-shadow:0 8px 34px rgba(59,130,246,.45);background:linear-gradient(135deg,#60a5fa,var(--blue))}
-.btn.primary::after{content:'';position:absolute;top:0;left:-80%;width:50%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.3),transparent);transform:skewX(-20deg);animation:shine 4s ease-in-out infinite}
-@keyframes shine{0%,60%{left:-80%}100%{left:140%}}
 .btn.lg{padding:14px 30px;font-size:.96rem;border-radius:10px}
 .btn .arr{transition:transform .25s var(--ease)}.btn:hover .arr{transform:translateX(4px)}
 .ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.25);transform:scale(0);animation:rip .6s linear;pointer-events:none}
@@ -59,126 +66,227 @@ body.menu-open .drawer>*:nth-child(2){animation-delay:.05s}body.menu-open .drawe
 @keyframes dIn{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:none}}
 
 /* ── Hero ── */
-.hero{position:relative;overflow:hidden;padding:90px 28px 70px}
-.hero::before{content:'';position:absolute;top:-15%;left:50%;transform:translateX(-50%);width:1000px;height:650px;background:radial-gradient(ellipse at center,rgba(255,255,255,.07),rgba(255,255,255,.02) 40%,transparent 70%);pointer-events:none}
-.orb{position:absolute;border-radius:50%;filter:blur(70px);pointer-events:none;animation:orb 12s ease-in-out infinite alternate}
-.orb.a{width:340px;height:340px;background:rgba(59,130,246,.16);top:10%;right:-80px}
-.orb.b{width:260px;height:260px;background:rgba(147,197,253,.08);bottom:-60px;left:-40px;animation-delay:-5s}
-@keyframes orb{to{transform:translate(-50px,40px) scale(1.15)}}
-.grid-bg{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:56px 56px;mask-image:radial-gradient(ellipse 70% 60% at 50% 30%,#000,transparent);-webkit-mask-image:radial-gradient(ellipse 70% 60% at 50% 30%,#000,transparent);opacity:.55;pointer-events:none}
-.hero-wrap{position:relative;z-index:1;max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;min-height:calc(100vh - 64px - 160px)}
-.hero-badge{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(59,130,246,.3);background:rgba(59,130,246,.07);color:#93c5fd;font-size:.8rem;font-weight:600;padding:6px 14px;border-radius:100px;margin-bottom:26px}
+.hero{position:relative;overflow:hidden;padding:84px 28px 72px}
+.hero::before{content:'';position:absolute;top:-20%;left:50%;transform:translateX(-50%);width:1000px;height:600px;background:radial-gradient(ellipse at center,rgba(59,130,246,.09),transparent 65%);pointer-events:none}
+.grid-bg{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:56px 56px;mask-image:radial-gradient(ellipse 70% 60% at 50% 30%,#000,transparent);-webkit-mask-image:radial-gradient(ellipse 70% 60% at 50% 30%,#000,transparent);opacity:.5;pointer-events:none}
+.hero-wrap{position:relative;z-index:1;max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
+.hero-badge{display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-size:.74rem;letter-spacing:.04em;color:var(--blue-soft);border:1px solid rgba(59,130,246,.28);background:rgba(59,130,246,.06);padding:7px 14px;border-radius:100px;margin-bottom:26px}
 .hero-badge i{width:6px;height:6px;background:var(--blue);border-radius:50%;animation:pdot 2s infinite}
-.hero-title{font-size:clamp(2.5rem,5.6vw,4.4rem);font-weight:800;line-height:1.06;letter-spacing:-2px;margin-bottom:22px}
-.hero-title .line{display:block;overflow:hidden;padding-bottom:.08em}
+.hero-title{font-size:clamp(2.5rem,5.4vw,4.3rem);font-weight:800;line-height:1.05;letter-spacing:-2.2px;margin-bottom:22px}
+.hero-title .line{display:block;overflow:hidden;padding-bottom:.1em}
 .hero-title .line>span{display:block;transform:translateY(105%);animation:lineUp .9s var(--ease) forwards}
 .hero-title .line:nth-child(2)>span{animation-delay:.12s}
 @keyframes lineUp{to{transform:none}}
-.grad{background:linear-gradient(90deg,#fff,#93c5fd 40%,#3b82f6 70%,#93c5fd);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 5s linear infinite}
-@keyframes shimmer{to{background-position:200% center}}
-.hero-sub{font-size:1.08rem;color:var(--text-2);line-height:1.7;max-width:520px;margin-bottom:34px}
+.hl{color:var(--blue-soft);font-style:italic;font-weight:700;letter-spacing:-1.6px}
+.hero-sub{font-size:1.06rem;color:var(--text-2);line-height:1.7;max-width:480px;margin-bottom:32px}
 .hero-cta{display:flex;gap:12px;flex-wrap:wrap}
-.hero-stats{display:grid;grid-template-columns:repeat(4,auto);gap:34px;margin-top:48px;justify-content:start}
-.hs-v{font-size:1.45rem;font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
-.hs-l{font-size:.76rem;color:var(--text-3);margin-top:2px}
+.hero-stats{display:grid;grid-template-columns:repeat(4,1fr);margin-top:52px;border-top:1px solid var(--border);padding-top:22px;max-width:520px}
+.hs{padding-right:12px}
+.hs+.hs{padding-left:18px;border-left:1px solid var(--border)}
+.hs-v{font-family:var(--mono);font-size:1.25rem;font-weight:600;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.hs-l{font-size:.72rem;color:var(--text-3);margin-top:4px}
 .fx{opacity:0;animation:fadeUp .8s var(--ease) forwards;animation-delay:calc(.25s + var(--d,0) * .12s)}
 @keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
 
-/* hero visual: live cards */
-.hv{position:relative;height:440px;opacity:0;animation:fadeUp 1s .4s var(--ease) forwards}
-.hv-main{position:absolute;inset:30px 0 auto 24px;background:linear-gradient(160deg,#111,#0a0a0a);border:1px solid var(--border2);border-radius:20px;padding:22px;box-shadow:0 30px 80px rgba(0,0,0,.7),0 0 60px rgba(59,130,246,.08);animation:float 7s ease-in-out infinite}
-.hv-top{display:flex;align-items:center;gap:12px;margin-bottom:16px}
-.hv-ico{width:40px;height:40px;border-radius:50%;background:rgba(247,147,26,.15);color:#f7931a;display:flex;align-items:center;justify-content:center;font-weight:700}
-.hv-name{font-weight:700}.hv-sym{font-size:.74rem;color:var(--text-3)}
-.live-tag{margin-left:auto;font-size:.7rem;font-weight:700;color:var(--green);background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);padding:3px 9px;border-radius:100px;display:flex;align-items:center;gap:5px}
-.live-tag i{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pdot 1.4s infinite}
-.hv-price{font-size:2.1rem;font-weight:800;letter-spacing:-1px;font-variant-numeric:tabular-nums;transition:color .4s}
-.hv-price.up{color:var(--green)}.hv-price.down{color:var(--red)}
-.hv-chg{font-size:.85rem;font-weight:600;margin-top:2px}
-.spark{width:100%;height:110px;margin-top:14px;display:block}
-.spark path.line{fill:none;stroke:var(--blue);stroke-width:2.2;stroke-linecap:round;stroke-dasharray:700;stroke-dashoffset:700;animation:draw 2.4s .9s var(--ease) forwards}
-.spark path.fill{fill:url(#sg);opacity:0;animation:fadeIn 1s 2s forwards}
-@keyframes draw{to{stroke-dashoffset:0}}@keyframes fadeIn{to{opacity:1}}
-.hv-float{position:absolute;background:rgba(17,17,17,.92);border:1px solid var(--border2);border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:11px;backdrop-filter:blur(8px);box-shadow:0 14px 40px rgba(0,0,0,.6)}
-.hv-float .hv-ico{width:34px;height:34px;font-size:.85rem}
-.hv-float b{display:block;font-size:.95rem;font-variant-numeric:tabular-nums}
-.hv-float small{font-size:.72rem;font-weight:600}
-.hv-float.f1{left:-8px;bottom:50px;animation:float 6s -2s ease-in-out infinite}
-.hv-float.f2{right:-6px;bottom:-4px;animation:float 8s -4s ease-in-out infinite}
-@keyframes float{50%{transform:translateY(-12px)}}
-.up{color:var(--green)}.down{color:var(--red)}
+/* live terminal panel */
+.term{opacity:0;animation:fadeUp 1s .4s var(--ease) forwards;background:linear-gradient(170deg,#111,#080808);border:1px solid var(--border2);border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.7),0 0 70px rgba(59,130,246,.07);overflow:hidden}
+.term-head{display:flex;align-items:center;gap:12px;padding:20px 22px 0}
+.t-ico{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+.t-ico.btc{background:rgba(247,147,26,.15);color:#f7931a}.t-ico.eth{background:rgba(98,126,234,.15);color:#627eea}.t-ico.sol{background:rgba(153,69,255,.15);color:#9945ff}
+.t-name{font-weight:700}.t-pair{font-family:var(--mono);font-size:.72rem;color:var(--text-3)}
+.live-tag{margin-left:auto;font-family:var(--mono);font-size:.68rem;font-weight:700;letter-spacing:.06em;color:var(--blue-soft);background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);padding:4px 10px;border-radius:100px;display:flex;align-items:center;gap:6px}
+.live-tag i{width:6px;height:6px;border-radius:50%;background:var(--blue);animation:pdot 1.4s infinite}
+.term-price{padding:18px 22px 0;font-size:2.3rem;font-weight:800;letter-spacing:-1.2px;font-variant-numeric:tabular-nums;transition:color .4s}
+.term-price.up{color:var(--up)}.term-price.down{color:var(--down)}
+.term-chg{padding:2px 22px 0;font-family:var(--mono);font-size:.82rem;font-weight:600;color:var(--text-3)}
+.spark{width:100%;height:120px;display:block;margin-top:10px}
+.spark .base{stroke:var(--border2);stroke-width:1.5;stroke-dasharray:4 6;fill:none}
+.spark .ln{fill:none;stroke:var(--blue);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.spark .fl{fill:url(#sg)}
+.term-rows{border-top:1px solid var(--border)}
+.t-row{display:flex;align-items:center;gap:12px;padding:14px 22px}
+.t-row+.t-row{border-top:1px solid var(--border)}
+.t-row .t-ico{width:32px;height:32px;font-size:.8rem}
+.t-row .t-name{font-size:.9rem}
+.t-row .r{margin-left:auto;text-align:right}
+.t-row .r b{display:block;font-size:.92rem;font-variant-numeric:tabular-nums}
+.t-row .r small{font-family:var(--mono);font-size:.72rem;font-weight:600}
 
 /* ── Ticker ── */
 .ticker-bar{border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--surface);overflow:hidden;padding:12px 0;mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
 .ticker-track{display:flex;gap:52px;animation:tick 32s linear infinite;width:max-content}
 .ticker-bar:hover .ticker-track{animation-play-state:paused}
 .ticker-item{display:flex;align-items:center;gap:10px;white-space:nowrap}
-.t-sym{font-size:.8rem;font-weight:700;color:var(--text-2)}.t-price{font-size:.86rem;font-weight:600;font-variant-numeric:tabular-nums}.t-ch{font-size:.78rem;font-weight:600}
+.t-sym{font-size:.8rem;font-weight:700;color:var(--text-2)}.t-price{font-size:.86rem;font-weight:600;font-variant-numeric:tabular-nums}.t-ch{font-family:var(--mono);font-size:.76rem;font-weight:600}
 @keyframes tick{to{transform:translateX(-50%)}}
 
 /* ── Sections ── */
-.section{max-width:1200px;margin:0 auto;padding:88px 28px}
-.s-label{font-size:.78rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin-bottom:12px}
-.s-title{font-size:clamp(1.7rem,3.4vw,2.4rem);font-weight:700;letter-spacing:-.8px;margin-bottom:10px}
-.s-sub{font-size:.98rem;color:var(--text-2);margin-bottom:40px;max-width:560px;line-height:1.6}
+.section{max-width:1200px;margin:0 auto;padding:92px 28px}
+.s-label{font-family:var(--mono);font-size:.74rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--blue);margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.s-label::before{content:'';width:22px;height:1px;background:var(--blue)}
+.s-title{font-size:clamp(1.8rem,3.4vw,2.5rem);font-weight:700;letter-spacing:-1px;line-height:1.12;margin-bottom:12px}
+.s-sub{font-size:.98rem;color:var(--text-2);margin-bottom:36px;max-width:440px;line-height:1.65}
 
-/* reveal variants */
 .rv{opacity:0;transition:opacity .8s var(--ease),transform .8s var(--ease);transition-delay:calc(var(--i,0) * 80ms)}
-.rv.up{transform:translateY(30px)}.rv.left{transform:translateX(-40px)}.rv.right{transform:translateX(40px)}.rv.zoom{transform:scale(.9)}
+.rv.up{transform:translateY(30px)}.rv.left{transform:translateX(-40px)}.rv.zoom{transform:scale(.94)}
 .rv.in{opacity:1;transform:none}
 
 /* Market */
 .table-wrap{border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--surface)}
 table{width:100%;border-collapse:collapse}
 thead{background:var(--surface2)}
-th{padding:14px 20px;font-size:.74rem;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;text-align:left}
+th{padding:14px 20px;font-family:var(--mono);font-size:.7rem;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.1em;text-align:left}
 th:not(:first-child),td:not(:first-child){text-align:right}
 td{padding:16px 20px;font-size:.92rem;border-bottom:1px solid var(--border);vertical-align:middle}
-tbody tr{transition:background .2s,transform .3s var(--ease)}
+tbody tr{transition:background .2s}
 tbody tr:hover{background:rgba(255,255,255,.03)}
 tbody tr:last-child td{border-bottom:none}
 .coin-cell{display:flex;align-items:center;gap:12px;text-align:left}
 .coin-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
 .coin-icon.btc{background:rgba(247,147,26,.15);color:#f7931a}.coin-icon.eth{background:rgba(98,126,234,.15);color:#627eea}.coin-icon.sol{background:rgba(153,69,255,.15);color:#9945ff}.coin-icon.xrp{background:rgba(0,170,228,.15);color:#00aae4}.coin-icon.bnb{background:rgba(240,185,11,.15);color:#f0b90b}
-.coin-name{font-weight:600;font-size:.92rem}.coin-sym{font-size:.75rem;color:var(--text-3)}
-.rank-badge{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;font-size:.72rem;font-weight:700;color:var(--text-2)}
+.coin-name{font-weight:600;font-size:.92rem}.coin-sym{font-family:var(--mono);font-size:.72rem;color:var(--text-3)}
+.rank-badge{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;font-family:var(--mono);font-size:.72rem;font-weight:700;color:var(--text-2)}
 .price-cell{font-weight:600;font-variant-numeric:tabular-nums;border-radius:6px;padding:2px 6px}
 .price-cell.flash-up{animation:fu .9s}.price-cell.flash-down{animation:fd .9s}
-@keyframes fu{0%{color:var(--green);background:rgba(34,197,94,.14)}100%{background:transparent}}
-@keyframes fd{0%{color:var(--red);background:rgba(239,68,68,.14)}100%{background:transparent}}
-.chg{font-weight:600;font-size:.85rem;font-variant-numeric:tabular-nums}
-.table-footer{padding:12px 20px;border-top:1px solid var(--border);font-size:.75rem;color:var(--text-3);display:flex;align-items:center;gap:6px}
-.live-dot{width:7px;height:7px;background:var(--green);border-radius:50%;animation:pdot 1.5s infinite}
+@keyframes fu{0%{color:var(--up);background:rgba(125,211,252,.14)}100%{background:transparent}}
+@keyframes fd{0%{color:var(--down);background:rgba(251,113,133,.14)}100%{background:transparent}}
+.chg{font-family:var(--mono);font-weight:600;font-size:.84rem;font-variant-numeric:tabular-nums}
+.table-footer{padding:12px 20px;border-top:1px solid var(--border);font-family:var(--mono);font-size:.72rem;color:var(--text-3);display:flex;align-items:center;gap:8px}
+.live-dot{width:7px;height:7px;background:var(--blue);border-radius:50%;animation:pdot 1.5s infinite}
 .spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--border2);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;margin-right:8px;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* Features */
-.features-section{background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
-.features-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
-.feature-card{position:relative;overflow:hidden;background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:26px 22px;transition:border-color .3s,transform .4s var(--ease),box-shadow .4s;transform-style:preserve-3d}
-.feature-card::before{content:'';position:absolute;inset:0;background:radial-gradient(260px circle at var(--mx,50%) var(--my,0%),rgba(59,130,246,.16),transparent 70%);opacity:0;transition:opacity .3s;pointer-events:none}
-.feature-card:hover{border-color:rgba(59,130,246,.35);box-shadow:0 18px 50px rgba(0,0,0,.5)}
-.feature-card:hover::before{opacity:1}
-.feature-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.35rem;margin-bottom:16px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.15);transition:transform .5s var(--ease),background .3s}
-.feature-card:hover .feature-icon{transform:scale(1.12) rotate(-8deg);background:rgba(59,130,246,.18)}
-.feature-title{font-size:.98rem;font-weight:700;margin-bottom:8px}
-.feature-desc{font-size:.86rem;color:var(--text-2);line-height:1.6}
+/* ══ Swipe deck ══ */
+.features-section{background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border);overflow:hidden}
+.feat{display:grid;grid-template-columns:.85fr 1.15fr;gap:64px;align-items:center}
+.feat-ctrl{display:flex;flex-direction:column}
+.count{font-family:var(--mono);display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
+.count b{font-size:3.4rem;font-weight:500;letter-spacing:-2px;line-height:1;font-variant-numeric:tabular-nums}
+.count span{color:var(--text-3);font-size:1rem}
+.now{font-size:.92rem;color:var(--blue-soft);font-weight:600;height:1.4em;margin-bottom:22px}
+.now.swap{animation:swap .5s var(--ease)}
+@keyframes swap{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.seg{display:flex;gap:6px;margin-bottom:26px;max-width:320px}
+.seg i{flex:1;height:3px;border-radius:3px;background:var(--border2);transition:background .4s,transform .4s var(--ease);transform-origin:left}
+.seg i.on{background:var(--blue)}
+.arrows{display:flex;gap:10px;align-items:center}
+.nb{width:50px;height:50px;border-radius:50%;border:1px solid var(--border2);background:var(--surface2);color:#fff;font-size:1.15rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .25s var(--ease),background .2s,border-color .2s}
+.nb:hover{border-color:var(--blue);background:rgba(59,130,246,.12)}
+.nb:active{transform:scale(.92)}
+.hint{font-family:var(--mono);font-size:.72rem;color:var(--text-3);margin-left:8px;transition:opacity .4s}
+.hint.gone{opacity:0}
+
+.deck-stage{display:flex;justify-content:center}
+.deck{position:relative;width:min(380px,100%);height:470px;touch-action:pan-y;user-select:none;-webkit-user-select:none;outline:none;cursor:grab}
+.deck.dragging{cursor:grabbing}
+.deck:focus-visible{outline:2px solid rgba(59,130,246,.5);outline-offset:14px;border-radius:30px}
+.card{position:absolute;inset:0;padding:22px;border-radius:24px;border:1px solid var(--border2);background:linear-gradient(170deg,#151515,#0b0b0b);box-shadow:0 24px 60px rgba(0,0,0,.65);transition:transform .55s var(--ease),opacity .45s;will-change:transform,opacity;display:flex;flex-direction:column;overflow:hidden;touch-action:pan-y}
+.card::before{content:'';position:absolute;top:-80px;right:-80px;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,var(--ac),transparent 70%);opacity:.13;pointer-events:none}
+.card::after{content:'';position:absolute;inset:0;background:#000;opacity:var(--dim,0);border-radius:inherit;pointer-events:none;transition:opacity .45s}
+.deck.dragging .card{transition:none!important}
+.card.nudge{animation:nudge 1.5s .5s var(--ease) 2}
+@keyframes nudge{0%,100%{transform:translate3d(0,0,0) rotate(0)}35%{transform:translate3d(26px,0,0) rotate(2.4deg)}65%{transform:translate3d(-14px,0,0) rotate(-1.4deg)}}
+.c-top{display:flex;align-items:center;justify-content:space-between;position:relative}
+.c-n{font-family:var(--mono);font-size:.78rem;color:var(--text-3)}
+.c-tag{font-family:var(--mono);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ac);border:1px solid var(--ac);border-radius:100px;padding:3px 10px;opacity:.9}
+.viz{position:relative;height:150px;margin:16px 0 20px;border-radius:14px;background:rgba(255,255,255,.03);border:1px solid var(--border);overflow:hidden;padding:14px}
+.card h3{font-size:1.4rem;letter-spacing:-.5px;margin-bottom:8px;position:relative}
+.card p.d{font-size:.9rem;color:var(--text-2);line-height:1.65;position:relative}
+.c-foot{margin-top:auto;font-family:var(--mono);font-size:.68rem;color:var(--text-3);display:flex;align-items:center;gap:8px;position:relative}
+.c-foot::before{content:'';width:16px;height:1px;background:var(--text-3)}
+
+/* viz 1 — demo trading */
+.v-line svg{position:absolute;inset:0;width:100%;height:100%}
+.v-line path{fill:none;stroke:var(--ac);stroke-width:2.5;stroke-linecap:round;stroke-dasharray:420;stroke-dashoffset:420}
+.card.live .v-line path{animation:draw 1.8s .15s var(--ease) forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.chip{position:absolute;left:14px;top:12px;font-family:var(--mono);font-size:.68rem;color:var(--text-2)}
+.chip b{display:block;font-size:1rem;color:#fff;margin-top:2px;letter-spacing:-.3px}
+/* viz 2 — transfer */
+.v-tx{display:flex;align-items:center;padding:14px 22px}
+.av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-style:normal;font-weight:700;font-size:.85rem;background:#1c1c1c;border:1px solid var(--border2);flex-shrink:0}
+.av.b{background:var(--ac);color:#0a0a0a;border-color:transparent}
+.rail{flex:1;height:2px;margin:0 12px;background:repeating-linear-gradient(90deg,#333 0 6px,transparent 6px 12px);position:relative}
+.rail em{position:absolute;top:-4px;left:0;width:10px;height:10px;border-radius:50%;background:var(--ac);box-shadow:0 0 12px var(--ac);opacity:0}
+.card.live .rail em{animation:travel 1.8s .2s var(--ease) infinite}
+@keyframes travel{0%{left:0;opacity:0}15%{opacity:1}85%{opacity:1}100%{left:calc(100% - 10px);opacity:0}}
+.amt{position:absolute;bottom:14px;left:0;right:0;text-align:center;font-family:var(--mono);font-size:.74rem;color:var(--text-2)}
+/* viz 3 — candles */
+.v-can{display:flex;align-items:flex-end;gap:8px;padding:18px 14px}
+.v-can i{flex:1;height:var(--h);margin-bottom:var(--b);border-radius:3px;background:var(--ac);transform:scaleY(0);transform-origin:bottom;position:relative}
+.v-can i.d{background:rgba(255,255,255,.22)}
+.v-can i::before{content:'';position:absolute;left:50%;top:-12px;bottom:-9px;width:2px;background:inherit;opacity:.55;transform:translateX(-50%)}
+.card.live .v-can i{animation:grow .6s var(--d) var(--ease) forwards}
+@keyframes grow{to{transform:scaleY(1)}}
+/* viz 4 — futures */
+.v-fut{display:flex;flex-direction:column;justify-content:center;gap:12px}
+.lv-row{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:.74rem}
+.lv-row b{background:var(--ac);color:#0a0a0a;padding:2px 8px;border-radius:5px;font-size:.68rem}
+.lv-row em{margin-left:auto;font-style:normal;font-size:1.1rem;font-weight:700;color:#fff}
+.track{position:relative;height:6px;border-radius:6px;background:var(--border2)}
+.track .fill{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:6px;background:var(--ac)}
+.track .knob{position:absolute;top:-6px;left:0;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.12)}
+.card.live .fill{animation:fillw 1.6s .3s var(--ease) forwards}
+.card.live .knob{animation:knob 1.6s .3s var(--ease) forwards}
+@keyframes fillw{to{width:100%}}@keyframes knob{to{left:calc(100% - 18px)}}
+.ticks{display:flex;justify-content:space-between;font-family:var(--mono);font-size:.64rem;color:var(--text-3)}
+.sl{font-family:var(--mono);font-size:.68rem;color:var(--down);display:flex;align-items:center;gap:8px}
+.sl i{flex:1;height:0;border-top:1px dashed var(--down);opacity:.6}
+/* viz 5 — chat */
+.v-chat{display:flex;flex-direction:column;justify-content:center;gap:7px}
+.v-chat p{max-width:78%;padding:7px 11px;border-radius:12px 12px 12px 3px;background:#1c1c1c;font-size:.74rem;opacity:0;transform:translateY(8px)}
+.v-chat p.me{align-self:flex-end;background:var(--ac);color:#0a0a0a;border-radius:12px 12px 3px 12px;font-weight:600}
+.v-chat .typing{display:flex;gap:4px;padding:9px 12px;width:52px}
+.typing i{width:5px;height:5px;border-radius:50%;background:var(--text-2);animation:bob 1s infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes bob{50%{transform:translateY(-4px);opacity:.5}}
+.card.live .v-chat p{animation:msg .5s var(--ease) forwards}
+.card.live .v-chat p:nth-child(1){animation-delay:.2s}.card.live .v-chat p:nth-child(2){animation-delay:.9s}.card.live .v-chat p:nth-child(3){animation-delay:1.6s}
+@keyframes msg{to{opacity:1;transform:none}}
+/* viz 6 — feed */
+.v-feed{display:flex;flex-direction:column;gap:9px}
+.pr{display:flex;align-items:center;gap:9px}
+.pr .av{width:26px;height:26px;font-size:.66rem;background:var(--ac);color:#0a0a0a;border:none}
+.pr span{font-size:.72rem;font-weight:600}.pr small{font-family:var(--mono);font-size:.64rem;color:var(--text-3);margin-left:auto}
+.v-feed .tx{font-size:.78rem;line-height:1.5;color:#ddd}
+.v-feed svg{width:100%;height:34px}
+.v-feed svg path{fill:none;stroke:var(--ac);stroke-width:2;stroke-linecap:round;stroke-dasharray:300;stroke-dashoffset:300}
+.card.live .v-feed svg path{animation:draw 1.4s .5s var(--ease) forwards}
+.react{display:flex;gap:14px;font-family:var(--mono);font-size:.68rem;color:var(--text-3);margin-top:auto}
+.react .h{color:var(--ac);display:inline-block}
+.card.live .react .h{animation:beat 1.4s 1.3s ease-in-out infinite}
+@keyframes beat{0%,60%,100%{transform:scale(1)}30%{transform:scale(1.35)}}
+/* viz 7 — assistant */
+.v-ai{display:flex;flex-direction:column;justify-content:center;gap:10px}
+.v-ai .q{align-self:flex-end;background:#1c1c1c;border-radius:12px 12px 3px 12px;padding:7px 11px;font-size:.74rem}
+.v-ai .a{background:rgba(255,255,255,.04);border:1px solid var(--border2);border-radius:12px 12px 12px 3px;padding:11px;display:flex;flex-direction:column;gap:7px}
+.v-ai .a i{height:6px;border-radius:6px;background:var(--ac);opacity:.55;transform:scaleX(0);transform-origin:left}
+.v-ai .a i:nth-child(1){width:94%}.v-ai .a i:nth-child(2){width:78%}.v-ai .a i:nth-child(3){width:52%}
+.card.live .v-ai .a i{animation:growx .7s var(--ease) forwards}
+.card.live .v-ai .a i:nth-child(1){animation-delay:.5s}.card.live .v-ai .a i:nth-child(2){animation-delay:.8s}.card.live .v-ai .a i:nth-child(3){animation-delay:1.1s}
+@keyframes growx{to{transform:scaleX(1)}}
+/* viz 8 — support */
+.v-sup{display:grid;place-items:center}
+.ring-w{position:relative;width:104px;height:104px;display:grid;place-items:center}
+.ring{position:absolute;inset:0;border-radius:50%;background:conic-gradient(var(--ac),transparent 72%);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px))}
+.card.live .ring{animation:spin 3s linear infinite}
+.ring-w b{font-family:var(--mono);font-size:1.3rem;letter-spacing:-.5px}
 
 /* Steps */
 .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:28px;position:relative}
-.steps::before{content:'';position:absolute;top:24px;left:12%;right:12%;height:2px;background:linear-gradient(90deg,var(--blue),rgba(59,130,246,.15));transform:scaleX(0);transform-origin:left;transition:transform 1.6s .3s var(--ease)}
+.steps::before{content:'';position:absolute;top:24px;left:12%;right:12%;height:1px;background:linear-gradient(90deg,var(--blue),rgba(59,130,246,.1));transform:scaleX(0);transform-origin:left;transition:transform 1.6s .3s var(--ease)}
 .steps.in::before{transform:scaleX(1)}
 .step{text-align:center;position:relative}
-.step-n{width:50px;height:50px;border-radius:50%;background:var(--surface2);border:1px solid var(--blue);display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:700;color:var(--blue);margin:0 auto 16px;position:relative;z-index:1;box-shadow:0 0 0 6px var(--bg)}
+.step-n{width:50px;height:50px;border-radius:50%;background:var(--surface2);border:1px solid var(--blue);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.85rem;font-weight:600;color:var(--blue-soft);margin:0 auto 16px;position:relative;z-index:1;box-shadow:0 0 0 6px var(--bg)}
 .step.in .step-n{animation:pop .6s var(--ease) both;animation-delay:calc(var(--i,0) * 200ms + .2s)}
 @keyframes pop{0%{transform:scale(.4)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
 .step-title{font-size:.98rem;font-weight:700;margin-bottom:8px}.step-desc{font-size:.84rem;color:var(--text-2);line-height:1.6;max-width:220px;margin:0 auto}
 
 /* CTA */
-.cta{position:relative;overflow:hidden;text-align:center;padding:90px 28px;border-top:1px solid var(--border)}
-.cta::before{content:'';position:absolute;top:50%;left:50%;width:700px;height:350px;transform:translate(-50%,-50%);background:radial-gradient(ellipse at center,rgba(59,130,246,.12),transparent 70%);pointer-events:none;animation:breathe 5s ease-in-out infinite}
-@keyframes breathe{50%{transform:translate(-50%,-50%) scale(1.2);opacity:.7}}
-.cta-box{position:relative;max-width:580px;margin:0 auto}
+.cta{position:relative;overflow:hidden;text-align:center;padding:96px 28px;border-top:1px solid var(--border)}
+.cta::before{content:'';position:absolute;top:50%;left:50%;width:700px;height:350px;transform:translate(-50%,-50%);background:radial-gradient(ellipse at center,rgba(59,130,246,.11),transparent 70%);pointer-events:none}
+.cta-box{position:relative;max-width:600px;margin:0 auto}
+.cta-box .s-label{justify-content:center}
 .cta-box p{color:var(--text-2);line-height:1.7;margin-bottom:30px}
 .cta-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
 
@@ -187,7 +295,7 @@ footer{border-top:1px solid var(--border);background:var(--surface)}
 .f-in{max-width:1200px;margin:0 auto;padding:48px 28px 28px}
 .f-top{display:grid;grid-template-columns:1.5fr repeat(3,1fr);gap:40px;margin-bottom:36px}
 .f-brand p{font-size:.84rem;color:var(--text-3);line-height:1.7;max-width:240px;margin-top:12px}
-.f-col h4{font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-2);margin-bottom:16px}
+.f-col h4{font-family:var(--mono);font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--text-2);margin-bottom:16px}
 .f-col ul{list-style:none}.f-col li{margin-bottom:10px}
 .f-col a{text-decoration:none;font-size:.86rem;color:var(--text-3);transition:color .2s,padding-left .25s var(--ease)}
 .f-col a:hover{color:#fff;padding-left:4px}
@@ -200,11 +308,16 @@ footer{border-top:1px solid var(--border);background:var(--surface)}
 
 /* ═══ Tablet ═══ */
 @media(max-width:1024px){
-  .hero-wrap{grid-template-columns:1fr;text-align:center;min-height:0;gap:44px}
+  .hero-wrap{grid-template-columns:1fr;gap:48px}
+  .hero-copy{text-align:center}
   .hero-sub{margin-inline:auto}.hero-cta{justify-content:center}
-  .hero-stats{justify-content:center}
-  .hv{max-width:460px;width:100%;margin:0 auto}
-  .features-grid{grid-template-columns:repeat(2,1fr)}
+  .hero-stats{margin-inline:auto;text-align:left}
+  .term{max-width:480px;width:100%;margin:0 auto}
+  .feat{grid-template-columns:1fr;gap:44px}
+  .feat-ctrl{align-items:center;text-align:center}
+  .feat-ctrl .s-label{justify-content:center}
+  .feat-ctrl .s-sub{margin-inline:auto}
+  .seg{width:100%}
   .f-top{grid-template-columns:1fr 1fr}
 }
 
@@ -215,51 +328,45 @@ footer{border-top:1px solid var(--border);background:var(--surface)}
   .nav-links{display:none}
   .nav-auth{margin-left:auto}
   .nav-auth .btn{padding:8px 14px;font-size:.82rem}
-  .nav-auth .btn.reg-txt{display:inline-flex}
   .hero{padding:44px 16px 44px}
-  .hero-badge{font-size:.74rem;margin-bottom:20px}
-  .hero-title{letter-spacing:-1.2px}
+  .hero-badge{font-size:.68rem;margin-bottom:20px}
+  .hero-title{letter-spacing:-1.3px}
   .hero-sub{font-size:.96rem;margin-bottom:26px}
   .hero-cta{flex-direction:column}.hero-cta .btn{width:100%}
-  .hero-stats{grid-template-columns:repeat(2,1fr);gap:12px;margin-top:34px;text-align:left}
-  .hs{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
-  .hs-v{font-size:1.25rem}
-  /* hero visual becomes a compact stacked card */
-  .hv{height:auto;display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .hv-main{position:relative;inset:auto;grid-column:1/-1;animation:none;padding:18px}
-  .hv-price{font-size:1.7rem}.spark{height:80px}
-  .hv-float{position:relative;inset:auto!important;animation:none!important;padding:11px 12px;text-align:left}
-  .section{padding:56px 16px}
+  .hero-stats{grid-template-columns:repeat(2,1fr);gap:0;margin-top:34px}
+  .hs{padding:14px 0}.hs+.hs{padding-left:0;border-left:none}
+  .hs:nth-child(even){padding-left:18px;border-left:1px solid var(--border)}
+  .hs:nth-child(n+3){border-top:1px solid var(--border)}
+  .term-price{font-size:1.9rem}.spark{height:90px}
+  .section{padding:60px 16px}
   .s-sub{margin-bottom:26px;font-size:.92rem}
   .ticker-bar{padding:10px 0}
-  /* Market → Binance-style list: coin | price | change pill */
   .col-rank,.col-vol{display:none}
   .table-wrap{background:none;border:none;border-radius:0}
   thead{background:none}th{padding:8px 4px;border-bottom:1px solid var(--border)}
   td{padding:14px 4px}
-  .chg{display:inline-block;min-width:80px;text-align:center;padding:7px 8px;border-radius:7px;color:#fff}
-  .chg.up{background:var(--green)}.chg.down{background:var(--red)}
+  .chg{display:inline-block;min-width:80px;text-align:center;padding:7px 8px;border-radius:7px;color:#0a0a0a;font-weight:700}
+  .chg.up{background:var(--up)}.chg.down{background:var(--down)}
   .table-footer{border:none;padding:12px 4px}
-  /* features: tidy 1-col horizontal cards */
-  .features-grid{grid-template-columns:1fr;gap:10px}
-  .feature-card{display:grid;grid-template-columns:46px 1fr;column-gap:14px;padding:18px 16px}
-  .feature-icon{grid-row:span 2;margin:0}
-  .feature-title{margin-bottom:4px}
-  /* steps: vertical timeline */
+  .count b{font-size:2.6rem}
+  .deck{height:450px}
+  .card{padding:18px}
+  .viz{height:140px;margin:12px 0 16px}
+  .hint{display:none}
   .steps{grid-template-columns:1fr;gap:6px;padding-left:4px}
-  .steps::before{top:25px;bottom:25px;left:28px;right:auto;width:2px;height:auto;transform:scaleY(0);transform-origin:top;background:linear-gradient(var(--blue),rgba(59,130,246,.15))}
+  .steps::before{top:25px;bottom:25px;left:28px;right:auto;width:1px;height:auto;transform:scaleY(0);transform-origin:top;background:linear-gradient(var(--blue),rgba(59,130,246,.1))}
   .steps.in::before{transform:scaleY(1)}
   .step{display:grid;grid-template-columns:50px 1fr;column-gap:16px;text-align:left;padding:10px 0}
   .step-n{grid-row:span 2;margin:0}
   .step-title{align-self:end;margin:0}.step-desc{margin:0;max-width:none}
-  .rv.left,.rv.right{transform:translateY(26px)}
+  .rv.left{transform:translateY(26px)}
   .cta{padding:64px 16px}.cta-btns{flex-direction:column}.cta-btns .btn{width:100%}
   .f-in{padding:40px 16px 24px}
   .f-top{grid-template-columns:1fr 1fr;gap:28px}.f-brand{grid-column:1/-1}
   .f-bot{flex-direction:column}
 }
-@media(max-width:380px){.nav-auth .btn.reg-txt{padding:8px 11px}.logo{font-size:1.15rem}}
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}.rv,.fx,.hv{opacity:1;transform:none}.hero-title .line>span{transform:none}}
+@media(max-width:380px){.logo{font-size:1.15rem}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}.rv,.fx,.term{opacity:1;transform:none}.hero-title .line>span{transform:none}}
 </style>
 </head>
 <body>
@@ -276,17 +383,17 @@ footer{border-top:1px solid var(--border);background:var(--surface)}
     </ul>
     <div class="nav-auth">
       <a href="/login" class="btn">Login</a>
-      <a href="/register" class="btn primary reg-txt">Register</a>
+      <a href="/register" class="btn primary">Register</a>
     </div>
   </nav>
 </header>
 
 <div class="overlay" onclick="closeMenu()"></div>
 <aside class="drawer">
-  <a class="dl" href="/" onclick="closeMenu()">🏠 Home</a>
-  <a class="dl" href="#market" onclick="closeMenu()">🌐 Markets</a>
-  <a class="dl" href="#features" onclick="closeMenu()">⚡ Features</a>
-  <a class="dl" href="/contact">🛡 Support</a>
+  <a class="dl" href="/" onclick="closeMenu()">Home</a>
+  <a class="dl" href="#market" onclick="closeMenu()">Markets</a>
+  <a class="dl" href="#features" onclick="closeMenu()">Features</a>
+  <a class="dl" href="/contact">Support</a>
   <div class="d-auth">
     <a href="/login" class="btn">Login</a>
     <a href="/register" class="btn primary">Create Free Account</a>
@@ -295,40 +402,45 @@ footer{border-top:1px solid var(--border);background:var(--surface)}
 
 <main>
 <section class="hero">
-  <div class="grid-bg"></div><div class="orb a"></div><div class="orb b"></div>
+  <div class="grid-bg"></div>
   <div class="hero-wrap">
-    <div>
-      <div class="hero-badge fx" style="--d:0"><i></i>100% free · No real assets at risk</div>
+    <div class="hero-copy">
+      <div class="hero-badge fx" style="--d:0"><i></i>DEMO FUNDS ONLY · NO REAL ASSETS</div>
       <h1 class="hero-title">
-        <span class="line"><span>Trade Digital Assets.</span></span>
-        <span class="line"><span class="grad">Risk Nothing.</span></span>
+        <span class="line"><span>Practice the market.</span></span>
+        <span class="line"><span class="hl">Keep your money.</span></span>
       </h1>
-      <p class="hero-sub fx" style="--d:2">Practice real crypto trading with live market prices and demo funds.</p>
+      <p class="hero-sub fx" style="--d:2">Live Binance prices, $50,000 in demo funds, and a place to be wrong without paying for it.</p>
       <div class="hero-cta fx" style="--d:3">
         <a href="/register" class="btn primary lg">Start Trading Free <span class="arr">→</span></a>
         <a href="/login" class="btn lg">Login</a>
       </div>
       <div class="hero-stats fx" style="--d:4">
-        <div class="hs"><div class="hs-v" data-count="50000" data-prefix="$">$0</div><div class="hs-l">Demo funds</div></div>
-        <div class="hs"><div class="hs-v">24 / 7</div><div class="hs-l">Live support</div></div>
-        <div class="hs"><div class="hs-v" data-count="5" data-suffix="+">0</div><div class="hs-l">Live cryptos</div></div>
-        <div class="hs"><div class="hs-v">Free</div><div class="hs-l">Always</div></div>
+        <div class="hs"><div class="hs-v" data-count="50000" data-prefix="$">$0</div><div class="hs-l">Demo balance</div></div>
+        <div class="hs"><div class="hs-v" data-count="5">0</div><div class="hs-l">Live markets</div></div>
+        <div class="hs"><div class="hs-v">10×</div><div class="hs-l">Max leverage</div></div>
+        <div class="hs"><div class="hs-v">$0</div><div class="hs-l">Cost, always</div></div>
       </div>
     </div>
 
-    <div class="hv" aria-hidden="true">
-      <div class="hv-main">
-        <div class="hv-top"><div class="hv-ico">₿</div><div><div class="hv-name">Bitcoin</div><div class="hv-sym">BTC / USDT</div></div><div class="live-tag"><i></i>LIVE</div></div>
-        <div class="hv-price" id="hvPrice">—</div>
-        <div class="hv-chg" id="hvChg">Waiting for feed…</div>
-        <svg class="spark" viewBox="0 0 400 110" preserveAspectRatio="none">
-          <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b82f6" stop-opacity=".3"/><stop offset="1" stop-color="#3b82f6" stop-opacity="0"/></linearGradient></defs>
-          <path class="fill" d="M0,90 C40,80 60,95 100,70 S160,60 200,65 S270,30 310,40 S370,15 400,10 L400,110 L0,110Z"/>
-          <path class="line" d="M0,90 C40,80 60,95 100,70 S160,60 200,65 S270,30 310,40 S370,15 400,10"/>
-        </svg>
+    <div class="term" aria-hidden="true">
+      <div class="term-head">
+        <div class="t-ico btc">₿</div>
+        <div><div class="t-name">Bitcoin</div><div class="t-pair">BTC / USDT</div></div>
+        <div class="live-tag"><i></i>LIVE</div>
       </div>
-      <div class="hv-float f1"><div class="hv-ico" style="background:rgba(98,126,234,.15);color:#627eea">Ξ</div><div><b id="hvEth">—</b><small id="hvEthC">ETH</small></div></div>
-      <div class="hv-float f2"><div class="hv-ico" style="background:rgba(153,69,255,.15);color:#9945ff">◎</div><div><b id="hvSol">—</b><small id="hvSolC">SOL</small></div></div>
+      <div class="term-price" id="hvPrice">—</div>
+      <div class="term-chg" id="hvChg">Waiting for feed…</div>
+      <svg class="spark" viewBox="0 0 400 120" preserveAspectRatio="none">
+        <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b82f6" stop-opacity=".28"/><stop offset="1" stop-color="#3b82f6" stop-opacity="0"/></linearGradient></defs>
+        <line class="base" id="sparkBase" x1="0" y1="60" x2="400" y2="60"/>
+        <path class="fl" id="sparkFill" d=""/>
+        <path class="ln" id="sparkLine" d=""/>
+      </svg>
+      <div class="term-rows">
+        <div class="t-row"><div class="t-ico eth">Ξ</div><div class="t-name">Ethereum</div><div class="r"><b id="hvEth">—</b><small id="hvEthC">ETH</small></div></div>
+        <div class="t-row"><div class="t-ico sol">◎</div><div class="t-name">Solana</div><div class="r"><b id="hvSol">—</b><small id="hvSolC">SOL</small></div></div>
+      </div>
     </div>
   </div>
 </section>
@@ -349,18 +461,23 @@ footer{border-top:1px solid var(--border);background:var(--surface)}
 
 <section id="features" class="features-section">
   <div class="section">
-    <div class="s-label rv up">Everything you need</div>
-    <h2 class="s-title rv up" style="--i:1">Built for serious learners</h2>
-    <p class="s-sub rv up" style="--i:2">A full trading ecosystem — no money needed to get started.</p>
-    <div class="features-grid">
-      <div class="feature-card rv up" style="--i:0"><div class="feature-icon">📈</div><div class="feature-title">Demo Trading</div><p class="feature-desc">Trade BTC, ETH, SOL, XRP & BNB at live prices with virtual funds. Zero risk, real experience.</p></div>
-      <div class="feature-card rv up" style="--i:1"><div class="feature-icon">💸</div><div class="feature-title">Fund Transfers</div><p class="feature-desc">Send and receive demo funds between users through our built-in banking model.</p></div>
-      <div class="feature-card rv up" style="--i:2"><div class="feature-icon">🕯️</div><div class="feature-title">Spot Trading</div><p class="feature-desc">Buy and sell instantly. Place market and limit orders and track holdings in real time.</p></div>
-      <div class="feature-card rv up" style="--i:3"><div class="feature-icon">⚡</div><div class="feature-title">Futures Trading</div><p class="feature-desc">Go long or short with up to 10× leverage and manage risk with stop-loss orders.</p></div>
-      <div class="feature-card rv up" style="--i:4"><div class="feature-icon">💬</div><div class="feature-title">Group Live Chat</div><p class="feature-desc">Discuss strategies and call market moves with other traders in live channels.</p></div>
-      <div class="feature-card rv up" style="--i:5"><div class="feature-icon">📝</div><div class="feature-title">Insights Feed</div><p class="feature-desc">Share trade setups and analysis with the community — like Binance Square, for learners.</p></div>
-      <div class="feature-card rv up" style="--i:6"><div class="feature-icon">🤖</div><div class="feature-title">AI Chatbot</div><p class="feature-desc">Stuck on something? Get instant answers to your trading questions, any time.</p></div>
-      <div class="feature-card rv up" style="--i:7"><div class="feature-icon">🛡️</div><div class="feature-title">24/7 Support</div><p class="feature-desc">Human support around the clock, whenever you need a real answer fast.</p></div>
+    <div class="feat">
+      <div class="feat-ctrl">
+        <div class="s-label rv up">What's inside</div>
+        <h2 class="s-title rv up" style="--i:1">Eight tools.<br/>One deck.</h2>
+        <p class="s-sub rv up" style="--i:2">Flick through everything cordEX gives you. Drag a card away, or use the arrows.</p>
+        <div class="count"><b id="cNum">01</b><span>/ 08</span></div>
+        <div class="now" id="cNow"></div>
+        <div class="seg" id="seg"></div>
+        <div class="arrows">
+          <button class="nb" id="prevBtn" aria-label="Previous card">←</button>
+          <button class="nb" id="nextBtn" aria-label="Next card">→</button>
+          <span class="hint" id="hint">drag the card</span>
+        </div>
+      </div>
+      <div class="deck-stage">
+        <div class="deck" id="deck" tabindex="0" role="group" aria-roledescription="carousel" aria-label="cordEX features"></div>
+      </div>
     </div>
   </div>
 </section>
@@ -370,17 +487,17 @@ footer{border-top:1px solid var(--border);background:var(--surface)}
   <h2 class="s-title rv left" style="--i:1">Up in 60 seconds</h2>
   <p class="s-sub rv left" style="--i:2">No credit card. No deposits. No stress.</p>
   <div class="steps rv" id="steps">
-    <div class="step" style="--i:0"><div class="step-n">1</div><div class="step-title">Create free account</div><p class="step-desc">Register in under a minute. No payment info, ever.</p></div>
-    <div class="step" style="--i:1"><div class="step-n">2</div><div class="step-title">Receive demo funds</div><p class="step-desc">Get $50,000 in virtual funds credited instantly.</p></div>
-    <div class="step" style="--i:2"><div class="step-n">3</div><div class="step-title">Trade live prices</div><p class="step-desc">Buy and sell at real market rates and watch your portfolio move.</p></div>
-    <div class="step" style="--i:3"><div class="step-n">4</div><div class="step-title">Learn & improve</div><p class="step-desc">Share insights, join live chats, and track your growth.</p></div>
+    <div class="step" style="--i:0"><div class="step-n">01</div><div class="step-title">Create free account</div><p class="step-desc">Register in under a minute. No payment info, ever.</p></div>
+    <div class="step" style="--i:1"><div class="step-n">02</div><div class="step-title">Receive demo funds</div><p class="step-desc">Get $50,000 in virtual funds credited instantly.</p></div>
+    <div class="step" style="--i:2"><div class="step-n">03</div><div class="step-title">Trade live prices</div><p class="step-desc">Buy and sell at real market rates and watch your portfolio move.</p></div>
+    <div class="step" style="--i:3"><div class="step-n">04</div><div class="step-title">Learn & improve</div><p class="step-desc">Share insights, join live chats, and track your growth.</p></div>
   </div>
 </section>
 
 <section class="cta">
   <div class="cta-box rv zoom">
     <div class="s-label">Join today</div>
-    <h2 class="s-title" style="margin-bottom:16px">Start your trading <span class="grad">journey today</span></h2>
+    <h2 class="s-title" style="margin-bottom:16px">Make your first mistakes <span class="hl">for free.</span></h2>
     <p>No real money. No pressure. Just you, live markets, and a platform built to make you a better trader.</p>
     <div class="cta-btns">
       <a href="/register" class="btn primary lg">Create Free Account <span class="arr">→</span></a>
@@ -423,7 +540,7 @@ document.addEventListener('click',e=>{
   b.appendChild(d);setTimeout(()=>d.remove(),600);
 });
 
-/* Scroll reveal (up / left / right / zoom variants, staggered via --i) */
+/* Scroll reveal */
 const io=new IntersectionObserver(es=>es.forEach(e=>{
   if(e.isIntersecting){
     e.target.classList.add('in');io.unobserve(e.target);
@@ -439,28 +556,151 @@ function countUp(el){
 }
 setTimeout(()=>document.querySelectorAll('[data-count]').forEach(countUp),700);
 
-/* Feature card: cursor spotlight + gentle tilt (desktop pointers only) */
-if(matchMedia('(hover:hover) and (min-width:1025px)').matches){
-  document.querySelectorAll('.feature-card').forEach(c=>{
-    c.addEventListener('mousemove',e=>{
-      const r=c.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
-      c.style.setProperty('--mx',x+'px');c.style.setProperty('--my',y+'px');
-      c.style.transform=`perspective(700px) rotateX(${((y/r.height)-.5)*-6}deg) rotateY(${((x/r.width)-.5)*6}deg) translateY(-4px)`;
-    });
-    c.addEventListener('mouseleave',()=>{c.style.transform=''});
+/* ═══════════════ Swipe deck ═══════════════ */
+const candles=[[38,0,'u'],[52,6,'u'],[30,22,'d'],[44,10,'u'],[58,14,'u'],[34,30,'d'],[48,18,'u'],[62,20,'u'],[40,40,'d'],[56,26,'u']]
+  .map((c,i)=>`<i class="${c[2]}" style="--h:${c[0]}%;--b:${c[1]}%;--d:${i*70}ms"></i>`).join('');
+
+const DECK=[
+ {tag:'Practice',accent:'#3b82f6',title:'Demo Trading',desc:'Trade BTC, ETH, SOL, XRP and BNB at live prices with virtual funds. Real market, zero risk.',
+  viz:`<div class="v-line"><div class="chip">Demo balance<b>$50,000.00</b></div><svg viewBox="0 0 300 120" preserveAspectRatio="none"><path d="M0,98 C30,92 50,104 80,82 S130,74 160,78 S220,44 250,52 S285,26 300,16"/></svg></div>`},
+ {tag:'Banking',accent:'#a78bfa',title:'Fund Transfers',desc:'Send and receive demo funds between users through the built-in banking model.',
+  viz:`<div class="v-tx"><i class="av">A</i><span class="rail"><em></em></span><i class="av b">B</i><div class="amt">$250.00 · demo funds</div></div>`},
+ {tag:'Spot',accent:'#fbbf24',title:'Spot Trading',desc:'Buy and sell instantly with market and limit orders, and watch your holdings update in real time.',
+  viz:`<div class="v-can">${candles}</div>`},
+ {tag:'Futures',accent:'#38bdf8',title:'Futures Trading',desc:'Go long or short with up to 10× leverage, and guard every position with a stop-loss order.',
+  viz:`<div class="v-fut"><div class="lv-row"><b>LONG</b><span>BTC / USDT</span><em>10×</em></div><div class="track"><i class="fill"></i><i class="knob"></i></div><div class="ticks"><span>1×</span><span>5×</span><span>10×</span></div><div class="sl">stop-loss armed<i></i></div></div>`},
+ {tag:'Community',accent:'#fb7185',title:'Group Live Chat',desc:'Call market moves and argue strategy with other traders in live channels.',
+  viz:`<div class="v-chat"><p>Support held. Eyeing a long.</p><p class="me">Stop below the wick?</p><p class="typing"><i></i><i></i><i></i></p></div>`},
+ {tag:'Feed',accent:'#818cf8',title:'Insights Feed',desc:'Post trade setups and analysis for the community. Think Binance Square, built for learners.',
+  viz:`<div class="v-feed"><div class="pr"><i class="av">M</i><span>Setup · BTC 4h</span><small>now</small></div><div class="tx">Long above support, stop just below.</div><svg viewBox="0 0 200 34" preserveAspectRatio="none"><path d="M0,28 C20,26 30,12 55,16 S90,26 115,14 S160,6 200,3"/></svg><div class="react"><span><i class="h" style="font-style:normal">♥</i> 128</span><span>14 replies</span></div></div>`},
+ {tag:'Assistant',accent:'#f472b6',title:'AI Chatbot',desc:'Stuck on a term or a trade? Ask, and get a plain answer straight away.',
+  viz:`<div class="v-ai"><div class="q">What does a stop-loss do?</div><div class="a"><i></i><i></i><i></i></div></div>`},
+ {tag:'Support',accent:'#f59e0b',title:'24/7 Support',desc:'Real people, around the clock, for the moments you need a straight answer fast.',
+  viz:`<div class="v-sup"><div class="ring-w"><div class="ring"></div><b>24/7</b></div></div>`}
+];
+
+const deck=document.getElementById('deck'),n=DECK.length;
+const cNum=document.getElementById('cNum'),cNow=document.getElementById('cNow'),seg=document.getElementById('seg'),hintEl=document.getElementById('hint');
+let cur=0,busy=false,drag=null;
+
+const els=DECK.map((d,i)=>{
+  const el=document.createElement('article');
+  el.className='card';el.style.setProperty('--ac',d.accent);
+  el.innerHTML=`<div class="c-top"><span class="c-n">${String(i+1).padStart(2,'0')} / ${String(n).padStart(2,'0')}</span><span class="c-tag">${d.tag}</span></div><div class="viz">${d.viz}</div><h3>${d.title}</h3><p class="d">${d.desc}</p><div class="c-foot">swipe for next</div>`;
+  deck.appendChild(el);return el;
+});
+seg.innerHTML=DECK.map(()=>'<i></i>').join('');
+const segs=[...seg.children];
+
+function place(el,off,p){
+  if(off===0){el.style.transform='translate3d(0,0,0)';el.style.opacity=1;el.style.setProperty('--dim',0);return}
+  const o=Math.min(Math.max(off-(p||0),0),3);
+  el.style.transform=`translate3d(0,${o*16}px,0) scale(${1-o*.055})`;
+  el.style.opacity=o>2?Math.max(3-o,0):1;
+  el.style.setProperty('--dim',Math.min(o*.22,.6));
+}
+function meta(){
+  cNum.textContent=String(cur+1).padStart(2,'0');
+  cNow.textContent=DECK[cur].title;
+  cNow.classList.remove('swap');void cNow.offsetWidth;cNow.classList.add('swap');
+  segs.forEach((s,i)=>s.classList.toggle('on',i<=cur));
+}
+function render(skip){
+  els.forEach((el,i)=>{
+    if(el===skip)return;
+    const off=(i-cur+n)%n;
+    el.style.transition='';
+    place(el,off,0);
+    el.classList.toggle('live',off===0);
+    el.style.zIndex=n-off;
+    el.style.pointerEvents=off===0?'auto':'none';
+    el.setAttribute('aria-hidden',off===0?'false':'true');
   });
-}else{
-  document.querySelectorAll('.feature-card').forEach(c=>c.addEventListener('touchstart',()=>{c.style.borderColor='rgba(59,130,246,.4)';setTimeout(()=>c.style.borderColor='',500)},{passive:true}));
+  meta();
+}
+function hideHint(){els.forEach(e=>e.classList.remove('nudge'));hintEl.classList.add('gone')}
+
+function fling(dir,dy){
+  if(busy)return;busy=true;hideHint();
+  const el=els[cur],w=deck.offsetWidth||380;
+  el.classList.remove('live');
+  el.style.transition='transform .5s cubic-bezier(.3,.7,.2,1),opacity .5s ease';
+  el.style.transform=`translate3d(${dir*w*1.15}px,${(dy||0)*.25}px,0) rotate(${dir*20}deg)`;
+  el.style.opacity=0;
+  cur=(cur+1)%n;
+  render(el);
+  setTimeout(()=>{
+    el.style.transition='none';
+    place(el,n-1,0);el.style.zIndex=1;
+    void el.offsetWidth;
+    el.style.transition='';
+    busy=false;
+  },520);
+}
+function prev(){
+  if(busy)return;busy=true;hideHint();
+  const w=deck.offsetWidth||380;
+  cur=(cur-1+n)%n;
+  const el=els[cur];
+  el.style.transition='none';
+  el.style.transform=`translate3d(${-w*1.15}px,0,0) rotate(-20deg)`;
+  el.style.opacity=0;el.style.zIndex=n+1;
+  void el.offsetWidth;
+  render();
+  setTimeout(()=>{busy=false},520);
 }
 
-/* Live market data via shared server WebSocket */
+deck.addEventListener('pointerdown',e=>{
+  if(busy||e.button>0)return;
+  const el=els[cur];if(!el.contains(e.target))return;
+  hideHint();
+  const now=performance.now();
+  drag={x:e.clientX,y:e.clientY,lx:e.clientX,lt:now,v:0,dx:0,dy:0};
+  deck.classList.add('dragging');
+  try{deck.setPointerCapture(e.pointerId)}catch(_){}
+});
+deck.addEventListener('pointermove',e=>{
+  if(!drag)return;
+  const now=performance.now();
+  drag.dx=e.clientX-drag.x;drag.dy=e.clientY-drag.y;
+  const dt=Math.max(now-drag.lt,1);
+  drag.v=.75*drag.v+.25*((e.clientX-drag.lx)/dt);
+  drag.lx=e.clientX;drag.lt=now;
+  const w=deck.offsetWidth||380,p=Math.min(Math.abs(drag.dx)/(w*.5),1);
+  els[cur].style.transform=`translate3d(${drag.dx}px,${drag.dy*.25}px,0) rotate(${drag.dx*.055}deg)`;
+  for(let k=1;k<=3;k++)place(els[(cur+k)%n],k,p);
+});
+function endDrag(){
+  if(!drag)return;
+  const d=drag;drag=null;
+  deck.classList.remove('dragging');
+  const w=deck.offsetWidth||380,thr=Math.max(80,w*.2);
+  if(Math.abs(d.dx)>thr||(Math.abs(d.v)>.5&&Math.abs(d.dx)>24))fling(d.dx>=0?1:-1,d.dy);
+  else render();
+}
+deck.addEventListener('pointerup',endDrag);
+deck.addEventListener('pointercancel',endDrag);
+deck.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'){e.preventDefault();fling(1,0)}
+  else if(e.key==='ArrowLeft'){e.preventDefault();prev()}
+});
+document.getElementById('nextBtn').addEventListener('click',()=>fling(1,0));
+document.getElementById('prevBtn').addEventListener('click',prev);
+
+render();
+/* one-time nudge when the deck scrolls into view */
+new IntersectionObserver((es,ob)=>{
+  if(es[0].isIntersecting){ob.disconnect();if(!drag&&!hintEl.classList.contains('gone'))els[cur].classList.add('nudge')}
+},{threshold:.6}).observe(deck);
+
+/* ═══════════════ Live market data via shared server WebSocket ═══════════════ */
 const COINS=[
  {id:'bitcoin',symbol:'BTC',name:'Bitcoin',cls:'btc',icon:'₿',rank:1},
  {id:'ethereum',symbol:'ETH',name:'Ethereum',cls:'eth',icon:'Ξ',rank:2},
  {id:'binancecoin',symbol:'BNB',name:'BNB',cls:'bnb',icon:'B',rank:4},
  {id:'solana',symbol:'SOL',name:'Solana',cls:'sol',icon:'◎',rank:5},
  {id:'ripple',symbol:'XRP',name:'XRP',cls:'xrp',icon:'✕',rank:7}];
-let liveData={},socket=null,reconnectTimer=null,prev={};
+let liveData={},socket=null,reconnectTimer=null,prev_={};
 function connectSocket(){
   const proto=location.protocol==='https:'?'wss':'ws';
   socket=new WebSocket(`${proto}://${location.host}/ws/market-data`);
@@ -476,7 +716,7 @@ const pctTxt=p=>(p>=0?'+':'')+p.toFixed(2)+'%';
 
 function rowHTML(c,d){
   const p=d.changePct||0,cls=p>=0?'up':'down',arrow=p>=0?'▲ ':'▼ ';
-  const old=prev[c.id];let fl='';if(old!==undefined&&old!==d.price)fl=d.price>old?' flash-up':' flash-down';prev[c.id]=d.price;
+  const old=prev_[c.id];let fl='';if(old!==undefined&&old!==d.price)fl=d.price>old?' flash-up':' flash-down';prev_[c.id]=d.price;
   return `<tr><td><div class="coin-cell"><div class="coin-icon ${c.cls}">${c.icon}</div><div><div class="coin-name">${c.name}</div><div class="coin-sym">${c.symbol}</div></div></div></td>
   <td class="col-rank"><span class="rank-badge">${c.rank}</span></td>
   <td><span class="price-cell${fl}">${fmtP(d.price)}</span></td>
@@ -485,6 +725,18 @@ function rowHTML(c,d){
 }
 function tickHTML(c,d){const p=d.changePct||0;return `<div class="ticker-item"><span class="t-sym">${c.symbol}</span><span class="t-price">${fmtP(d.price)}</span><span class="t-ch ${p>=0?'up':'down'}">${pctTxt(p)}</span></div>`}
 
+/* live sparkline built from the incoming BTC ticks */
+const hist=[],MAXH=90;
+function drawSpark(){
+  if(hist.length<2)return;
+  const W=400,H=120,pad=14,mn=Math.min(...hist),mx=Math.max(...hist),r=(mx-mn)||1;
+  const pts=hist.map((v,i)=>[i/(hist.length-1)*W,H-pad-((v-mn)/r)*(H-2*pad)]);
+  const d='M'+pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' L');
+  document.getElementById('sparkLine').setAttribute('d',d);
+  document.getElementById('sparkFill').setAttribute('d',d+` L${W},${H} L0,${H}Z`);
+  document.getElementById('sparkBase').style.display='none';
+}
+
 function renderMarket(){
   let rows='',tick='';
   COINS.forEach(c=>{const d=liveData[c.id];if(!d)return;rows+=rowHTML(c,d);tick+=tickHTML(c,d)});
@@ -492,19 +744,21 @@ function renderMarket(){
   document.getElementById('marketTableBody').innerHTML=rows;
   const tt=document.getElementById('tickerTrack');
   if(tt.dataset.n!==String(tick.length)||!tt.innerHTML){tt.innerHTML=tick+tick;tt.dataset.n=tick.length}
-  else{/* keep the marquee smooth: update text in place instead of resetting the animation */
-    const items=tt.querySelectorAll('.ticker-item'),n=COINS.filter(c=>liveData[c.id]).length;
-    COINS.filter(c=>liveData[c.id]).forEach((c,i)=>{[i,i+n].forEach(k=>{if(items[k])items[k].outerHTML=tickHTML(c,liveData[c.id])})});
+  else{
+    const items=tt.querySelectorAll('.ticker-item'),k=COINS.filter(c=>liveData[c.id]).length;
+    COINS.filter(c=>liveData[c.id]).forEach((c,i)=>{[i,i+k].forEach(j=>{if(items[j])items[j].outerHTML=tickHTML(c,liveData[c.id])})});
   }
   setStatus('Live via Binance WebSocket');
-  /* hero cards */
   const b=liveData.bitcoin,e=liveData.ethereum,s=liveData.solana;
-  if(b){const hp=document.getElementById('hvPrice'),o=hp.dataset.p;hp.textContent=fmtP(b.price);
-    if(o&&+o!==b.price){hp.className='hv-price '+(b.price>+o?'up':'down');setTimeout(()=>hp.className='hv-price',500)}
+  if(b){
+    const hp=document.getElementById('hvPrice'),o=hp.dataset.p;hp.textContent=fmtP(b.price);
+    if(o&&+o!==b.price){hp.className='term-price '+(b.price>+o?'up':'down');setTimeout(()=>hp.className='term-price',500)}
     hp.dataset.p=b.price;
-    const ch=document.getElementById('hvChg');ch.textContent=pctTxt(b.changePct||0)+' today';ch.className='hv-chg '+((b.changePct||0)>=0?'up':'down')}
-  if(e){document.getElementById('hvEth').textContent=fmtP(e.price);const x=document.getElementById('hvEthC');x.textContent='ETH '+pctTxt(e.changePct||0);x.className=(e.changePct||0)>=0?'up':'down'}
-  if(s){document.getElementById('hvSol').textContent=fmtP(s.price);const x=document.getElementById('hvSolC');x.textContent='SOL '+pctTxt(s.changePct||0);x.className=(s.changePct||0)>=0?'up':'down'}
+    const ch=document.getElementById('hvChg');ch.textContent=pctTxt(b.changePct||0)+' today';ch.className='term-chg '+((b.changePct||0)>=0?'up':'down');
+    hist.push(b.price);if(hist.length>MAXH)hist.shift();drawSpark();
+  }
+  if(e){document.getElementById('hvEth').textContent=fmtP(e.price);const x=document.getElementById('hvEthC');x.textContent=pctTxt(e.changePct||0);x.className=(e.changePct||0)>=0?'up':'down'}
+  if(s){document.getElementById('hvSol').textContent=fmtP(s.price);const x=document.getElementById('hvSolC');x.textContent=pctTxt(s.changePct||0);x.className=(s.changePct||0)>=0?'up':'down'}
 }
 connectSocket();
 setInterval(renderMarket,1000);
